@@ -130,3 +130,15 @@ def create_salary_structure_assignment(doc, method):
 
     ssa.insert(ignore_permissions=True)
     ssa.submit()
+
+@frappe.whitelist()
+def check_salary_structure_assignment(employee, doj):
+
+    return frappe.db.exists(
+        "Salary Structure Assignment",
+        {
+            "employee": employee,
+            "from_date": doj,
+            "docstatus": ["!=", 2]
+        }
+    )

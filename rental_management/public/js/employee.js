@@ -35,7 +35,7 @@ frappe.ui.form.on('Employee', {
     setup(frm) {
         calculate_probation(frm);
         calculate_total(frm),
-            calculate_total_offered_salary(frm)
+        
         // Loop through all fields available in the Employee form
         Object.keys(frm.fields_dict).forEach(fieldname => {
 
@@ -104,6 +104,25 @@ frappe.ui.form.on('Employee', {
         }
     },
     refresh: function(frm) {
+        frm.set_query('custom_salary_structure', function() {
+            return {
+                filters: {
+                    company: frm.doc.company,
+                    custom_designation: frm.doc.designation,
+                    docstatus: 1  
+                }
+            };
+        });
+        let total =
+            (parseInt(frm.doc.custom_basic) || 0) +
+            (parseInt(frm.doc.custom_house_rent_allowances) || 0) +
+            (parseInt(frm.doc.custom_other_allowances) || 0) +
+            (parseInt(frm.doc.custom_food_allowances_fa) || 0) +
+            (parseInt(frm.doc.custom_transportation_allowance) || 0);
+
+        frm.fields_dict.custom_total_salary_as_per_offer_letter.$input.val(total);
+
+        set_confirmation_date(frm)
         set_passport_details(frm);
         // fetch the setting once
         frappe.call({
@@ -114,7 +133,9 @@ frappe.ui.form.on('Employee', {
         });
 
         sort_ticket_allowance(frm);
-        toggle_salary_structure(frm);
+        frappe.after_ajax(() => {
+            toggle_salary_structure(frm);
+        });
     },
     custom_salary_structure: function(frm) {
         toggle_salary_structure(frm);
@@ -139,33 +160,47 @@ frappe.ui.form.on('Employee', {
     }
 });
 
+function calculate_total_offered_salary(frm) {
+
+    let total =
+        (parseInt(frm.doc.custom_basic) || 0) +
+        (parseInt(frm.doc.custom_house_rent_allowances) || 0) +
+        (parseInt(frm.doc.custom_other_allowances) || 0) +
+        (parseInt(frm.doc.custom_food_allowances_fa) || 0) +
+        (parseInt(frm.doc.custom_transportation_allowance) || 0);
+
+    if (frm.doc.custom_total_salary_as_per_offer_letter !== total) {
+
+        frm.set_value("custom_total_salary_as_per_offer_letter", total, null, true);
+
+        // 🔥 THIS IS THE KEY LINE
+        frm.dirty = false;
+    }
+}
+
 function toggle_salary_structure(frm) {
 
-    if (!frm.doc.employee || !frm.doc.date_of_joining) return;
+    if (!frm.doc.name || !frm.doc.date_of_joining) return;
 
     frappe.call({
-        method: "frappe.client.get_list",
+        method: "rental_management.rental_management.doctype.employee.check_salary_structure_assignment",
         args: {
-            doctype: "Salary Structure Assignment",
-            filters: {
-                employee: frm.doc.name,
-                from_date: frm.doc.date_of_joining,
-                docstatus: ["!=", 2]
-            },
-            limit_page_length: 1
+            employee: frm.doc.name,
+            doj: frm.doc.date_of_joining
         },
         callback: function(r) {
 
-            if (r.message && r.message.length > 0) {
-                // A exists → lock field
+            if (r.message) {
+                // SSA exists → lock field
                 frm.set_df_property('custom_salary_structure', 'read_only', 1);
             } else {
-                // SA NOT exists → allow edit
+                // SSA not exists → allow edit
                 frm.set_df_property('custom_salary_structure', 'read_only', 0);
             }
         }
     });
 }
+
 function toggle_salary_structure_readonly(frm) {
 
     if (frm.doc.custom_salary_structure && !frm.is_new()) {
@@ -217,8 +252,10 @@ function calculate_total(frm) {
         (parseInt(frm.doc.custom_food_allowances) || 0) +
         (parseInt(frm.doc.custom_transportation_allowances) || 0);
 
-    // Set calculated value in Total Salary field
-    frm.set_value("custom_total_salary", total);
+    if (frm.doc.custom_total_salary !== total) {
+        frm.doc.custom_total_salary = total;
+        frm.refresh_field("custom_total_salary");
+    }
 }
 
 function calculate_total_offered_salary(frm) {
