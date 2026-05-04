@@ -137,9 +137,9 @@ fixtures = [
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
+permission_query_conditions = {
+	"Salary Structure Assignment": "rental_management.rental_management.override.salary_structure_assignment.get_ssa_permission_query"
+}
 #
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
@@ -166,6 +166,9 @@ fixtures = [
 # }
 
 doc_events = {
+    "Salary Structure Assignment":{
+        "validate":"rental_management.rental_management.validations.salary_structure_assignment.validate_ssa_employee_category"
+    },
     "Additional Salary":{
         "validate":"rental_management.rental_management.doctype.additional_salary.validate",
         "on_submit":"rental_management.rental_management.doctype.additional_salary.on_submit",

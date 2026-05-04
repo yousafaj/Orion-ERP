@@ -12,6 +12,7 @@
   "company_logo",
   "salary_slip_tab",
   "ss_print_logo",
+  "role_for_non_office_employee_ssa_access",
   "employee_tab",
   "default_bank_name_for_c3_pay"
  ],
@@ -61,13 +62,19 @@
    "fieldname": "default_bank_name_for_c3_pay",
    "fieldtype": "Data",
    "label": "Default Bank Name for C3 Pay"
+  },
+  {
+   "fieldname": "role_for_non_office_employee_ssa_access",
+   "fieldtype": "Table MultiSelect",
+   "label": "Role for Non Office Employee SSA Access",
+   "options": "Role Details"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-29 12:20:56.263600",
+ "modified": "2026-05-04 13:28:28.212517",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Orion Settings",
