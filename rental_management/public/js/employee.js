@@ -173,7 +173,6 @@ function calculate_total_offered_salary(frm) {
 
         frm.set_value("custom_total_salary_as_per_offer_letter", total, null, true);
 
-        // 🔥 THIS IS THE KEY LINE
         frm.dirty = false;
     }
 }
