@@ -31,7 +31,8 @@ def certificate_expiry_notification():
             emp_doc = frappe.get_doc("Employee", emp.name)
 
             for cert in emp_doc.custom_certificates:
-
+                if cert.certification_name != config.certification_name:
+                    continue
                 expiry_date = cert.get(config.field_notification_based_on)
 
                 if not expiry_date:
