@@ -114,13 +114,18 @@ frappe.ui.form.on('Employee', {
             };
         });
         let total =
-            (parseInt(frm.doc.custom_basic) || 0) +
-            (parseInt(frm.doc.custom_house_rent_allowances) || 0) +
-            (parseInt(frm.doc.custom_other_allowances) || 0) +
-            (parseInt(frm.doc.custom_food_allowances_fa) || 0) +
-            (parseInt(frm.doc.custom_transportation_allowance) || 0);
+            (parseFloat(frm.doc.custom_basic) || 0) +
+            (parseFloat(frm.doc.custom_house_rent_allowances) || 0) +
+            (parseFloat(frm.doc.custom_other_allowances) || 0) +
+            (parseFloat(frm.doc.custom_food_allowances_fa) || 0) +
+            (parseFloat(frm.doc.custom_transportation_allowance) || 0);
 
-        frm.fields_dict.custom_total_salary_as_per_offer_letter.$input.val(total);
+        if (frm.doc.custom_total_salary_as_per_offer_letter !== total) {
+
+            frm.doc.custom_total_salary_as_per_offer_letter = total;
+
+            frm.refresh_field("custom_total_salary_as_per_offer_letter");
+        }
 
         set_confirmation_date(frm)
         set_passport_details(frm);
