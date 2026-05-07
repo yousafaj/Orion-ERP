@@ -154,7 +154,6 @@ permission_query_conditions = {
 # override_doctype_class = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
-
 # Document Events
 # ---------------
 # Hook on document methods and events
@@ -206,6 +205,9 @@ scheduler_events = {
 	# "all": [
 	# 	"rental_management.tasks.all"
 	# ],
+    "0 2 30 * *": [
+            "rental_management.rental_management.doctype.additional_salary.create_monthly_allowances"
+        ],
 	"daily": [
         "rental_management.rental_management.doctype.employee_deduction.employee_deduction.run_deduction_cron"
 		"rental_management.tasks.daily.daily",

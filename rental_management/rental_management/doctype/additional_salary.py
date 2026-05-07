@@ -1,7 +1,6 @@
 import frappe
 import json
-from frappe.utils import get_link_to_form
-
+from frappe.utils import get_link_to_form,getdate, add_months, get_last_day, nowdate
 
 def validate(self, method):
     if self.salary_component == "Total Deduction":
@@ -443,3 +442,93 @@ def clean_latest_outstanding_refs(doc):
             },
             update_modified=False
         )
+
+
+def create_monthly_allowances():
+    today = getdate(nowdate())
+
+    # Get last month start & end
+    last_month_date = add_months(today, -1)
+    start_date = last_month_date.replace(day=1)
+    end_date = get_last_day(last_month_date)
+
+    employees = frappe.get_all(
+        "Employee",
+        filters={"status": "Active"},
+        fields=[
+            "name",
+            "employee_name",
+            "company",
+            "custom_site_allowances",
+            "custom_site_allowances_amount",
+            "custom_offshore_allowances",
+            "custom_offshore_allowances_amount",
+        ],
+    )
+
+    for emp in employees:
+
+        # ---------- SITE ALLOWANCE ----------
+        if emp.custom_site_allowances and emp.custom_site_allowances_amount:
+            try:
+                create_additional_salary(
+                    emp,
+                    component="Site Allowances",
+                    amount=emp.custom_site_allowances_amount,
+                    payroll_date=end_date,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+            except Exception:
+                frappe.log_error(
+                    frappe.get_traceback(),
+                    f"Site Allowance Failed for {emp.name}"
+                )
+
+        # ---------- OFFSHORE ALLOWANCE ----------
+        if emp.custom_offshore_allowances and emp.custom_offshore_allowances_amount:
+            try:
+                create_additional_salary(
+                    emp,
+                    component="Offshore Allowances",
+                    amount=emp.custom_offshore_allowances_amount,
+                    payroll_date=end_date,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+            except Exception:
+                frappe.log_error(
+                    frappe.get_traceback(),
+                    f"Offshore Allowance Failed for {emp.name}"
+                )
+
+
+def create_additional_salary(emp, component, amount, payroll_date, start_date, end_date):
+
+    # Prevent duplicate creation
+    exists = frappe.db.exists(
+        "Additional Salary",
+        {
+            "employee": emp.name,
+            "salary_component": component,
+            "payroll_date": payroll_date,
+        }
+    )
+
+    if exists:
+        return
+
+    doc = frappe.get_doc({
+        "doctype": "Additional Salary",
+        "employee": emp.name,
+        "employee_name": emp.employee_name,
+        "company": emp.company,
+        "salary_component": component,
+        "amount": amount,
+        "payroll_date": payroll_date,
+        "from_date": start_date,
+        "to_date": end_date,
+    })
+
+    doc.insert(ignore_permissions=True)
+    doc.submit()
