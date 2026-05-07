@@ -17,10 +17,13 @@
   "last_month_for_which_payment_processed_oe",
   "payroll_month_date_oe",
   "cron_schedule_date_oe",
+  "column_break_knmu",
+  "trigger_oe_cron",
   "section_break_znxh",
   "last_month_for_which_payment_processed_noe",
   "payroll_month_date_noe",
   "cron_schedule_date_noe",
+  "column_break_pzfa",
   "employee_tab",
   "default_bank_name_for_c3_pay"
  ],
@@ -102,7 +105,8 @@
   {
    "fieldname": "payroll_month_date_oe",
    "fieldtype": "Date",
-   "label": "Payroll Month Date OE"
+   "label": "Payroll Month Date OE",
+   "options": "For a single payroll month, the scheduler can be triggered only once to generate the payment. Once processed, it cannot be triggered again."
   },
   {
    "fieldname": "cron_schedule_date_oe",
@@ -112,19 +116,34 @@
   {
    "fieldname": "payroll_month_date_noe",
    "fieldtype": "Date",
-   "label": "Payroll Month Date NOE"
+   "label": "Payroll Month Date NOE",
+   "options": "For a single payroll month, the scheduler can be triggered only once to generate the payment. Once processed, it cannot be triggered again."
   },
   {
    "fieldname": "cron_schedule_date_noe",
    "fieldtype": "Date",
    "label": "Cron Schedule Date NOE"
+  },
+  {
+   "fieldname": "column_break_knmu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:frappe.user.has_role(\"Administrator\")",
+   "fieldname": "trigger_oe_cron",
+   "fieldtype": "Button",
+   "label": "Trigger OE and NOE Cron"
+  },
+  {
+   "fieldname": "column_break_pzfa",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-05-06 22:30:58.572491",
+ "modified": "2026-05-07 15:13:02.244708",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Orion Settings",
