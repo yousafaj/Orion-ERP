@@ -13,6 +13,14 @@
   "salary_slip_tab",
   "ss_print_logo",
   "role_for_non_office_employee_ssa_access",
+  "section_break_olax",
+  "last_month_for_which_payment_processed_oe",
+  "payroll_month_date_oe",
+  "cron_schedule_date_oe",
+  "section_break_znxh",
+  "last_month_for_which_payment_processed_noe",
+  "payroll_month_date_noe",
+  "cron_schedule_date_noe",
   "employee_tab",
   "default_bank_name_for_c3_pay"
  ],
@@ -68,13 +76,55 @@
    "fieldtype": "Table MultiSelect",
    "label": "Role for Non Office Employee SSA Access",
    "options": "Role Details"
+  },
+  {
+   "depends_on": "eval:frappe.user.has_role(\"Administrator\")",
+   "fieldname": "last_month_for_which_payment_processed_oe",
+   "fieldtype": "Date",
+   "label": "Last Month for Which Payment Processed OE"
+  },
+  {
+   "depends_on": "eval:frappe.user.has_role(\"Administrator\")",
+   "fieldname": "last_month_for_which_payment_processed_noe",
+   "fieldtype": "Date",
+   "label": "Last Month for Which Payment Processed NOE"
+  },
+  {
+   "fieldname": "section_break_olax",
+   "fieldtype": "Section Break",
+   "label": "Deduction Cron Detail for Office Employees"
+  },
+  {
+   "fieldname": "section_break_znxh",
+   "fieldtype": "Section Break",
+   "label": "Deduction Cron Detail for Non Office Employee"
+  },
+  {
+   "fieldname": "payroll_month_date_oe",
+   "fieldtype": "Date",
+   "label": "Payroll Month Date OE"
+  },
+  {
+   "fieldname": "cron_schedule_date_oe",
+   "fieldtype": "Date",
+   "label": "Cron Schedule Date OE"
+  },
+  {
+   "fieldname": "payroll_month_date_noe",
+   "fieldtype": "Date",
+   "label": "Payroll Month Date NOE"
+  },
+  {
+   "fieldname": "cron_schedule_date_noe",
+   "fieldtype": "Date",
+   "label": "Cron Schedule Date NOE"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-05-04 13:28:28.212517",
+ "modified": "2026-05-06 22:30:58.572491",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Orion Settings",

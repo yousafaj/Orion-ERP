@@ -47,8 +47,9 @@ doctype_js = {
     "Employee" : "public/js/employee.js",
     "Additional Salary": "public/js/additional_salary.js"
     }
+
 # app_include_css = "/assets/rental_management/css/listview.css"
-doctype_list_js = {"Employee": "public/js/employee_list.js"}
+doctype_list_js = {"Employee": "public/js/employee_list.js",}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -138,6 +139,7 @@ fixtures = [
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
+    "Additional Salary": "rental_management.rental_management.override.additonal_salary.get_additional_salary_permission_query",
 	"Salary Structure Assignment": "rental_management.rental_management.override.salary_structure_assignment.get_ssa_permission_query"
 }
 #
@@ -170,6 +172,7 @@ doc_events = {
         "validate":"rental_management.rental_management.validations.salary_structure_assignment.validate_ssa_employee_category"
     },
     "Additional Salary":{
+        "autoname":"rental_management.rental_management.doctype.additional_salary.autoname",
         "validate":"rental_management.rental_management.doctype.additional_salary.validate",
         "on_submit":"rental_management.rental_management.doctype.additional_salary.on_submit",
         "on_cancel":"rental_management.rental_management.doctype.additional_salary.on_cancel"
@@ -204,6 +207,7 @@ scheduler_events = {
 	# 	"rental_management.tasks.all"
 	# ],
 	"daily": [
+        "rental_management.rental_management.doctype.employee_deduction.employee_deduction.run_deduction_cron"
 		"rental_management.tasks.daily.daily",
         "rental_management.rental_management.scripts.certificate_notification.certificate_expiry_notification",
         "rental_management.rental_management.doctype.employee.create_ticket_allowance"

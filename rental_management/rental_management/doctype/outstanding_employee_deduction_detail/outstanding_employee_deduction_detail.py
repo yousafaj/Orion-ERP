@@ -5,7 +5,7 @@
 from frappe.model.document import Document
 
 
-class EmployeeDeductionDetail(Document):
+class OutstandingEmployeeDeductionDetail(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
 
@@ -18,6 +18,7 @@ class EmployeeDeductionDetail(Document):
 		attachment_1: DF.Attach | None
 		attachment_2: DF.Attach | None
 		attachment_3: DF.Attach | None
+		child_ref: DF.Data | None
 		deduction_amount: DF.Currency
 		deduction_date: DF.Date
 		installment: DF.Int
@@ -25,6 +26,7 @@ class EmployeeDeductionDetail(Document):
 		paid: DF.Check
 		paid_amount: DF.Currency
 		parent: DF.Data
+		parent_ref: DF.Data | None
 		parentfield: DF.Data
 		parenttype: DF.Data
 		partial_paid: DF.Check

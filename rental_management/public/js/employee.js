@@ -103,6 +103,11 @@ frappe.ui.form.on('Employee', {
             frm.set_value("final_confirmation_date", frm.doc.scheduled_confirmation_date);
         }
     },
+    before_attach: function(frm) {
+        if (frm.is_dirty()) {
+            frm.save();
+        }
+    },
     refresh: function(frm) {
         frm.set_query('custom_salary_structure', function() {
             return {
