@@ -281,13 +281,6 @@ def get_outstanding_penalties(employee):
 	return result
 
 
-import frappe
-from frappe.utils import (
-	getdate,
-	get_first_day,
-	get_last_day
-)
-
 @frappe.whitelist()
 def run_deduction_cron():
 
