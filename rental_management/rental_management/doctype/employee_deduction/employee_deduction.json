@@ -11,6 +11,7 @@
   "employee",
   "employee_name",
   "department",
+  "employee_category",
   "naming_series",
   "column_break_jmyd",
   "transaction_date",
@@ -20,6 +21,7 @@
   "remaining_balance",
   "section_break_mrhq",
   "employee_deduction_detail",
+  "outstanding_employee_deduction_detail",
   "remarks"
  ],
  "fields": [
@@ -47,14 +49,16 @@
    "fetch_from": "employee.employee_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
-   "label": "Employee Name"
+   "label": "Employee Name",
+   "read_only": 1
   },
   {
    "fetch_from": "employee.custom_department_of_working_company",
    "fieldname": "department",
    "fieldtype": "Link",
    "label": "Department ",
-   "options": "Department"
+   "options": "Department",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_jmyd",
@@ -110,14 +114,28 @@
   {
    "fieldname": "naming_series",
    "fieldtype": "Select",
+   "hidden": 1,
    "label": "Naming Series"
+  },
+  {
+   "fieldname": "outstanding_employee_deduction_detail",
+   "fieldtype": "Table",
+   "label": "Outstanding Employee Deduction Detail",
+   "options": "Outstanding Employee Deduction Detail"
+  },
+  {
+   "fetch_from": "employee.custom_employee_category",
+   "fieldname": "employee_category",
+   "fieldtype": "Data",
+   "label": "Employee Category",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-28 18:44:31.069047",
+ "modified": "2026-05-06 16:31:48.487064",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Employee Deduction",
