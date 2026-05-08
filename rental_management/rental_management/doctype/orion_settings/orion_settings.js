@@ -1,11 +1,20 @@
 // Copyright (c) 2026, osama.ahmed@deliverydevs.com and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Orion Settings", {
-// 	refresh(frm) {
+frappe.ui.form.on("Orion Settings", {
+	trigger_oe_cron(frm) {
 
-// 	},
-// });
+        frappe.call({
+            method: "rental_management.rental_management.doctype.employee_deduction.employee_deduction.run_deduction_cron",
+            freeze: true,
+            freeze_message: __("Processing..."),
+            callback: function(r) {
+                frappe.msgprint("Cron Executed Successfully");
+            }
+        });
+
+    }
+});
 
 
 frappe.ui.form.on('Ticket Entitlement', {

@@ -61,15 +61,15 @@ class OrionSettings(Document):
 
 				if last_processed and payroll_date <= last_processed:
 					frappe.throw("Payroll Month Date Office Employee must be greater than Last Processed Month")
-
-				if cron_date <= today:
-					frappe.throw("Cron Schedule Date Office Employee must be greater than today")
+				if "Administrator" not in frappe.get_roles():
+					if cron_date <= today:
+						frappe.throw("Cron Schedule Date Office Employee must be greater than today")
 
 		# ---------- NON OFFICE ----------
-		if self.has_value_changed("payroll_month_date_ne"):
-			if self.payroll_month_date_ne:
+		if self.has_value_changed("payroll_month_date_noe"):
+			if self.payroll_month_date_noe:
 
-				payroll_date = getdate(self.payroll_month_date_ne)
+				payroll_date = getdate(self.payroll_month_date_noe)
 				last_processed = getdate(self.last_month_for_which_payment_processed_noe) if self.last_month_for_which_payment_processed_noe else None
 
 				if last_processed and payroll_date <= last_processed:
@@ -81,7 +81,7 @@ class OrionSettings(Document):
 		if self.has_value_changed("cron_schedule_date_noe"):
 			if self.cron_schedule_date_noe:
 
-				payroll_date = getdate(self.payroll_month_date_ne)
+				payroll_date = getdate(self.payroll_month_date_noe)
 				cron_date = getdate(self.cron_schedule_date_noe)
 				last_processed = getdate(self.last_month_for_which_payment_processed_noe) if self.last_month_for_which_payment_processed_noe else None
 				if last_processed and payroll_date <= last_processed:
@@ -90,5 +90,6 @@ class OrionSettings(Document):
 				if last_processed and cron_date <= last_processed:
 					frappe.throw("Cron Schedule Date Non-Office must be greater than Last Processed Month")
 
-				if cron_date <= today:
-					frappe.throw("Cron Schedule Date Non-Office must be greater than today")
+				if "Administrator" not in frappe.get_roles():
+					if cron_date <= today:
+						frappe.throw("Cron Schedule Date Non-Office must be greater than today")

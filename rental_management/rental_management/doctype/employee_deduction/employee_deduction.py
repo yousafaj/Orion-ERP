@@ -281,18 +281,33 @@ def get_outstanding_penalties(employee):
 	return result
 
 
+@frappe.whitelist()
 def run_deduction_cron():
 
 	settings = frappe.get_single("Orion Settings")
 	today = getdate()
-	
-	cron_oe = getdate(settings.cron_schedule_date_oe) if settings.cron_schedule_date_oe else None
-	cron_noe = getdate(settings.cron_schedule_date_noe) if settings.cron_schedule_date_noe else None
+
+	cron_oe = (
+		getdate(settings.cron_schedule_date_oe)
+		if settings.cron_schedule_date_oe
+		else None
+	)
+
+	cron_noe = (
+		getdate(settings.cron_schedule_date_noe)
+		if settings.cron_schedule_date_noe
+		else None
+	)
 
 	# ---------------- OFFICE ----------------
 	if cron_oe and today == cron_oe:
+
 		end_date = get_last_day(settings.payroll_month_date_oe)
-		process_deductions("Office", settings.payroll_month_date_oe)
+
+		process_deductions(
+			"Office",
+			settings.payroll_month_date_oe
+		)
 
 		settings.db_set(
 			"last_month_for_which_payment_processed_oe",
@@ -302,8 +317,13 @@ def run_deduction_cron():
 
 	# ---------------- NON-OFFICE ----------------
 	if cron_noe and today == cron_noe:
+
 		end_date = get_last_day(settings.payroll_month_date_noe)
-		process_deductions("Non-Office", settings.payroll_month_date_noe)
+
+		process_deductions(
+			"Non-Office",
+			settings.payroll_month_date_noe
+		)
 
 		settings.db_set(
 			"last_month_for_which_payment_processed_noe",
@@ -312,90 +332,130 @@ def run_deduction_cron():
 		)
 
 
-# PROCESS
+
+# PROCESS DEDUCTIONS
 def process_deductions(category, payroll_date):
 
 	if not payroll_date:
 		return
 
 	payroll_date = getdate(payroll_date)
+
 	start_date = get_first_day(payroll_date)
 	end_date = get_last_day(payroll_date)
 
 	employees = frappe.get_all(
 		"Employee",
-		filters={"custom_employee_category": category},
+		filters={
+			"custom_employee_category": category
+		},
 		pluck="name"
 	)
 
 	for emp in employees:
 
-		# prevent duplicate
-		if frappe.db.exists("Additional Salary", {
-			"employee": emp,
-			"payroll_date": end_date,
-			"salary_component": "Total Deduction",
-			"docstatus":1
-		}):
+		try:
+			if frappe.db.exists(
+				"Additional Salary",
+				{
+					"employee": emp,
+					"payroll_date": end_date,
+					"salary_component": "Total Deduction",
+					"docstatus": 1
+				}
+			):
+				continue
+
+
+			doc_name = frappe.db.get_value(
+				"Employee Deduction",
+				{
+					"employee": emp,
+					"docstatus": 1
+				},
+				"name",
+				order_by="creation desc"
+			)
+
+			if not doc_name:
+				continue
+
+			doc = frappe.get_doc(
+				"Employee Deduction",
+				doc_name
+			)
+
+			picked_rows = []
+
+
+			for row in doc.employee_deduction_detail or []:
+
+				if (row.remaining_amount or 0) <= 0:
+					continue
+
+				if not row.payroll_start_date:
+					continue
+
+				row_start = row.payroll_start_date
+				row_end = row.payrol_end_date or end_date
+
+				if not (
+					row_start <= end_date
+					and row_end >= start_date
+				):
+					continue
+
+				picked_rows.append({
+					"row": row,
+					"doctype": "Employee Deduction Detail"
+				})
+
+			
+			# OUTSTANDING DEDUCTIONS
+			for row in doc.outstanding_employee_deduction_detail or []:
+
+				if (row.remaining_amount or 0) <= 0:
+					continue
+
+				if not row.payroll_start_date:
+					continue
+
+				row_start = row.payroll_start_date
+				row_end = row.payrol_end_date or end_date
+
+				if not (
+					row_start <= end_date
+					and row_end >= start_date
+				):
+					continue
+
+				picked_rows.append({
+					"row": row,
+					"doctype": "Outstanding Employee Deduction Detail"
+				})
+
+			if not picked_rows:
+				continue
+
+			# CREATE ADDITIONAL SALARY
+			create_additional_salary(
+				emp,
+				end_date,
+				picked_rows
+			)
+
+			frappe.db.commit()
+
+		except Exception:
+
+			frappe.db.rollback()
+
+			frappe.log_error(
+				title=f"Deduction Cron Failed for Employee {emp}",
+				message=frappe.get_traceback()
+			)
+
 			continue
-
-		doc_name = frappe.db.get_value(
-			"Employee Deduction",
-			{"employee": emp, "docstatus": 1},
-			"name",
-			order_by="creation desc"
-		)
-
-		if not doc_name:
-			continue
-
-		doc = frappe.get_doc("Employee Deduction", doc_name)
-
-		picked_rows = []
-
-		for row in doc.employee_deduction_detail or []:
-
-			if (row.remaining_amount or 0) <= 0:
-				continue
-
-			if not row.payroll_start_date:
-				continue
-
-			row_start = row.payroll_start_date
-			row_end = row.payrol_end_date or end_date
-
-			if not (row_start <= end_date and row_end >= start_date):
-				continue
-
-			picked_rows.append({
-				"row": row,
-				"doctype": "Employee Deduction Detail"
-			})
-
-		# ---------- OUTSTANDING ----------
-		for row in doc.outstanding_employee_deduction_detail or []:
-
-			if (row.remaining_amount or 0) <= 0:
-				continue
-
-			if not row.payroll_start_date:
-				continue
-
-			row_start = row.payroll_start_date
-			row_end = row.payrol_end_date or end_date
-
-			if not (row_start <= end_date and row_end >= start_date):
-				continue
-
-			picked_rows.append({
-				"row": row,
-				"doctype": "Outstanding Employee Deduction Detail"
-			})
-
-		if not picked_rows:
-			continue
-
-		create_additional_salary(emp, end_date, picked_rows)
 
 
 
