@@ -512,6 +512,7 @@ def create_additional_salary(emp, component, amount, payroll_date, start_date, e
             "employee": emp.name,
             "salary_component": component,
             "payroll_date": payroll_date,
+            "docstatus":1
         }
     )
 

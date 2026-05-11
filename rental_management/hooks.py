@@ -45,7 +45,8 @@ app_license = "mit"
 # include js in doctype views
 doctype_js = {
     "Employee" : "public/js/employee.js",
-    "Additional Salary": "public/js/additional_salary.js"
+    "Additional Salary": "public/js/additional_salary.js",
+    "Leave Application": "public/js/leave_application.js",
     }
 
 # app_include_css = "/assets/rental_management/css/listview.css"
@@ -137,10 +138,11 @@ fixtures = [
 # Permissions
 # -----------
 # Permissions evaluated in scripted ways
-
 permission_query_conditions = {
-    "Additional Salary": "rental_management.rental_management.override.additonal_salary.get_additional_salary_permission_query",
-	"Salary Structure Assignment": "rental_management.rental_management.override.salary_structure_assignment.get_ssa_permission_query"
+    "Additional Salary": "rental_management.rental_management.permission_query.additonal_salary.get_additional_salary_permission_query",
+	"Salary Structure Assignment": "rental_management.rental_management.permission_query.salary_structure_assignment.get_ssa_permission_query",
+    "Leave Application":
+    "rental_management.rental_management.permission_query.leave_application.leave_application_query"
 }
 #
 # has_permission = {
@@ -167,6 +169,11 @@ permission_query_conditions = {
 # }
 
 doc_events = {
+    "Leave Application":{
+         "validate":"rental_management.rental_management.validations.leave_application.validate_leave_approval",
+
+        "on_update":"rental_management.rental_management.validations.leave_application.handle_leave_approval"
+    },
     "Salary Structure Assignment":{
         "validate":"rental_management.rental_management.validations.salary_structure_assignment.validate_ssa_employee_category"
     },
@@ -189,7 +196,8 @@ doc_events = {
         "validate": "rental_management.rental_management.validations.customer_hooks.validate_customer"
     },
     "Employee": {
-        "validate": "rental_management.rental_management.validations.employee_hooks.validate_employee",
+        "validate": ["rental_management.rental_management.validations.employee_hooks.validate_employee",
+                    "rental_management.rental_management.doctype.employee.validate_allowance_amounts"],
         "after_insert": "rental_management.rental_management.doctype.employee.create_salary_structure_assignment",
         "on_update": "rental_management.rental_management.doctype.employee.create_salary_structure_assignment"
     },

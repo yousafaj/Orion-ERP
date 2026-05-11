@@ -1,6 +1,27 @@
 import frappe
 from frappe.utils import today, date_diff, add_years, add_days,flt,getdate,add_months
 
+def validate_allowance_amounts(doc, method=None):
+
+    if doc.custom_site_allowances:
+
+        if not doc.custom_site_allowances_amount or doc.custom_site_allowances_amount <= 0:
+
+            frappe.throw(
+                "Site Allowance Amount must be greater than 0 when Site Allowance is checked."
+            )
+
+    if doc.custom_offshore_allowances:
+
+        if (
+            not doc.custom_offshore_allowances_amount
+            or doc.custom_offshore_allowances_amount <= 0
+        ):
+
+            frappe.throw(
+                "Offshore Allowance Amount must be greater than 0 when Offshore Allowance is checked."
+            )
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def user_by_employee(doctype, txt, searchfield, start, page_len, filters):

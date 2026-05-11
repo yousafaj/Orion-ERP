@@ -42,17 +42,17 @@ class EmployeeDeduction(Document):
 		all_rows = (self.employee_deduction_detail or []) + (self.outstanding_employee_deduction_detail or [])
 
 		for row in all_rows:
-			if row.reference:
+			if row.additional_deduction_ref:
 
-				refs = re.findall(r'>([^<]+)<', row.reference)
+				refs = re.findall(r'>([^<]+)<', row.additional_deduction_ref)
 
 				for ref in refs:
-					if frappe.db.get_value("Additional Salary", ref, "docstatus") == 1:
+					if frappe.db.get_value("Additional Deduction", ref, "docstatus") == 1:
 						invalid_refs.append(ref)
 
 		if invalid_refs:
 			frappe.throw(
-				"Please cancel the following Additional Salary document(s) first:<br><b>"
+				"Please cancel the following Additional Deduction document(s) first:<br><b>"
 				+ "<br>".join(set(invalid_refs)) +
 				"</b>"
 			)
@@ -62,6 +62,7 @@ class EmployeeDeduction(Document):
 		self.update_child_payment()
 		self.update_parent_totals()
 		validate_installment_amount(self)
+		validate_payroll_dates(self)
 
 	# UPDATE AFTER SUBMIT
 	def on_update_after_submit(self):
@@ -272,7 +273,7 @@ def get_outstanding_penalties(employee):
 			"remarks": row.remarks,
 			"attachment_1": row.attachment_1,
 			"attachment_2": row.attachment_2,
-			"parent_ref": parent[0].parent_ref,
+			"parent_ref": row.parent_ref,
 			"child_ref": row.child_ref,
 			"source": "outstanding",
 			"additional_deduction_ref":row.additional_deduction_ref
@@ -558,3 +559,91 @@ def sync_to_outstanding(self, row):
 			},
 			update_modified=False
 		)
+
+
+def validate_payroll_dates(doc, method=None):
+
+    settings = frappe.get_single("Orion Settings")
+
+    if doc.employee_category == "Office":
+        last_processed_date = settings.last_month_for_which_payment_processed_oe
+
+    elif doc.employee_category == "Non-Office":
+        last_processed_date = settings.last_month_for_which_payment_processed_noe
+
+    else:
+        return
+
+    last_processed_date = (
+        getdate(last_processed_date)
+        if last_processed_date
+        else None
+    )
+
+    # VALIDATE CHILD TABLES
+    child_tables = [
+        "employee_deduction_detail"
+        # "outstanding_employee_deduction_detail",
+    ]
+
+    for table in child_tables:
+
+        for row in doc.get(table) or []:
+
+            payroll_start_date = (
+                getdate(row.payroll_start_date)
+                if row.payroll_start_date
+                else None
+            )
+
+            payroll_end_date = (
+                getdate(row.payrol_end_date)
+                if row.payrol_end_date
+                else None
+            )
+
+            # PAYROLL END DATE CANNOT BE BEFORE START DATE
+            if (
+                payroll_start_date
+                and payroll_end_date
+                and payroll_end_date < payroll_start_date
+            ):
+
+                frappe.throw(
+                    f"""
+                    Row #{row.idx}:
+                    Payroll End Date cannot be before Payroll Start Date
+                    """
+                )
+
+            # START DATE CANNOT BE <= LAST PROCESSED DATE
+            if (
+                payroll_start_date
+                and last_processed_date
+                and payroll_start_date <= last_processed_date
+            ):
+
+                frappe.throw(
+                    f"""
+                    Row #{row.idx}:
+                    Payroll Start Date ({payroll_start_date})
+                    cannot be less than or equal to
+                    Last Processed Payroll Date ({last_processed_date})
+                    """
+                )
+
+            # END DATE CANNOT BE <= LAST PROCESSED DATE
+            if (
+                payroll_end_date
+                and last_processed_date
+                and payroll_end_date <= last_processed_date
+            ):
+
+                frappe.throw(
+                    f"""
+                    Row #{row.idx}:
+                    Payroll End Date ({payroll_end_date})
+                    cannot be less than or equal to
+                    Last Processed Payroll Date ({last_processed_date})
+                    """
+                )
