@@ -100,8 +100,11 @@ def get_columns():
 
 def get_data(filters):
 
+    filters = filters or {}
+
     conditions = ""
     values = {}
+
 
     if filters.get("employee"):
         conditions += " AND ed.employee = %(employee)s"
@@ -116,8 +119,12 @@ def get_data(filters):
         values["penalty_type"] = filters.get("penalty_type")
 
     if filters.get("deduction_date"):
-        conditions += " AND edd.deduction_date >= %(deduction_date)s"
-        values["deduction_date"] = filters.get("deduction_date")
+        conditions += """
+            AND edd.deduction_date >= %(deduction_date)s
+        """
+        values["deduction_date"] = (
+            filters.get("deduction_date")
+        )
 
     if filters.get("payroll_start_date"):
         conditions += """
@@ -183,16 +190,6 @@ def get_data(filters):
 
             continue
 
-
-        total_amount = row.get("deduction_amount") or 0
-
-        installment_amount = (
-            row.get("installment_amount") or 0
-        )
-
-        running_paid = 0
-
-
         for idx, sal in enumerate(salary_list):
 
             try:
@@ -205,24 +202,12 @@ def get_data(filters):
             except Exception:
                 continue
 
-            running_paid += installment_amount
-
-            remaining_amount = (
-                total_amount - running_paid
-            )
-
-            if remaining_amount <= 0:
-
-                current_status = "Paid"
-
-            else:
-
-                current_status = "Partial Paid"
-
+            # FIRST ROW SHOWS FULL DATA
             if idx == 0:
 
                 child_row = row.copy()
 
+            # NEXT ROWS SHOW ONLY PAYROLL DATE
             else:
 
                 child_row = {
@@ -234,24 +219,26 @@ def get_data(filters):
                     "payroll_start_date": "",
                     "payrol_end_date": "",
                     "deduction_amount": "",
-                    "remarks": ""
+                    "remarks": "",
+                    "paid_amount": "",
+                    "remaining_amount": "",
+                    "status": ""
                 }
 
-            # INSTALLMENT DETAILS
+            
+            # USE ACTUAL DATABASE VALUES
             child_row["paid_amount"] = (
-                installment_amount
+                row.get("paid_amount") or 0
             )
 
             child_row["remaining_amount"] = (
-                remaining_amount
+                row.get("remaining_amount") or 0
             )
 
             child_row["status"] = (
-                current_status
+                row.get("status") or ""
             )
 
-            
-            # PAYROLL DATE
             child_row["additional_salary_date"] = (
                 sal_doc.payroll_date
             )
