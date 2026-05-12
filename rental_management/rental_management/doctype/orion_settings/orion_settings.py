@@ -29,6 +29,7 @@ class OrionSettings(Document):
 		role_for_non_office_employee_ssa_access: DF.TableMultiSelect[RoleDetails]
 		ss_print_logo: DF.AttachImage | None
 		ticket_entitlement_detail: DF.Table[TicketEntitlement]
+		vehicle_handover_image: DF.AttachImage | None
 	# end: auto-generated types
 	pass
 

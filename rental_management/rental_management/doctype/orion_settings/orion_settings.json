@@ -10,6 +10,7 @@
   "manual_paid_check_read_only_date",
   "sales_invoice_tab",
   "company_logo",
+  "vehicle_handover_image",
   "salary_slip_tab",
   "ss_print_logo",
   "role_for_non_office_employee_ssa_access",
@@ -137,13 +138,18 @@
   {
    "fieldname": "column_break_pzfa",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "vehicle_handover_image",
+   "fieldtype": "Attach Image",
+   "label": "Vehicle Handover Image"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-05-07 15:13:02.244708",
+ "modified": "2026-05-12 10:03:05.073693",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Orion Settings",
