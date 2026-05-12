@@ -119,6 +119,7 @@ td, th {
 
 </table>
 <!-- ================= EARNINGS & DEDUCTIONS ================= -->
+<!-- ================= EARNINGS & DEDUCTIONS ================= -->
 <table style="border:2px solid #000; border-top:0;font-size:12px">
 
 <tr class="bold grey">
@@ -131,104 +132,196 @@ td, th {
 
 {% set main_earnings = [] %}
 {% set other_earnings = [] %}
-{% set ns = namespace(main_total=0) %}
+
+{% set ns = namespace(
+    main_total=0,
+    other_total=0,
+    deduction_total=0
+) %}
+
+<!-- ========================================= -->
+<!-- EARNINGS SEPARATION -->
+<!-- ========================================= -->
 
 {% for e in doc.earnings %}
-    {% if e.do_not_include_in_total == 1 %}
-        {% set _ = main_earnings.append(e) %}
-        {% set ns.main_total = ns.main_total + (e.amount or 0) %}
+
+    <!-- HIDE HRA IF UNCHECKED -->
+    {% if e.salary_component == "House Rent Allowance"
+        and (e.custom_print_hide or 0) == 0 %}
+
+    <!-- SKIP COMPLETELY -->
+
     {% else %}
-        {% set _ = other_earnings.append(e) %}
+
+        <!-- ADDITIONAL SALARY -->
+        {% if e.additional_salary %}
+
+            {% set _ = other_earnings.append(e) %}
+            {% set ns.other_total = ns.other_total + (e.amount or 0) %}
+
+        <!-- NORMAL SALARY COMPONENT -->
+        {% else %}
+
+            {% set _ = main_earnings.append(e) %}
+            {% set ns.main_total = ns.main_total + (e.amount or 0) %}
+
+        {% endif %}
+
     {% endif %}
+
 {% endfor %}
 
-<!-- ================= MAIN EARNINGS ================= -->
+<!-- ========================================= -->
+<!-- DEDUCTION TOTAL -->
+<!-- ========================================= -->
+
+{% for d in doc.deductions %}
+    {% set ns.deduction_total = ns.deduction_total + (d.amount or 0) %}
+{% endfor %}
+
+<!-- ========================================= -->
+<!-- MAIN EARNINGS -->
+<!-- ========================================= -->
+
 {% for i in range(max(main_earnings|length, doc.deductions|length)) %}
+
 <tr>
+
+    <!-- EARNING COMPONENT -->
     <td>
         {{ main_earnings[i].salary_component if main_earnings|length > i else "" }}
     </td>
 
+    <!-- ACTUAL -->
     <td class="right">
         {% if main_earnings|length > i %}
             {{ frappe.utils.fmt_money(main_earnings[i].amount, currency=doc.currency) }}
         {% endif %}
     </td>
 
+    <!-- EARNED -->
     <td class="right">
         {% if main_earnings|length > i %}
             {{ frappe.utils.fmt_money(main_earnings[i].amount, currency=doc.currency) }}
         {% endif %}
     </td>
 
+    <!-- DEDUCTION -->
     <td>
         {{ doc.deductions[i].salary_component if doc.deductions|length > i else "" }}
     </td>
 
+    <!-- DEDUCTION AMOUNT -->
     <td class="right">
         {% if doc.deductions|length > i %}
             {{ frappe.utils.fmt_money(doc.deductions[i].amount, currency=doc.currency) }}
         {% endif %}
     </td>
+
 </tr>
+
 {% endfor %}
 
-<!-- ================= TOTAL MONTHLY SALARY ================= -->
+<!-- ========================================= -->
+<!-- TOTAL MONTHLY SALARY -->
+<!-- ========================================= -->
+
 <tr class="bold">
     <td>TOTAL MONTHLY SALARY</td>
+
     <td colspan="2" class="right">
         {{ frappe.utils.fmt_money(ns.main_total, currency=doc.currency) }}
     </td>
+
     <td></td>
     <td></td>
 </tr>
 
-<!-- ================= OTHER PAYMENTS ================= -->
+<!-- ========================================= -->
+<!-- OTHER PAYMENTS -->
+<!-- ========================================= -->
+
 {% if other_earnings %}
+
 <tr>
-    <td class="bold" colspan="3">Other Payments</td>
-    
+    <td class="bold" colspan="3">
+        Other Payments
+    </td>
+
     <td></td>
     <td></td>
 </tr>
 
 {% for e in other_earnings %}
-{% if e.salary_component!="Total Salary" %}
+
 <tr>
+
     <td style="padding-left:15px;">
         {{ e.salary_component }}
     </td>
+
     <td></td>
+
     <td class="right">
         {{ frappe.utils.fmt_money(e.amount, currency=doc.currency) }}
     </td>
+
     <td></td>
     <td></td>
+
 </tr>
-{% endif%}
+
 {% endfor %}
 {% endif %}
 
+<!-- ========================================= -->
+<!-- TOTALS -->
+<!-- ========================================= -->
 
 <tr class="bold">
+
     <td>Total Earnings</td>
-    <td colspan="2" class="right">{{ frappe.utils.fmt_money(doc.gross_pay, currency=doc.currency) }}</td>
+
+    <td colspan="2" class="right">
+        {{ frappe.utils.fmt_money(ns.main_total + ns.other_total, currency=doc.currency) }}
+    </td>
+
     <td>Total Deductions</td>
-    <td class="right">{{ frappe.utils.fmt_money(doc.total_deduction or doc.total_deductions, currency=doc.currency) }}</td>
+
+    <td class="right">
+        {{ frappe.utils.fmt_money(ns.deduction_total, currency=doc.currency) }}
+    </td>
+
 </tr>
 
+<!-- ========================================= -->
+<!-- NET PAY -->
+<!-- ========================================= -->
 
-<!-- ================= NET SALARY + WORDS ================= -->
 <tr>
+
     <td colspan="2" class="bold">
+
         Net Salary payable :
-        {{ frappe.utils.fmt_money(doc.net_pay, currency=doc.currency) }}
+
+        {{ frappe.utils.fmt_money(
+            (ns.main_total + ns.other_total) - ns.deduction_total,
+            currency=doc.currency
+        ) }}
+
     </td>
 
     <td colspan="3">
+
         Amount in words :
-        {{ frappe.utils.money_in_words(doc.net_pay, doc.currency) }}
+
+        {{ frappe.utils.money_in_words(
+            (ns.main_total + ns.other_total) - ns.deduction_total,
+            doc.currency
+        ) }}
+
     </td>
+
 </tr>
 
 <!-- ================= PAYMENT DETAILS ================= -->
