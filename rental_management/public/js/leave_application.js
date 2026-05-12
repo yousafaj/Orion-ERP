@@ -87,12 +87,12 @@ frappe.ui.form.on("Leave Application", {
 
                 frm.set_value(
                     "custom_leave_approver_4",
-                    data.custom_leave_approver_4 || ""
+                    data.custom_leave_approver_3 || ""
                 );
 
                 frm.set_value(
                     "custom_leave_approver_5",
-                    data.custom_leave_approver_5 || ""
+                    data.custom_leave_approver_4 || ""
                 );
 
                 frm.refresh_fields();

@@ -27,7 +27,7 @@ class AdditionalDeduction(Document):
 		employee_name: DF.Data | None
 		from_date: DF.Date | None
 		is_recurring: DF.Check
-		naming_series: DF.Literal["HR-ADS-.YY.-.MM.-"]
+		naming_series: DF.Literal["HR-ADD-.YY.-.MM.-"]
 		overwrite_salary_structure_amount: DF.Check
 		payroll_date: DF.Date | None
 		ref_docname: DF.DynamicLink | None
