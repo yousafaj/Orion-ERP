@@ -20,11 +20,15 @@
   "cron_schedule_date_oe",
   "column_break_knmu",
   "trigger_oe_cron",
+  "show_trigger_additional_deduction_office",
+  "trigger_additional_deduction_for_office_employee",
   "section_break_znxh",
   "last_month_for_which_payment_processed_noe",
   "payroll_month_date_noe",
   "cron_schedule_date_noe",
   "column_break_pzfa",
+  "show_trigger_additional_deduction_non_office",
+  "trigger_addtional_deduction_for_non_office_employee",
   "employee_tab",
   "default_bank_name_for_c3_pay"
  ],
@@ -143,13 +147,37 @@
    "fieldname": "vehicle_handover_image",
    "fieldtype": "Attach Image",
    "label": "Vehicle Handover Image"
+  },
+  {
+   "depends_on": "eval:doc.show_trigger_additional_deduction_office",
+   "fieldname": "trigger_additional_deduction_for_office_employee",
+   "fieldtype": "Button",
+   "label": "Trigger Additional Deduction For Office Employee"
+  },
+  {
+   "depends_on": "eval:doc.show_trigger_additional_deduction_non_office",
+   "fieldname": "trigger_addtional_deduction_for_non_office_employee",
+   "fieldtype": "Button",
+   "label": "Trigger Additional Deduction For Non Office Employee"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_trigger_additional_deduction_office",
+   "fieldtype": "Check",
+   "label": "Show Trigger Additional Deduction Office"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_trigger_additional_deduction_non_office",
+   "fieldtype": "Check",
+   "label": "Show Trigger Additional Deduction Non Office"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-05-12 10:03:05.073693",
+ "modified": "2026-05-12 21:37:19.439261",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Orion Settings",

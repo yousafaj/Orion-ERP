@@ -146,7 +146,7 @@ td, th {
 {% for e in doc.earnings %}
 
     <!-- HIDE HRA IF UNCHECKED -->
-    {% if e.salary_component == "House Rent Allowance"
+    {% if e.salary_component == "Rent Allowances"
         and (e.custom_print_hide or 0) == 0 %}
 
     <!-- SKIP COMPLETELY -->

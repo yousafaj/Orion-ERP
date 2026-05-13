@@ -27,6 +27,8 @@ class OrionSettings(Document):
 		payroll_month_date_noe: DF.Date | None
 		payroll_month_date_oe: DF.Date | None
 		role_for_non_office_employee_ssa_access: DF.TableMultiSelect[RoleDetails]
+		show_trigger_additional_deduction_non_office: DF.Check
+		show_trigger_additional_deduction_office: DF.Check
 		ss_print_logo: DF.AttachImage | None
 		ticket_entitlement_detail: DF.Table[TicketEntitlement]
 		vehicle_handover_image: DF.AttachImage | None
