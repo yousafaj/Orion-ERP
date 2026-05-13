@@ -283,6 +283,54 @@ def get_outstanding_penalties(employee):
 
 
 @frappe.whitelist()
+def run_deduction_manual(employee_type):
+
+	settings = frappe.get_single("Orion Settings")
+
+	# ---------------- OFFICE ----------------
+	if employee_type == "Office":
+
+		if not settings.payroll_month_date_oe:
+			frappe.throw("Please set Payroll Month Date for Office.")
+
+		end_date = get_last_day(settings.payroll_month_date_oe)
+
+		process_deductions(
+			"Office",
+			settings.payroll_month_date_oe
+		)
+
+		settings.db_set(
+			"last_month_for_which_payment_processed_oe",
+			end_date,
+			update_modified=False
+		)
+
+		frappe.msgprint("Office deductions processed successfully.")
+
+	# ---------------- NON-OFFICE ----------------
+	elif employee_type == "Non-Office":
+
+		if not settings.payroll_month_date_noe:
+			frappe.throw("Please set Payroll Month Date for Non-Office.")
+
+		end_date = get_last_day(settings.payroll_month_date_noe)
+
+		process_deductions(
+			"Non-Office",
+			settings.payroll_month_date_noe
+		)
+
+		settings.db_set(
+			"last_month_for_which_payment_processed_noe",
+			end_date,
+			update_modified=False
+		)
+
+		frappe.msgprint("Non-Office deductions processed successfully.")
+
+
+@frappe.whitelist()
 def run_deduction_cron():
 
 	settings = frappe.get_single("Orion Settings")

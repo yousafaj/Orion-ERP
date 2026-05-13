@@ -13,7 +13,45 @@ frappe.ui.form.on("Orion Settings", {
             }
         });
 
-    }
+    },
+    show_trigger_additional_deduction_office(frm) {
+		frm.save();
+	},
+
+	show_trigger_additional_deduction_non_office(frm) {
+		frm.save();
+	},
+    trigger_additional_deduction_for_office_employee(frm) {
+
+		frappe.call({
+			method: "rental_management.rental_management.doctype.employee_deduction.employee_deduction.run_deduction_manual",
+			args: {
+				employee_type: "Office"
+			},
+			freeze: true,
+			freeze_message: "Processing Office Deductions...",
+			callback: function() {
+				frm.reload_doc();
+			}
+		});
+
+	},
+
+	trigger_addtional_deduction_for_non_office_employee(frm) {
+
+		frappe.call({
+			method: "rental_management.rental_management.doctype.employee_deduction.employee_deduction.run_deduction_manual",
+			args: {
+				employee_type: "Non-Office"
+			},
+			freeze: true,
+			freeze_message: "Processing Non-Office Deductions...",
+			callback: function() {
+				frm.reload_doc();
+			}
+		});
+
+	}
 });
 
 
