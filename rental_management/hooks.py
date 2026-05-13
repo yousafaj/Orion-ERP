@@ -47,7 +47,8 @@ doctype_js = {
     "Employee" : "public/js/employee.js",
     "Additional Salary": "public/js/additional_salary.js",
     "Leave Application": "public/js/leave_application.js",
-    "Salary Slip": "public/js/salary_slip.js"
+    "Salary Slip": "public/js/salary_slip.js",
+    "Job Offer":"public/js/job_offer.js"
     }
 
 # app_include_css = "/assets/rental_management/css/listview.css"

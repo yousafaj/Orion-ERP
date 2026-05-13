@@ -8,3 +8,4 @@ rental_management.patches.update_probation_end_date
 rental_management.patches.fix_invalid_cell_numbers
 rental_management.patches.set_user_id_in_employee
 rental_management.patches.delete_all_attendance_sql
+rental_management.patches.fix_leave_approver_mapping
