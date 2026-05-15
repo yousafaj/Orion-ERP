@@ -18,6 +18,7 @@ class AssetHandoverDetail(Document):
 		asset_status: DF.Literal["Active", "Returned", "Lost", "Damaged"]
 		asset_type: DF.Link
 		attachment: DF.Attach | None
+		attachment_upload: DF.Attach | None
 		brand: DF.Link | None
 		brand_model: DF.Link | None
 		card_issue_date: DF.Date | None

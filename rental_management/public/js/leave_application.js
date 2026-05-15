@@ -104,7 +104,7 @@ frappe.ui.form.on("Leave Application", {
         validate_all_approvals(frm);
     },
     refresh(frm) {
-        
+        handle_submit_button(frm);
         if (!frm.doc.employee) {
             return;
         }
@@ -267,6 +267,99 @@ function validate_all_approvals(frm) {
             __(
                 "Only Leave Applications with all approvers status as 'Approved' can be submitted."
             )
+        );
+    }
+}
+
+
+function handle_submit_button(frm) {
+
+    let current_user = frappe.session.user;
+
+    let can_submit = false;
+
+    let active_approvers = APPROVAL_FLOW.filter(
+        row => frm.doc[row.approver_field]
+    );
+
+    if (active_approvers.length) {
+
+        let last_row =
+            active_approvers[
+                active_approvers.length - 1
+            ];
+
+        let last_approver =
+            frm.doc[last_row.approver_field];
+
+        let all_previous_approved = true;
+
+        for (
+            let i = 0;
+            i < active_approvers.length - 1;
+            i++
+        ) {
+
+            let status =
+                frm.doc[
+                    active_approvers[i]
+                    .status_field
+                ];
+
+            if (status !== "Approved") {
+
+                all_previous_approved = false;
+                break;
+            }
+        }
+
+        let last_status =
+            frm.doc[last_row.status_field];
+
+        // Last approver can submit
+        if (
+            current_user === last_approver &&
+            all_previous_approved &&
+            last_status === "Approved"
+        ) {
+
+            can_submit = true;
+        }
+
+        // Cancelled approver can submit
+        active_approvers.forEach((row) => {
+
+            let approver =
+                frm.doc[row.approver_field];
+
+            let status =
+                frm.doc[row.status_field];
+
+            if (
+                approver === current_user &&
+                status === "Cancelled"
+            ) {
+
+                can_submit = true;
+            }
+        });
+    }
+
+    // Always allow save
+    frm.enable_save();
+
+    // Hide only submit button
+    if (
+        !can_submit &&
+        !frm.is_new() &&
+        frm.doc.docstatus === 0
+    ) {
+
+        frm.page.clear_primary_action();
+
+        frm.page.set_primary_action(
+            __("Save"),
+            () => frm.save()
         );
     }
 }

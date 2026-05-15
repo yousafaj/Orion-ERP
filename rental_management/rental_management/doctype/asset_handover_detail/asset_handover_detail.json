@@ -10,6 +10,7 @@
   "asset_code",
   "issued_by",
   "issued_date",
+  "attachment_upload",
   "column_break_yivn",
   "asset_status",
   "qty",
@@ -362,13 +363,18 @@
    "fieldname": "name_of_last_user",
    "fieldtype": "Data",
    "label": "Name of Last User"
+  },
+  {
+   "fieldname": "attachment_upload",
+   "fieldtype": "Attach",
+   "label": "Attachment Upload"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-05-12 09:56:28.887545",
+ "modified": "2026-05-15 12:06:38.920171",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Asset Handover Detail",

@@ -216,12 +216,12 @@ scheduler_events = {
 	# 	"rental_management.tasks.all"
 	# ],
     "cron": {
-        "0 2 30 * *": [
+        "0 6 30 * *": [
             "rental_management.rental_management.doctype.additional_salary.create_monthly_allowances"
         ]
     },
 	"daily": [
-        "rental_management.rental_management.doctype.employee_deduction.employee_deduction.run_deduction_cron"
+        # "rental_management.rental_management.doctype.employee_deduction.employee_deduction.run_deduction_cron"
 		"rental_management.tasks.daily.daily",
         "rental_management.rental_management.scripts.certificate_notification.certificate_expiry_notification",
         "rental_management.rental_management.doctype.employee.create_ticket_allowance"

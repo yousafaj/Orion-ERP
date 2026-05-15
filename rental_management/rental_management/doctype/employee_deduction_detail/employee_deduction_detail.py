@@ -15,6 +15,7 @@ class EmployeeDeductionDetail(Document):
 		from frappe.types import DF
 
 		additional_deduction_ref: DF.Text | None
+		amount_paid_by_employee_to_gov: DF.Currency
 		attachment_1: DF.Attach | None
 		attachment_2: DF.Attach | None
 		attachment_3: DF.Attach | None
