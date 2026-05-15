@@ -359,7 +359,7 @@ def create_additional_deduction(doc):
         child.penalty_name = row.penalty_name
         child.installation_amount = row.installation_amount
         child.employee_deduction_reference = row.employee_deduction_reference
-        child.date_of_deduction_occurred = row.deduction_date
+        child.date_of_deduction_occurred = row.date_of_deduction_occurred
         child.remaining_amount = row.remaining_amount
         child.remarks = row.remarks
 
@@ -467,8 +467,6 @@ def create_monthly_allowances():
     )
 
     for emp in employees:
-
-        # ---------- SITE ALLOWANCE ----------
         if emp.custom_site_allowances and emp.custom_site_allowances_amount:
             try:
                 create_additional_salary(

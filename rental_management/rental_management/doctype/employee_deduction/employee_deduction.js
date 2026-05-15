@@ -44,3 +44,36 @@ frappe.ui.form.on("Employee Deduction", {
         });
     }
 });
+frappe.ui.form.on("Employee Deduction Detail", {
+	deduction_amount(frm, cdt, cdn) {
+		calculate_installment_amount(cdt, cdn);
+	},
+
+	installment(frm, cdt, cdn) {
+		calculate_installment_amount(cdt, cdn);
+	}
+});
+
+function calculate_installment_amount(cdt, cdn) {
+	let row = locals[cdt][cdn];
+
+	if (row.deduction_amount && row.installment) {
+		row.installment_amount = flt(row.deduction_amount) / flt(row.installment);
+		refresh_field("installment_amount");
+	}
+}
+frappe.ui.form.on("Outstanding Employee Deduction Detail", {
+    form_render(frm, cdt, cdn) {
+
+        setTimeout(() => {
+
+            // hide delete button inside row form
+            $('.grid-delete-row').hide();
+
+            // hide insert below/above
+            $('.grid-insert-row-below').hide();
+            $('.grid-insert-row').hide();
+
+        }, 100);
+    }
+});

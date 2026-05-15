@@ -4,8 +4,7 @@
 import frappe
 from frappe.model.document import Document
 import re
-from frappe.utils import get_first_day, get_last_day,getdate
-
+from frappe.utils import get_first_day, get_last_day,getdate,formatdate
 
 class EmployeeDeduction(Document):
 	# begin: auto-generated types
@@ -110,6 +109,10 @@ class EmployeeDeduction(Document):
 				row.paid_amount = min(
 					row.deduction_amount,
 					(row.paid_amount or 0) + row.partial_paid_amount
+				)
+				row.amount_paid_by_employee_to_gov=min(
+					row.deduction_amount,
+					(row.amount_paid_by_employee_to_gov or 0) + row.partial_paid_amount
 				)
 
 				row.remaining_amount = row.deduction_amount - row.paid_amount
@@ -230,7 +233,7 @@ def get_outstanding_penalties(employee):
 
 		if (row.remaining_amount or 0) <= 0:
 			continue
-
+		installment_amount = min(row.remaining_amount,row.installment_amount)
 		result.append({
 			"type_of_penalty": row.type_of_penalty,
 			"deduction_date": row.deduction_date,
@@ -238,7 +241,7 @@ def get_outstanding_penalties(employee):
 			"payrol_end_date": row.payrol_end_date,
 			"deduction_amount": row.deduction_amount,
 			"installment": row.installment,
-			"installment_amount": row.installment_amount,
+			"installment_amount": installment_amount,
 			"paid_amount": row.paid_amount,
 			"remaining_amount": row.remaining_amount,
 			"status": row.status,
@@ -258,6 +261,7 @@ def get_outstanding_penalties(employee):
 		if (row.remaining_amount or 0) <= 0:
 			continue
 
+		installment_amount = min(row.remaining_amount,row.installment_amount)
 		result.append({
 			"type_of_penalty": row.type_of_penalty,
 			"deduction_date": row.deduction_date,
@@ -265,7 +269,7 @@ def get_outstanding_penalties(employee):
 			"payrol_end_date": row.payrol_end_date,
 			"deduction_amount": row.deduction_amount,
 			"installment": row.installment,
-			"installment_amount": row.installment_amount,
+			"installment_amount": installment_amount,
 			"paid_amount": row.paid_amount,
 			"remaining_amount": row.remaining_amount,
 			"status": row.status,
@@ -611,87 +615,122 @@ def sync_to_outstanding(self, row):
 
 def validate_payroll_dates(doc, method=None):
 
-    settings = frappe.get_single("Orion Settings")
+	last_processed_date = None
 
-    if doc.employee_category == "Office":
-        last_processed_date = settings.last_month_for_which_payment_processed_oe
+	# Get Last Processed Payroll End Date
+	last_process = frappe.get_all(
+		"Process Employee Deductions",
+		filters={
+			"docstatus": 1,
+			"employee_category": doc.employee_category,
+			"name": ["!=", doc.name]
+		},
+		fields=["payroll_date_date"],
+		order_by="payroll_date_date desc",
+		limit=1
+	)
 
-    elif doc.employee_category == "Non-Office":
-        last_processed_date = settings.last_month_for_which_payment_processed_noe
+	if last_process:
+		last_processed_date = getdate(
+			last_process[0].payroll_date_date
+		)
 
-    else:
-        return
+	# Validate Child Table
+	for row in doc.employee_deduction_detail or []:
 
-    last_processed_date = (
-        getdate(last_processed_date)
-        if last_processed_date
-        else None
-    )
+		payroll_start_date = (
+			getdate(row.payroll_start_date)
+			if row.payroll_start_date
+			else None
+		)
 
-    # VALIDATE CHILD TABLES
-    child_tables = [
-        "employee_deduction_detail"
-        # "outstanding_employee_deduction_detail",
-    ]
+		payroll_end_date = (
+			getdate(row.payrol_end_date)
+			if row.payrol_end_date
+			else None
+		)
 
-    for table in child_tables:
+		# End Date Before Start Date
+		if (
+			payroll_start_date
+			and payroll_end_date
+			and payroll_end_date < payroll_start_date
+		):
 
-        for row in doc.get(table) or []:
+			frappe.throw(
+				f"""
+				<b>Invalid Payroll Dates in Row #{row.idx}</b>
+				<br><br>
 
-            payroll_start_date = (
-                getdate(row.payroll_start_date)
-                if row.payroll_start_date
-                else None
-            )
+				Payroll End Date:
+				<b>{formatdate(payroll_end_date)}</b>
 
-            payroll_end_date = (
-                getdate(row.payrol_end_date)
-                if row.payrol_end_date
-                else None
-            )
+				cannot be earlier than
 
-            # PAYROLL END DATE CANNOT BE BEFORE START DATE
-            if (
-                payroll_start_date
-                and payroll_end_date
-                and payroll_end_date < payroll_start_date
-            ):
+				Payroll Start Date:
+				<b>{formatdate(payroll_start_date)}</b>.
+				"""
+			)
 
-                frappe.throw(
-                    f"""
-                    Row #{row.idx}:
-                    Payroll End Date cannot be before Payroll Start Date
-                    """
-                )
+		# Validate Against Last Processed Payroll
+		if last_processed_date:
 
-            # START DATE CANNOT BE <= LAST PROCESSED DATE
-            if (
-                payroll_start_date
-                and last_processed_date
-                and payroll_start_date <= last_processed_date
-            ):
+			if (
+				payroll_start_date
+				and payroll_start_date <= last_processed_date
+			):
 
-                frappe.throw(
-                    f"""
-                    Row #{row.idx}:
-                    Payroll Start Date ({payroll_start_date})
-                    cannot be less than or equal to
-                    Last Processed Payroll Date ({last_processed_date})
-                    """
-                )
+				frappe.throw(
+					f"""
+					<b>Payroll Period Already Processed</b>
+					<br><br>
 
-            # END DATE CANNOT BE <= LAST PROCESSED DATE
-            if (
-                payroll_end_date
-                and last_processed_date
-                and payroll_end_date <= last_processed_date
-            ):
+					Row #{row.idx} has Payroll Start Date:
+					<b>{formatdate(payroll_start_date)}</b>
 
-                frappe.throw(
-                    f"""
-                    Row #{row.idx}:
-                    Payroll End Date ({payroll_end_date})
-                    cannot be less than or equal to
-                    Last Processed Payroll Date ({last_processed_date})
-                    """
-                )
+					which is already processed.
+
+					<br><br>
+
+					Last processed payroll end date for
+					<b>{doc.employee_category}</b>
+					employees is:
+
+					<b>{formatdate(last_processed_date)}</b>
+
+					<br><br>
+
+					Please select a payroll period after
+					<b>{formatdate(last_processed_date)}</b>.
+					"""
+				)
+
+			if (
+				payroll_end_date
+				and payroll_end_date <= last_processed_date
+			):
+
+				frappe.throw(
+					f"""
+					<b>Payroll Period Already Processed</b>
+					<br><br>
+
+					Row #{row.idx} has Payroll End Date:
+					<b>{formatdate(payroll_end_date)}</b>
+
+					which is already processed.
+
+					<br><br>
+
+					Last processed payroll end date for
+					<b>{doc.employee_category}</b>
+					employees is:
+
+					<b>{formatdate(last_processed_date)}</b>
+
+					<br><br>
+
+					Please select a payroll period after
+					<b>{formatdate(last_processed_date)}</b>.
+					"""
+				)

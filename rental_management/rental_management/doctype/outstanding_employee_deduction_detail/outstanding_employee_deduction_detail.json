@@ -11,9 +11,9 @@
   "payrol_end_date",
   "remaining_amount",
   "deduction_amount",
+  "installment",
   "installment_amount",
   "deduction_date",
-  "installment",
   "parent_ref",
   "child_ref",
   "column_break_giln",
@@ -52,11 +52,13 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Payroll Start Date",
+   "read_only": 1,
    "reqd": 1
   },
   {
    "fieldname": "payrol_end_date",
    "fieldtype": "Date",
+   "hidden": 1,
    "in_list_view": 1,
    "label": "Payrol End Date"
   },
@@ -72,15 +74,16 @@
   {
    "fieldname": "installment",
    "fieldtype": "Int",
-   "hidden": 1,
    "label": "Installment",
-   "non_negative": 1
+   "non_negative": 1,
+   "read_only": 1
   },
   {
    "fieldname": "installment_amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Deduction Amount",
+   "label": "Installment Amount",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -90,7 +93,7 @@
   {
    "fieldname": "paid_amount",
    "fieldtype": "Currency",
-   "label": "Paid amount",
+   "label": "Total Paid amount",
    "read_only": 1
   },
   {
@@ -189,7 +192,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-05-06 22:27:59.117677",
+ "modified": "2026-05-15 10:19:24.729900",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Outstanding Employee Deduction Detail",
