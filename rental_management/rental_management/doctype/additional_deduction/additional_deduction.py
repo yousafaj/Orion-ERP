@@ -30,6 +30,7 @@ class AdditionalDeduction(Document):
 		naming_series: DF.Literal["HR-ADD-.YY.-.MM.-"]
 		overwrite_salary_structure_amount: DF.Check
 		payroll_date: DF.Date | None
+		process_employee_deduction_ref: DF.Data | None
 		ref_docname: DF.DynamicLink | None
 		ref_doctype: DF.Link | None
 		salary_component: DF.Link
