@@ -121,7 +121,7 @@ frappe.ui.form.on('Employee', {
         setTimeout(() => {
 
             frm.fields_dict.custom_notice_period.$wrapper
-                .find('input')
+                .find('.control-input > input')
                 .attr('readonly', true);
 
         }, 500);
