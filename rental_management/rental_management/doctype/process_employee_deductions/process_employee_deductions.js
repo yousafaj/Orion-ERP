@@ -2,6 +2,26 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Process Employee Deductions", {
+        before_cancel(frm) {
+
+            return new Promise((resolve, reject) => {
+
+                frappe.confirm(
+                    __(
+                        "All related Additional Deductions will also be cancelled. Do you still want to cancel this document?"
+                    ),
+
+                    function () {
+                        resolve();
+                    },
+
+                    function () {
+                        reject();
+                    }
+                );
+
+            });
+        },
     refresh(frm) {
         set_current_fiscal_year(frm);
         let grid = frm.fields_dict.outstanding_installments.grid;

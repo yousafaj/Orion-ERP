@@ -11,6 +11,7 @@
   "employee",
   "employee_name",
   "department",
+  "process_employee_deduction_ref",
   "column_break_5",
   "company",
   "is_recurring",
@@ -213,11 +214,17 @@
    "fieldtype": "Table",
    "label": "Additional Deduction Detail",
    "options": "Additional Deduction Detail"
+  },
+  {
+   "fieldname": "process_employee_deduction_ref",
+   "fieldtype": "Data",
+   "label": "Process Employee Deduction Ref",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-11 17:16:06.623914",
+ "modified": "2026-05-19 15:57:01.491634",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Additional Deduction",

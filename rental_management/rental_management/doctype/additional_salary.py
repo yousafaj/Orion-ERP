@@ -347,7 +347,7 @@ def create_additional_deduction(doc):
     ad.payroll_date = doc.payroll_date
     ad.salary_component = doc.salary_component
     ad.amount = doc.amount
-
+    ad.process_employee_deduction_ref=doc.custom_reference_
     ad.ref_doctype = "Additional Salary"
     ad.ref_docname = doc.name
 
