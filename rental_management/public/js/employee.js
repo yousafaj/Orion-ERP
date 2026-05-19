@@ -14,6 +14,15 @@ frappe.ui.form.on('Employee', {
     custom_transportation_allowance: calculate_total_offered_salary,
     // Check if the selected designation is marked as Driver
     // If yes, show the Driving Licence field, otherwise hide it
+
+    validate(frm) {
+        if (!frm.doc.custom_notice_period) {
+            frm.set_value(
+                "custom_notice_period",
+                0
+            );
+        }
+    },
     designation: function (frm) {
         if (frm.doc.designation) {
             frappe.db.get_value(
@@ -109,6 +118,14 @@ frappe.ui.form.on('Employee', {
         }
     },
     refresh: function(frm) {
+        setTimeout(() => {
+
+            frm.fields_dict.custom_notice_period.$wrapper
+                .find('input')
+                .attr('readonly', true);
+
+        }, 500);
+        
         frm.set_query('custom_salary_structure', function() {
             return {
                 filters: {
