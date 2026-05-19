@@ -130,6 +130,8 @@ def populate_outstanding_installments(self):
 
 				if flt(row.remaining_amount) <= 0:
 					continue
+				if getdate(row.payroll_start_date) > getdate(self.payroll_date_date):
+					continue
 				installment_amount=min(row.installment_amount,row.remaining_amount)
 				self.append("outstanding_installments", {
 					"employee": doc.employee,
@@ -147,6 +149,8 @@ def populate_outstanding_installments(self):
 			for row in doc.outstanding_employee_deduction_detail or []:
 
 				if flt(row.remaining_amount) <= 0:
+					continue
+				if getdate(row.payroll_start_date) > getdate(self.payroll_date_date):
 					continue
 				installment_amount=min(row.installment_amount,row.remaining_amount)
 				self.append("outstanding_installments", {
