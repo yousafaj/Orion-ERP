@@ -15,7 +15,7 @@ class ProcessEmployeeDeductionDetail(Document):
 		from frappe.types import DF
 
 		additional_deduction_ref: DF.Link | None
-		additional_salary_ref: DF.Link | None
+		additional_salary_ref: DF.Data | None
 		amount_to_be_deducted_this_month: DF.Currency
 		date_of_deduction_occurred: DF.Date | None
 		employee: DF.Link | None

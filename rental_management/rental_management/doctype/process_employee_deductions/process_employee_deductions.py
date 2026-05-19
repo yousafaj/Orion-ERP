@@ -173,52 +173,164 @@ def create_additional_salary(self):
 		if not row.employee:
 			continue
 
-		if flt(row.amount_to_be_deducted_this_month) <= 0:
+		# AMOUNT SHOULD BE > 0
+		if flt(
+			row.amount_to_be_deducted_this_month
+		) <= 0:
 			continue
 
 		if row.employee not in employee_wise_data:
-			employee_wise_data[row.employee] = []
 
-		employee_wise_data[row.employee].append(row)
+			employee_wise_data[
+				row.employee
+			] = []
 
-	# Create one Additional Salary per employee
+		employee_wise_data[
+			row.employee
+		].append(row)
+
 	for employee, rows in employee_wise_data.items():
 
 		total_amount = sum([
-			flt(d.amount_to_be_deducted_this_month)
+			flt(
+				d.amount_to_be_deducted_this_month
+			)
 			for d in rows
 		])
 
 		if total_amount <= 0:
 			continue
 
-		employee_doc = frappe.get_doc("Employee", employee)
+		# CHECK EXISTING ADDITIONAL SALARY
+		existing_salary = frappe.db.exists(
+			"Additional Salary",
+			{
+				"employee": employee,
+				"payroll_date":
+					self.payroll_date_date,
 
-		additional_salary = frappe.new_doc("Additional Salary")
+				"salary_component":
+					"Total Deduction",
+
+				"overwrite_salary_structure_amount":
+					1,
+
+				"docstatus": ["!=", 2]
+			}
+		)
+
+		if existing_salary:
+
+			link = frappe.utils.get_link_to_form(
+				"Additional Salary",
+				existing_salary
+			)
+
+			frappe.throw(
+				f"""
+				<b>
+					Additional Salary Already Exists
+				</b>
+
+				<br><br>
+
+				System found an existing
+				Additional Salary for:
+
+				<br><br>
+
+				Employee:
+				<b>{employee}</b>
+
+				<br>
+
+				Payroll Date:
+				<b>{self.payroll_date_date}</b>
+
+				<br><br>
+
+				Please cancel the existing
+				Additional Salary first.
+
+				<br><br>
+
+				Reference:
+				{link}
+				"""
+			)
+
+		# FETCH EMPLOYEE DETAILS
+		employee_doc = frappe.get_doc(
+			"Employee",
+			employee
+		)
+
+		# CREATE ADDITIONAL SALARY
+		additional_salary = frappe.new_doc(
+			"Additional Salary"
+		)
 
 		additional_salary.employee = employee
-		additional_salary.company = employee_doc.company
-		additional_salary.payroll_date = self.payroll_date_date
-		additional_salary.salary_component = "Total Deduction"
-		additional_salary.amount = total_amount
-		additional_salary.overwrite_salary_structure_amount = 1
-		additional_salary.custom_auto_generated = 1
-		additional_salary.custom_reference_ = self.name
 
+		additional_salary.company = (
+			employee_doc.company
+		)
+
+		additional_salary.payroll_date = (
+			self.payroll_date_date
+		)
+
+		additional_salary.salary_component = (
+			"Total Deduction"
+		)
+
+		additional_salary.amount = (
+			total_amount
+		)
+
+		additional_salary.overwrite_salary_structure_amount = 1
+
+		additional_salary.custom_auto_generated = 1
+
+		additional_salary.custom_reference_ = (
+			self.name
+		)
+
+		# APPEND PENALTY CHILD ROWS
 		for d in rows:
 
-			additional_salary.append("custom_penalties_detail", {
-				"penalty_name": d.type_of_penalty,
-				"installation_amount": d.amount_to_be_deducted_this_month,
-				"employee_deduction_reference": d.employee_deduction_reference,
-				"date_of_deduction_occurred": d.date_of_deduction_occurred,
-				"remaining_amount": d.outstanding_amount
-			})
+			additional_salary.append(
+				"custom_penalties_detail",
+				{
+					"penalty_name":
+						d.type_of_penalty,
 
-		additional_salary.insert(ignore_permissions=True)
+					"installation_amount":
+						d.amount_to_be_deducted_this_month,
+
+					"employee_deduction_reference":
+						d.employee_deduction_reference,
+
+					"date_of_deduction_occurred":
+						d.date_of_deduction_occurred,
+
+					"remaining_amount":
+						d.outstanding_amount
+				}
+			)
+
+		
+		# INSERT & SUBMIT
+		additional_salary.insert(
+			ignore_permissions=True
+		)
+
 		additional_salary.submit()
 
+		
+		# STORE ADDITIONAL SALARY REF
 		for d in rows:
+
 			d.db_set(
 				"additional_salary_ref",
 				additional_salary.name,
