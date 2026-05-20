@@ -114,11 +114,10 @@ td, th {
     <td class="grey bold">Worked For</td>
     <td>{{ doc.company }}</td>
     <td class="grey bold">Absent Days</td>
-    <td>{{ doc.absent_days }}</td>
+    <td>{{ doc.absent_days+doc.leave_without_pay }}</td>
 </tr>
 
 </table>
-<!-- ================= EARNINGS & DEDUCTIONS ================= -->
 <!-- ================= EARNINGS & DEDUCTIONS ================= -->
 <table style="border:2px solid #000; border-top:0;font-size:12px">
 
@@ -161,10 +160,11 @@ td, th {
 
         <!-- NORMAL SALARY COMPONENT -->
         {% else %}
-
             {% set _ = main_earnings.append(e) %}
+            {% if e.do_not_include_in_total %}
+            {% else %}
             {% set ns.main_total = ns.main_total + (e.amount or 0) %}
-
+            {% endif %}
         {% endif %}
 
     {% endif %}

@@ -75,21 +75,22 @@ def create_ticket_allowance():
             if emp.designation not in designation_list:
                 continue
 
-            # Convert eligibility years to months for cycle calculation
+            # Cycle duration in months
             cycle_months = int(flt(rule.eligible_after_years_from_doj) * 12)
 
-            # First eligibility date
-            first_cycle_start = add_months(emp.date_of_joining, cycle_months)
+            # Start from DOJ
+            current_start = getdate(emp.date_of_joining)
 
-            current_start = first_cycle_start
-
-            # Generate ticket cycles until today
+            # Generate cycles till today
             while current_start <= today_date:
 
                 from_date = current_start
-                to_date = add_days(add_months(current_start, cycle_months), -1)
 
-                # Avoid duplicate records
+                to_date = add_days(
+                    add_months(current_start, cycle_months),
+                    -1
+                )
+
                 exists = frappe.db.exists(
                     "Ticket Allowance Detail",
                     {
@@ -100,7 +101,7 @@ def create_ticket_allowance():
                 )
 
                 if not exists:
-                    # Create ticket allowance child record
+
                     frappe.get_doc({
                         "doctype": "Ticket Allowance Detail",
                         "parent": emp.name,
@@ -112,8 +113,13 @@ def create_ticket_allowance():
                         "paid": 0
                     }).insert(ignore_permissions=True)
 
-                # Move to next cycle
-                current_start = add_months(current_start, cycle_months)
+                
+                current_start = add_months(
+                    current_start,
+                    cycle_months
+                )
+
+    
 
 
 @frappe.whitelist()
