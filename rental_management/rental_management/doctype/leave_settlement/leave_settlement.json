@@ -35,6 +35,8 @@
   "traffic_fine",
   "adjustments_if_any",
   "other_deduction",
+  "section_break_nvpu",
+  "leave_settlement_deductions",
   "total_entitlements_section",
   "total_entitlements",
   "total_deductions",
@@ -251,13 +253,23 @@
    "fieldtype": "Date",
    "label": "Posting Date",
    "read_only": 1
+  },
+  {
+   "fieldname": "leave_settlement_deductions",
+   "fieldtype": "Table",
+   "label": "Leave Settlement Deductions",
+   "options": "Leave Settlement Deductions"
+  },
+  {
+   "fieldname": "section_break_nvpu",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-21 22:06:33.238432",
+ "modified": "2026-05-21 12:34:13.033882",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Leave Settlement",

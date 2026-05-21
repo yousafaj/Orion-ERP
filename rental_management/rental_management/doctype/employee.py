@@ -110,6 +110,7 @@ def create_ticket_allowance():
                         "from_date": from_date,
                         "to_date": to_date,
                         "amount": rule.amount,
+                        "outstanding_amount":rule.amount,
                         "paid": 0
                     }).insert(ignore_permissions=True)
 
