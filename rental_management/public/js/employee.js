@@ -121,8 +121,8 @@ frappe.ui.form.on('Employee', {
         
         let grid = frm.fields_dict.custom_ticket_allowance_detail.grid;
 
-        // grid.cannot_add_rows = true;
-        // grid.cannot_delete_rows = true;
+        grid.cannot_add_rows = true;
+        grid.cannot_delete_rows = true;
 
         frm.refresh_field("custom_ticket_allowance_detail");
         setTimeout(() => {
