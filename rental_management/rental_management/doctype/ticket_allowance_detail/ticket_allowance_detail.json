@@ -9,10 +9,14 @@
   "from_date",
   "to_date",
   "paid",
+  "partial_paid",
   "amount",
   "column_break_jfud",
-  "reference",
-  "manual_paid"
+  "manual_paid",
+  "paid_amount",
+  "outstanding_amount",
+  "references_data",
+  "references"
  ],
  "fields": [
   {
@@ -26,7 +30,8 @@
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Amount"
+   "label": "Amount",
+   "read_only_depends_on": "eval:doc.paid"
   },
   {
    "default": "0",
@@ -44,13 +49,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "reference",
-   "fieldtype": "Link",
-   "label": "Reference ",
-   "options": "Leave Settlement",
-   "read_only": 1
-  },
-  {
    "fieldname": "column_break_jfud",
    "fieldtype": "Column Break"
   },
@@ -60,13 +58,46 @@
    "fieldtype": "Check",
    "in_standard_filter": 1,
    "label": "Manual Paid"
+  },
+  {
+   "depends_on": "eval:!doc.manual_paid",
+   "fieldname": "paid_amount",
+   "fieldtype": "Currency",
+   "label": "Paid Amount",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:!doc.manual_paid",
+   "fieldname": "outstanding_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Outstanding Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "references",
+   "fieldtype": "HTML",
+   "label": "References"
+  },
+  {
+   "default": "0",
+   "fieldname": "partial_paid",
+   "fieldtype": "Check",
+   "label": "Partial Paid",
+   "read_only": 1
+  },
+  {
+   "fieldname": "references_data",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Ref data"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-04-22 09:26:51.864105",
+ "modified": "2026-05-21 10:24:39.406053",
  "modified_by": "Administrator",
  "module": "Rental Management",
  "name": "Ticket Allowance Detail",

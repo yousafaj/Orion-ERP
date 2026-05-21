@@ -118,6 +118,13 @@ frappe.ui.form.on('Employee', {
         }
     },
     refresh: function(frm) {
+        
+        let grid = frm.fields_dict.custom_ticket_allowance_detail.grid;
+
+        grid.cannot_add_rows = true;
+        grid.cannot_delete_rows = true;
+
+        frm.refresh_field("custom_ticket_allowance_detail");
         setTimeout(() => {
 
             frm.fields_dict.custom_notice_period.$wrapper
@@ -371,3 +378,76 @@ function sort_ticket_allowance(frm) {
     // Refresh the child table UI
     frm.refresh_field("custom_ticket_allowance_detail");
 }
+
+frappe.ui.form.on("Ticket Allowance Detail", {
+
+	form_render(frm, cdt, cdn) {
+
+		setTimeout(() => {
+
+			$('.grid-delete-row').hide();
+			$('.grid-insert-row-below').hide();
+			$('.grid-insert-row').hide();
+
+		}, 100);
+
+
+		let row = locals[cdt][cdn];
+
+		if (!row.references_data) {
+			return;
+		}
+
+		
+		// RENDER REFERENCES TABLE
+		setTimeout(() => {
+
+			let grid_row = frm.fields_dict
+				.custom_ticket_allowance_detail
+				.grid
+				.grid_rows_by_docname[cdn];
+
+			if (
+				!grid_row ||
+				!grid_row.grid_form
+			) {
+				return;
+			}
+
+			let field = grid_row.grid_form
+				.fields_dict.references;
+
+			if (!field) {
+				return;
+			}
+
+			field.$wrapper.html(
+				row.references_data
+			);
+
+		}, 200);
+	},
+
+	amount(frm, cdt, cdn) {
+
+		let row = locals[cdt][cdn];
+
+		if (flt(row.amount) < flt(row.paid_amount)) {
+
+			frappe.throw(
+				__(
+					"Amount cannot be less than Paid Amount"
+				)
+			);
+		}
+
+		row.outstanding_amount = Math.max(
+			0,
+			flt(row.amount) - flt(row.paid_amount)
+		);
+
+		refresh_field(
+			"custom_ticket_allowance_detail"
+		);
+	}
+});
