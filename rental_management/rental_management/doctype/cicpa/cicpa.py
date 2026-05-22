@@ -13,6 +13,7 @@ class CICPA(Document):
 
 		active: DF.Check
 		amended_from: DF.Link | None
+		cicpa_no: DF.Data | None
 		cicpa_status: DF.Literal["", "Active", "Cancelled", "Lost", "Expired"]
 		cicpa_type: DF.Literal["", "Driver", "Vehicle"]
 		company: DF.Link | None

@@ -85,26 +85,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Traffic Fine & Accidents",
-   "link_count": 0,
-   "link_to": "Traffic Fine or Accident",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Salik or Darbs",
-   "link_count": 0,
-   "link_to": "Salik or Darbs",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Vehicle Maintenance",
    "link_count": 0,
    "link_to": "Maintenance Activity",

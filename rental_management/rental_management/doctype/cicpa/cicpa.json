@@ -8,6 +8,7 @@
  "field_order": [
   "loa",
   "company",
+  "cicpa_no",
   "cicpa_type",
   "active",
   "cicpa_status",
@@ -15,9 +16,7 @@
   "issue_date",
   "expiry_date",
   "document",
-  "section_break_fkse",
   "vehicle",
-  "column_break_rwoa",
   "driver",
   "section_break_ayka",
   "amended_from"
@@ -77,12 +76,11 @@
    "reqd": 1
   },
   {
-   "fieldname": "section_break_fkse",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_rwoa",
-   "fieldtype": "Column Break"
+   "allow_on_submit": 1,
+   "fieldname": "cicpa_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "CICPA No"
   },
   {
    "fieldname": "document",
