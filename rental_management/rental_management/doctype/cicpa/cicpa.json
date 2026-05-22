@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "loa",
+  "company",
   "cicpa_type",
   "active",
   "cicpa_status",
@@ -37,17 +38,27 @@
    "search_index": 1
   },
   {
+   "depends_on": "eval:doc.cicpa_type=='Vehicle'",
    "fieldname": "vehicle",
    "fieldtype": "Link",
    "label": "Vehicle",
-   "options": "Vehicle",
-   "read_only": 1
+   "mandatory_depends_on": "eval:doc.cicpa_type=='Vehicle'",
+   "options": "Vehicle"
   },
   {
+   "depends_on": "eval:doc.cicpa_type=='Driver'",
    "fieldname": "driver",
    "fieldtype": "Link",
    "label": "Driver",
-   "options": "Driver",
+   "mandatory_depends_on": "eval:doc.cicpa_type=='Driver'",
+   "options": "Driver"
+  },
+  {
+   "fetch_from": "loa.issuing_authority",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Customer",
    "read_only": 1
   },
   {
@@ -105,11 +116,12 @@
    "label": "Active"
   },
   {
+   "allow_on_submit": 1,
    "default": "Active",
    "fieldname": "cicpa_status",
    "fieldtype": "Select",
    "label": "CICPA Status",
-   "options": "\nActive\nCancelled\nExpired",
+   "options": "\nActive\nCancelled\nLost\nExpired",
    "read_only": 1
   }
  ],

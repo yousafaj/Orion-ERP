@@ -48,7 +48,8 @@ doctype_js = {
     "Additional Salary": "public/js/additional_salary.js",
     "Leave Application": "public/js/leave_application.js",
     "Salary Slip": "public/js/salary_slip.js",
-    "Job Offer":"public/js/job_offer.js"
+    "Job Offer":"public/js/job_offer.js",
+    "Driver": "public/js/driver.js"
     }
 
 # app_include_css = "/assets/rental_management/css/listview.css"
@@ -199,7 +200,8 @@ doc_events = {
         "validate": "rental_management.rental_management.validations.vehicle_hooks.validate_vehicle"
     },
     "Driver": {
-        "validate": "rental_management.rental_management.validations.driver_hooks.validate_driver"
+        "validate": "rental_management.rental_management.validations.driver_hooks.validate_driver",
+        "after_insert": "rental_management.rental_management.validations.driver_hooks.after_insert_driver"
     },
     "Customer": {
         "validate": "rental_management.rental_management.validations.customer_hooks.validate_customer"
@@ -232,7 +234,9 @@ scheduler_events = {
 		"rental_management.tasks.daily.daily",
         "rental_management.rental_management.scripts.certificate_notification.certificate_expiry_notification",
         "rental_management.rental_management.doctype.employee.create_ticket_allowance",
-        "rental_management.passport_management.tasks.send_overdue_passport_alerts"
+        "rental_management.passport_management.tasks.send_overdue_passport_alerts",
+        "rental_management.rental_management.doctype.cicpa.cicpa.auto_expire_cicpas",
+        "rental_management.rental_management.doctype.loa.loa.auto_expire_loas"
 	],
 	"daily_long": [
 	    "rental_management.passport_management.tasks.send_expiry_reminders"

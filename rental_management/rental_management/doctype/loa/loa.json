@@ -11,7 +11,6 @@
   "end_user",
   "ref_no",
   "loa_status",
-  "contract_year",
   "column_break_dhsn",
   "issue_date",
   "expiry_date",
@@ -239,12 +238,6 @@
    "fieldtype": "Int",
    "label": "Total Created Driver CICPA",
    "read_only": 1
-  },
-  {
-   "fieldname": "contract_year",
-   "fieldtype": "Int",
-   "label": "Contract Year",
-   "non_negative": 1
   },
   {
    "fieldname": "column_break_uxdw",
