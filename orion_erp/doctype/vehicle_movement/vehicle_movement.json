@@ -1,0 +1,201 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:VM-{movement_date}-{#####}",
+ "creation": "2025-05-06 14:52:15.452426",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "detail_section",
+  "status",
+  "vehicle",
+  "movement_date",
+  "rent_type",
+  "vehicle_type",
+  "vehicle_ownership_status",
+  "vehicle_state",
+  "column_break_nqeo",
+  "project_id",
+  "project_to",
+  "location_to",
+  "customer",
+  "location",
+  "location_from",
+  "section_break_uoeg",
+  "vehicle_checklist",
+  "loa",
+  "contract",
+  "section_break_bzfb",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_bzfb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Vehicle Movement",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "movement_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Movement Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vehicle",
+   "fieldtype": "Link",
+   "label": "Vehicle",
+   "options": "Vehicle",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "vehicle.custom_vehicle_type",
+   "fieldname": "vehicle_type",
+   "fieldtype": "Data",
+   "label": "Vehicle Type",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "vehicle.custom_ownership_status",
+   "fieldname": "vehicle_ownership_status",
+   "fieldtype": "Data",
+   "label": "Vehicle Ownership Status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_nqeo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.status === 'Demobilise';",
+   "fieldname": "project_id",
+   "fieldtype": "Link",
+   "label": "Project from",
+   "mandatory_depends_on": "eval: doc.status === 'Demobilise';",
+   "options": "Project",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.status === 'Demobilise';",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "From Customer",
+   "options": "Customer",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "project_id.custom_location",
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Location",
+   "options": "Location",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.status === 'Mobilise';",
+   "fieldname": "rent_type",
+   "fieldtype": "Select",
+   "label": "Rent Type",
+   "mandatory_depends_on": "eval: doc.status === 'Mobilise';",
+   "options": "\nWithout Driver\nWith Driver"
+  },
+  {
+   "fetch_from": "vehicle.custom_state",
+   "fieldname": "vehicle_state",
+   "fieldtype": "Data",
+   "label": "Vehicle Last State",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_uoeg",
+   "fieldtype": "Section Break",
+   "label": "Attachments  "
+  },
+  {
+   "fieldname": "vehicle_checklist",
+   "fieldtype": "Attach",
+   "label": "Vehicle Checklist"
+  },
+  {
+   "fieldname": "loa",
+   "fieldtype": "Attach",
+   "label": "LOA"
+  },
+  {
+   "fieldname": "contract",
+   "fieldtype": "Attach",
+   "label": "Contract"
+  },
+  {
+   "fetch_from": "vehicle.custom_last_location",
+   "fieldname": "location_from",
+   "fieldtype": "Link",
+   "label": "Location From",
+   "options": "Location"
+  },
+  {
+   "fieldname": "location_to",
+   "fieldtype": "Link",
+   "label": "Location To",
+   "options": "Location"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Mobilisation Status",
+   "options": "\nAvailable for Use\nMobilise\nDemobilise\nBreakdown",
+   "reqd": 1
+  },
+  {
+   "fieldname": "detail_section",
+   "fieldtype": "Section Break",
+   "label": "Detail"
+  },
+  {
+   "depends_on": "eval: doc.status === 'Mobilise';",
+   "fieldname": "project_to",
+   "fieldtype": "Link",
+   "label": "Project to",
+   "mandatory_depends_on": "eval: doc.status === 'Mobilise';",
+   "options": "Project"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-05-19 14:30:14.346044",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Vehicle Movement",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

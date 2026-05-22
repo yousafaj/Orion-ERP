@@ -1,0 +1,126 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-05-20 18:04:38.531422",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "employee_name",
+  "type_of_penalty",
+  "date_of_deduction_occurred",
+  "additional_salary_ref",
+  "additional_deduction_ref",
+  "column_break_bpxx",
+  "outstanding_amount",
+  "installment_amount",
+  "employee_deduction_reference",
+  "employee_deduction_parent_reference",
+  "skip_penalty_amount",
+  "amount_to_be_deducted_this_month"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "type_of_penalty",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Type of penalty",
+   "options": "Penalties",
+   "read_only": 1
+  },
+  {
+   "fieldname": "date_of_deduction_occurred",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date of deduction occurred",
+   "read_only": 1
+  },
+  {
+   "fieldname": "additional_salary_ref",
+   "fieldtype": "Data",
+   "label": "Additional Salary Ref",
+   "options": "Additional Salary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "additional_deduction_ref",
+   "fieldtype": "Link",
+   "label": "Additional Deduction Ref",
+   "options": "Additional Deduction",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_bpxx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "outstanding_amount",
+   "fieldtype": "Currency",
+   "label": "Outstanding Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "installment_amount",
+   "fieldtype": "Currency",
+   "label": "Installment Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_deduction_reference",
+   "fieldtype": "Data",
+   "label": "Employee Deduction Child Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_deduction_parent_reference",
+   "fieldtype": "Link",
+   "label": "Employee Deduction Parent Reference",
+   "options": "Employee Deduction",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "skip_penalty_amount",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Skip Penalty Amount"
+  },
+  {
+   "fieldname": "amount_to_be_deducted_this_month",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount to be deducted this Month"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-20 18:04:38.531422",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Leave Settlement Deductions",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
