@@ -1,0 +1,51 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-01 16:45:20.113810",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "disable_notification",
+  "employee_certificate_notification_detail"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "disable_notification",
+   "fieldtype": "Check",
+   "label": "Disable Notification "
+  },
+  {
+   "fieldname": "employee_certificate_notification_detail",
+   "fieldtype": "Table",
+   "label": "Employee Certificate Notification Detail",
+   "options": "Employee Certificate Notification Detail"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-04-01 17:54:49.438031",
+ "modified_by": "Administrator",
+ "module": "Rental Management",
+ "name": "Employee Certificate Notification Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

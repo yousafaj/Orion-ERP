@@ -1,0 +1,21 @@
+{
+ "creation": "2025-05-29 17:39:15.625441",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "filters_json": "null",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 0,
+ "is_standard": 1,
+ "label": "Expire in 10 Days",
+ "method": "rental_management.rental_management.validations.number_cards.expire_in_10_days",
+ "modified": "2025-05-29 17:39:15.625441",
+ "modified_by": "Administrator",
+ "module": "Rental Management",
+ "name": "Expire in 10 Days",
+ "owner": "Administrator",
+ "report_function": "Sum",
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Custom"
+}

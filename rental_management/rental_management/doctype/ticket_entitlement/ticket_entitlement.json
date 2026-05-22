@@ -1,0 +1,59 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-18 20:52:33.739946",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "designation_selector",
+  "designations",
+  "eligible_after_years_from_doj",
+  "amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "designation_selector",
+   "fieldtype": "Button",
+   "in_list_view": 1,
+   "label": "Designation Selector"
+  },
+  {
+   "fieldname": "designations",
+   "fieldtype": "Text",
+   "in_list_view": 1,
+   "label": "Designations",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "eligible_after_years_from_doj",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Eligible After Years from DOJ"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "non_negative": 1,
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-18 21:13:13.561341",
+ "modified_by": "Administrator",
+ "module": "Rental Management",
+ "name": "Ticket Entitlement",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

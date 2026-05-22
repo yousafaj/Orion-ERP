@@ -1,0 +1,241 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "HR/WL/.YYYY./.####",
+ "creation": "2026-04-05 14:46:59.364116",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_jhvt",
+  "column_break_cvyg",
+  "title",
+  "warning_template",
+  "employee",
+  "absent_from_date",
+  "consequence",
+  "date",
+  "incident_details",
+  "details",
+  "leave_type",
+  "approved_leave_days",
+  "termination_date",
+  "mode_of_payment",
+  "amended_from",
+  "column_break_ywnl",
+  "posting_date",
+  "company",
+  "employee_name",
+  "absent_to_date",
+  "leave_start_date",
+  "actual_return_date",
+  "hr_salutation",
+  "hr_manager"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_jhvt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Warning Letter",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Select",
+   "label": "Title",
+   "options": "\nNegligence of Work\nWarning for Physical Misconduct\nSafety Violation\nLeave Policy Violation\nAlcohol Consumption\nNot Following Company Policy\nNot Following Supervisor Instructions\nMisconduct Warning Letter\nAttendance Improvement Letter\nDiesel Theft\nRefusal to Work\nPoor Performance\nTermination of Employment\nNon Compliance with Company Policy\nPerformance Improvement"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company ",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.title==\"Negligence of Work\" ||\r\ndoc.title==\"Attendance Improvement Letter\" ||\r\ndoc.title==\"Warning for Physical Misconduct\" ||\r\ndoc.title==\"Leave Policy Violation\" ||\r\ndoc.title==\"Safety Violation\" ||\r\ndoc.title==\"Alcohol Consumption\" || doc.title=='Not Following Supervisor Instructions'",
+   "fieldname": "warning_template",
+   "fieldtype": "Link",
+   "label": "Warning Template",
+   "options": "Warning Template"
+  },
+  {
+   "fieldname": "column_break_ywnl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "options": "Today",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.title==\"Attendance Improvement Letter\"",
+   "fetch_from": "warning_template.absent_from_date",
+   "fieldname": "absent_from_date",
+   "fieldtype": "Date",
+   "label": "Absent From Date",
+   "mandatory_depends_on": "eval:doc.title==\"Attendance Improvement Letter\""
+  },
+  {
+   "depends_on": "eval:doc.title==\"Attendance Improvement Letter\"",
+   "fetch_from": "warning_template.absent_to_date",
+   "fieldname": "absent_to_date",
+   "fieldtype": "Date",
+   "label": "Absent To Date",
+   "mandatory_depends_on": "eval:doc.title==\"Attendance Improvement Letter\""
+  },
+  {
+   "default": "hr@oriongroup.ae",
+   "fieldname": "hr_manager",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "HR Manager",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.title=='Negligence of Work'",
+   "fetch_from": "warning_template.consequence",
+   "fieldname": "consequence",
+   "fieldtype": "Text",
+   "label": "Consequence",
+   "mandatory_depends_on": "eval:doc.title==\"Negligence of Work\""
+  },
+  {
+   "depends_on": "eval:doc.title==\"Warning for Physical Misconduct\"",
+   "fetch_from": "warning_template.date",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Incident Date",
+   "mandatory_depends_on": "eval:doc.title==\"Warning for Physical Misconduct\""
+  },
+  {
+   "depends_on": "eval:doc.title==\"Warning for Physical Misconduct\" || doc.title==\"Safety Violation\"",
+   "fetch_from": "warning_template.incident_details",
+   "fieldname": "incident_details",
+   "fieldtype": "Text",
+   "label": "Incident Details",
+   "mandatory_depends_on": "eval:doc.title==\"Warning for Physical Misconduct\" || doc.title==\"Safety Violation\""
+  },
+  {
+   "depends_on": "eval:doc.title==\"Alcohol Consumption\"",
+   "fieldname": "column_break_cvyg",
+   "fieldtype": "Column Break",
+   "mandatory_depends_on": "eval:doc.title==\"Alcohol Consumption\""
+  },
+  {
+   "depends_on": "eval:doc.title=='Alcohol Consumption' || doc.title==\"Not Following Supervisor Instructions\"",
+   "fetch_from": "warning_template.details",
+   "fieldname": "details",
+   "fieldtype": "Text",
+   "label": "Details",
+   "mandatory_depends_on": "eval:doc.title=='Alcohol Consumption' || doc.title==\"Not Following Supervisor Instructions\""
+  },
+  {
+   "depends_on": "eval:doc.title=='Leave Policy Violation'",
+   "fetch_from": "warning_template.leave_type",
+   "fieldname": "leave_type",
+   "fieldtype": "Link",
+   "label": "Leave Type",
+   "mandatory_depends_on": "eval:doc.title=='Leave Policy Violation'",
+   "options": "Leave Type"
+  },
+  {
+   "depends_on": "eval:doc.title=='Leave Policy Violation'",
+   "fetch_from": "warning_template.leave_start_date",
+   "fieldname": "leave_start_date",
+   "fieldtype": "Date",
+   "label": "Leave Start Date",
+   "mandatory_depends_on": "eval:doc.title=='Leave Policy Violation'"
+  },
+  {
+   "depends_on": "eval:doc.title=='Leave Policy Violation'",
+   "fetch_from": "warning_template.actual_return_date",
+   "fieldname": "actual_return_date",
+   "fieldtype": "Date",
+   "label": "Actual Return Date",
+   "mandatory_depends_on": "eval:doc.title=='Leave Policy Violation'"
+  },
+  {
+   "depends_on": "eval:doc.title=='Leave Policy Violation'",
+   "fetch_from": "warning_template.approved_leave_days",
+   "fieldname": "approved_leave_days",
+   "fieldtype": "Float",
+   "label": "Approved Leave Days",
+   "mandatory_depends_on": "eval:doc.title=='Leave Policy Violation'"
+  },
+  {
+   "fieldname": "hr_salutation",
+   "fieldtype": "Data",
+   "label": "HR Salutation"
+  },
+  {
+   "depends_on": "eval: doc.title==\"Termination of Employment\" || doc.title==\"Non Compliance with Company Policy\" || doc.title==\"Poor Performance\"",
+   "fieldname": "termination_date",
+   "fieldtype": "Date",
+   "label": "Termination Date",
+   "mandatory_depends_on": "eval: doc.title==\"Termination of Employment\" || doc.title==\"Non Compliance with Company Policy\" || doc.title==\"Poor Performance\""
+  },
+  {
+   "depends_on": "eval: doc.title==\"UNDERTAKING LETTER\"",
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Select",
+   "label": "Mode of Payment",
+   "mandatory_depends_on": "eval: doc.title==\"UNDERTAKING LETTER\"",
+   "options": "\nCash\nWPS"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-10 15:28:31.745340",
+ "modified_by": "Administrator",
+ "module": "Rental Management",
+ "name": "Warning Letter",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
