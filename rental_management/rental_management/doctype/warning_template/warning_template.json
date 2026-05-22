@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "HR/WT/.YYYY./.####",
+ "creation": "2026-04-04 21:48:32.831701",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "consequence",
+  "absent_from_date",
+  "absent_to_date",
+  "date",
+  "incident_details",
+  "details",
+  "leave_type",
+  "leave_start_date",
+  "approved_leave_days",
+  "actual_return_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Select",
+   "label": "Title ",
+   "options": "\nNegligence of Work\nAttendance Improvement Letter\nWarning for Physical Misconduct\nLeave Policy Violation\nSafety Violation\nAlcohol Consumption\nNot Following Supervisor Instructions"
+  },
+  {
+   "depends_on": "eval:doc.title==\"Attendance Improvement Letter\"",
+   "fieldname": "absent_from_date",
+   "fieldtype": "Date",
+   "label": "Absent From Date",
+   "read_only_depends_on": "eval:doc.title==\"Attendance Improvement Letter\""
+  },
+  {
+   "depends_on": "eval:doc.title==\"Attendance Improvement Letter\"",
+   "fieldname": "absent_to_date",
+   "fieldtype": "Date",
+   "label": "Absent To Date"
+  },
+  {
+   "depends_on": "eval:doc.title==\"Negligence of Work\"",
+   "fieldname": "consequence",
+   "fieldtype": "Text",
+   "label": "Consequence"
+  },
+  {
+   "depends_on": "eval:doc.title==\"Warning for Physical Misconduct\"",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Incident Date"
+  },
+  {
+   "depends_on": "eval:doc.title==\"Warning for Physical Misconduct\" || doc.title==\"Safety Violation\"",
+   "fieldname": "incident_details",
+   "fieldtype": "Text",
+   "label": "Incident Details"
+  },
+  {
+   "depends_on": "eval:doc.title==\"Alcohol Consumption\" ||doc.title==\"Not Following Supervisor Instructions\"",
+   "fieldname": "details",
+   "fieldtype": "Text",
+   "label": "Details"
+  },
+  {
+   "depends_on": "eval:doc.title=='Leave Policy Violation'",
+   "fieldname": "leave_type",
+   "fieldtype": "Link",
+   "label": "Leave Type",
+   "options": "Leave Type"
+  },
+  {
+   "depends_on": "eval:doc.title=='Leave Policy Violation'",
+   "fieldname": "leave_start_date",
+   "fieldtype": "Date",
+   "label": "Leave Start Date"
+  },
+  {
+   "depends_on": "eval:doc.title=='Leave Policy Violation'",
+   "fieldname": "approved_leave_days",
+   "fieldtype": "Float",
+   "label": "Approved Leave Days"
+  },
+  {
+   "depends_on": "eval:doc.title=='Leave Policy Violation'",
+   "fieldname": "actual_return_date",
+   "fieldtype": "Date",
+   "label": "Actual Return Date"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-07 17:30:06.631794",
+ "modified_by": "Administrator",
+ "module": "Rental Management",
+ "name": "Warning Template",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

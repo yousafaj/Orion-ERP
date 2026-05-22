@@ -1,0 +1,388 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-05-03 18:30:43.808427",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "asset_type",
+  "asset_code",
+  "issued_by",
+  "issued_date",
+  "attachment_upload",
+  "column_break_yivn",
+  "asset_status",
+  "qty",
+  "return_date",
+  "remarks",
+  "sim_card_section",
+  "sim_card_number",
+  "network",
+  "sim_status",
+  "company_phone_mobile_section",
+  "brand",
+  "model",
+  "imei_number",
+  "column_break_nxka",
+  "sim_number",
+  "network_provider",
+  "condition",
+  "company_vehicle_section",
+  "vehicle_type",
+  "brand_model",
+  "plate_number",
+  "vehicle_cicpa_pass",
+  "column_break_xgsi",
+  "fuel_type",
+  "mulkiya_expiry_uae_specific",
+  "odometer_reading_at_issue",
+  "odometer_reading_at_return",
+  "name_of_last_user",
+  "laptop__it_assets_section",
+  "device_type",
+  "it_brand",
+  "column_break_osot",
+  "it_model",
+  "attachment",
+  "access_card_section",
+  "card_number",
+  "card_issue_date",
+  "lost__reissued",
+  "cicpa_pass_section",
+  "pass_number",
+  "valid_to",
+  "column_break_dvyt",
+  "cicpa_status",
+  "alan_cards_section",
+  "linked_account",
+  "expiry_date",
+  "parking_bay_section",
+  "request_date",
+  "parking_status",
+  "parking_slot_number"
+ ],
+ "fields": [
+  {
+   "fieldname": "asset_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Asset Type",
+   "options": "Orion Asset",
+   "reqd": 1
+  },
+  {
+   "fieldname": "issued_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Issued Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "issued_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Issued By",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.asset_type!=\"Sim Card\"",
+   "fieldname": "asset_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Asset Status",
+   "mandatory_depends_on": "eval:doc.asset_type!=\"Sim Card\"",
+   "options": "Active\nReturned\nLost\nDamaged"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "label": "Qty",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "return_date",
+   "fieldtype": "Date",
+   "label": "Return Date"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Text",
+   "label": "Remarks"
+  },
+  {
+   "depends_on": "eval:doc.asset_type==\"Sim Card\"",
+   "fieldname": "sim_card_section",
+   "fieldtype": "Section Break",
+   "label": "Sim Card"
+  },
+  {
+   "fieldname": "sim_card_number",
+   "fieldtype": "Data",
+   "label": "SIM Card Number",
+   "mandatory_depends_on": "eval:doc.asset_type==\"Sim Card\""
+  },
+  {
+   "fieldname": "network",
+   "fieldtype": "Data",
+   "label": "Network"
+  },
+  {
+   "fieldname": "sim_status",
+   "fieldtype": "Select",
+   "label": "Sim Status",
+   "mandatory_depends_on": "eval:doc.asset_type==\"Sim Card\"",
+   "options": "Active\nInactive\nReturned\nLost"
+  },
+  {
+   "depends_on": "eval:doc.asset_type==\"Company Phone (Mobile)\"",
+   "fieldname": "company_phone_mobile_section",
+   "fieldtype": "Section Break",
+   "label": "Company Phone (Mobile)"
+  },
+  {
+   "fieldname": "brand",
+   "fieldtype": "Link",
+   "label": "Brand",
+   "options": "Brand"
+  },
+  {
+   "fieldname": "model",
+   "fieldtype": "Link",
+   "label": "Model",
+   "options": "Model"
+  },
+  {
+   "fieldname": "imei_number",
+   "fieldtype": "Data",
+   "label": "IMEI Number"
+  },
+  {
+   "fieldname": "column_break_nxka",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sim_number",
+   "fieldtype": "Data",
+   "label": "SIM Number"
+  },
+  {
+   "fieldname": "network_provider",
+   "fieldtype": "Data",
+   "label": "Network Provider"
+  },
+  {
+   "fieldname": "condition",
+   "fieldtype": "Select",
+   "label": "Condition",
+   "options": "New\nUsed"
+  },
+  {
+   "depends_on": "eval:doc.asset_type==\"Company Vehicle\"",
+   "fieldname": "company_vehicle_section",
+   "fieldtype": "Section Break",
+   "label": "Company Vehicle"
+  },
+  {
+   "fieldname": "vehicle_type",
+   "fieldtype": "Link",
+   "label": "Vehicle Type",
+   "options": "Vehicle Type"
+  },
+  {
+   "fieldname": "brand_model",
+   "fieldtype": "Link",
+   "label": "Brand & Model",
+   "options": "Brand"
+  },
+  {
+   "fieldname": "plate_number",
+   "fieldtype": "Data",
+   "label": "Plate Number"
+  },
+  {
+   "fieldname": "column_break_xgsi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fuel_type",
+   "fieldtype": "Data",
+   "label": "Fuel Type"
+  },
+  {
+   "fieldname": "mulkiya_expiry_uae_specific",
+   "fieldtype": "Data",
+   "label": "Mulkiya Expiry (UAE specific)"
+  },
+  {
+   "fieldname": "odometer_reading_at_issue",
+   "fieldtype": "Data",
+   "label": "Odometer Reading at Issue"
+  },
+  {
+   "fieldname": "odometer_reading_at_return",
+   "fieldtype": "Data",
+   "label": "Odometer Reading at Return"
+  },
+  {
+   "fieldname": "vehicle_cicpa_pass",
+   "fieldtype": "Data",
+   "label": "Vehicle Cicpa Pass"
+  },
+  {
+   "depends_on": "eval:doc.asset_type==\"Laptop / IT Assets\"",
+   "fieldname": "laptop__it_assets_section",
+   "fieldtype": "Section Break",
+   "label": "Laptop / IT Assets"
+  },
+  {
+   "fieldname": "device_type",
+   "fieldtype": "Select",
+   "label": "Device Type",
+   "options": "Laptop\nDesktop"
+  },
+  {
+   "fieldname": "it_brand",
+   "fieldtype": "Link",
+   "label": "Brand",
+   "options": "Brand"
+  },
+  {
+   "fieldname": "column_break_osot",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "it_model",
+   "fieldtype": "Link",
+   "label": "Model",
+   "options": "Model"
+  },
+  {
+   "fieldname": "attachment",
+   "fieldtype": "Attach",
+   "label": "Attachment"
+  },
+  {
+   "depends_on": "eval:doc.asset_type==\"Access Card\"",
+   "fieldname": "access_card_section",
+   "fieldtype": "Section Break",
+   "label": "Access Card"
+  },
+  {
+   "fieldname": "card_number",
+   "fieldtype": "Data",
+   "label": "Card Number"
+  },
+  {
+   "fieldname": "card_issue_date",
+   "fieldtype": "Date",
+   "label": "Card Issue Date"
+  },
+  {
+   "fieldname": "lost__reissued",
+   "fieldtype": "Select",
+   "label": "Lost / Reissued",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:doc.asset_type==\"CICPA Pass\"",
+   "fieldname": "cicpa_pass_section",
+   "fieldtype": "Section Break",
+   "label": "CICPA Pass"
+  },
+  {
+   "fieldname": "pass_number",
+   "fieldtype": "Data",
+   "label": "Pass Number"
+  },
+  {
+   "fieldname": "valid_to",
+   "fieldtype": "Date",
+   "label": "Valid To"
+  },
+  {
+   "fieldname": "column_break_dvyt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cicpa_status",
+   "fieldtype": "Select",
+   "label": "CICPA Status",
+   "options": "\nActive\nExpired"
+  },
+  {
+   "fieldname": "asset_code",
+   "fieldtype": "Data",
+   "label": "Asset Code"
+  },
+  {
+   "fieldname": "column_break_yivn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.asset_type==\"Alan Cards\"",
+   "fieldname": "alan_cards_section",
+   "fieldtype": "Section Break",
+   "label": "Alan Cards"
+  },
+  {
+   "fieldname": "linked_account",
+   "fieldtype": "Link",
+   "label": "Linked Account",
+   "options": "Company"
+  },
+  {
+   "fieldname": "expiry_date",
+   "fieldtype": "Date",
+   "label": "Expiry Date"
+  },
+  {
+   "depends_on": "eval:doc.asset_type==\"Parking Bay\"",
+   "fieldname": "parking_bay_section",
+   "fieldtype": "Section Break",
+   "label": "Parking Bay"
+  },
+  {
+   "fieldname": "request_date",
+   "fieldtype": "Date",
+   "label": "Request Date"
+  },
+  {
+   "fieldname": "parking_status",
+   "fieldtype": "Data",
+   "label": "Parking Status"
+  },
+  {
+   "fieldname": "parking_slot_number",
+   "fieldtype": "Data",
+   "label": "Parking Slot Number"
+  },
+  {
+   "fieldname": "name_of_last_user",
+   "fieldtype": "Data",
+   "label": "Name of Last User"
+  },
+  {
+   "fieldname": "attachment_upload",
+   "fieldtype": "Attach",
+   "label": "Attachment Upload"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-15 12:06:38.920171",
+ "modified_by": "Administrator",
+ "module": "Rental Management",
+ "name": "Asset Handover Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

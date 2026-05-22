@@ -1,0 +1,302 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:contract_number",
+ "creation": "2025-05-21 21:00:33.830061",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "contract_number",
+  "issuing_authority",
+  "end_user",
+  "ref_no",
+  "loa_status",
+  "contract_year",
+  "column_break_dhsn",
+  "issue_date",
+  "expiry_date",
+  "document",
+  "active",
+  "column_break_gbjp",
+  "license_issue_date",
+  "license_expiry_date",
+  "mother_attachment",
+  "section_break_ahil",
+  "total_vehicle_quota",
+  "total_driver_quota",
+  "column_break_twtj",
+  "total_created_vehicle_cicpa",
+  "total_created_driver_cicpa",
+  "column_break_uxdw",
+  "total_cancelled_vehicle_cicpa",
+  "total_cancelled_driver_cicpa",
+  "column_break_wbgl",
+  "allocated_vehicle_quota",
+  "allocated_driver_quota",
+  "column_break_vvmc",
+  "remaining_vehicle_quota",
+  "remaining_driver_quota",
+  "section_break_gddt",
+  "locations",
+  "section_break_qwnm",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_qwnm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "LOA",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "issuing_authority",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_user",
+   "fieldtype": "Link",
+   "label": "Contract Auth",
+   "options": "Contract Authority",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_dhsn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "issue_date",
+   "fieldtype": "Date",
+   "label": "Valid From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expiry_date",
+   "fieldtype": "Date",
+   "label": "Valid To",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_ahil",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_vehicle_quota",
+   "fieldtype": "Int",
+   "label": "Total Vehicle Quota",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "total_driver_quota",
+   "fieldtype": "Int",
+   "label": "Total Driver Quota",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_wbgl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "allocated_vehicle_quota",
+   "fieldtype": "Int",
+   "label": "Allocated Vehicle Quota",
+   "non_negative": 1,
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_vvmc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "allocated_driver_quota",
+   "fieldtype": "Int",
+   "label": "Allocated Driver Quota",
+   "non_negative": 1,
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "remaining_vehicle_quota",
+   "fieldtype": "Int",
+   "label": "Remaining Vehicle Quota",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "remaining_driver_quota",
+   "fieldtype": "Int",
+   "label": "Remaining Driver Quota",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_gddt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "locations",
+   "fieldtype": "Table",
+   "label": "Locations",
+   "options": "LOA locations cdt",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "document",
+   "fieldtype": "Attach",
+   "label": "LOA attachment"
+  },
+  {
+   "fieldname": "ref_no",
+   "fieldtype": "Data",
+   "label": "Ref No",
+   "reqd": 1
+  },
+  {
+   "fieldname": "contract_number",
+   "fieldtype": "Data",
+   "label": "Contract Number",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "mother_attachment",
+   "fieldtype": "Attach",
+   "label": "Mother Attachment"
+  },
+  {
+   "fieldname": "column_break_gbjp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "license_issue_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Commercial License Issue Date"
+  },
+  {
+   "fieldname": "license_expiry_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Commercial License Expiry Date"
+  },
+  {
+   "default": "1",
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Active",
+   "read_only": 1
+  },
+  {
+   "default": "Active",
+   "fieldname": "loa_status",
+   "fieldtype": "Select",
+   "label": "LOA Status",
+   "options": "\nActive\nExpired",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_twtj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "total_created_vehicle_cicpa",
+   "fieldtype": "Int",
+   "label": "Total Created Vehicle CICPA",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "total_created_driver_cicpa",
+   "fieldtype": "Int",
+   "label": "Total Created Driver CICPA",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contract_year",
+   "fieldtype": "Int",
+   "label": "Contract Year",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_uxdw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "total_cancelled_vehicle_cicpa",
+   "fieldtype": "Int",
+   "label": "Cancelled Vehicle CICPA",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "total_cancelled_driver_cicpa",
+   "fieldtype": "Int",
+   "label": "Cancelled Driver CICPA",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [
+  {
+   "link_doctype": "CICPA",
+   "link_fieldname": "loa"
+  }
+ ],
+ "modified": "2025-06-03 15:14:16.111573",
+ "modified_by": "Administrator",
+ "module": "Rental Management",
+ "name": "LOA",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

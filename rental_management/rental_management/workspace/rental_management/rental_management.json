@@ -1,0 +1,174 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"Rx7nmbyWI0\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Rental Management</span>\",\"col\":12}},{\"id\":\"tgtjWdK5wy\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Certificates\",\"col\":4}},{\"id\":\"jktKRD5Av6\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Expire in 60 Days\",\"col\":4}},{\"id\":\"iGwCkdK1tv\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Expire in 30 Days\",\"col\":4}},{\"id\":\"G1NbbJmaeK\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Expire in 10 Days\",\"col\":4}},{\"id\":\"UWYjtcBb0o\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Expired Certificates\",\"col\":4}},{\"id\":\"JrWwE2GEXz\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Not Renewable\",\"col\":4}},{\"id\":\"XPUEGBVwDM\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"GTnHvl86wL\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"With Client Vehicles\",\"col\":4}},{\"id\":\"h_jJ6ZG8_g\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Idle Vehicles\",\"col\":4}},{\"id\":\"JqdJLEyUoH\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Vehicles at Workshop\",\"col\":4}},{\"id\":\"ULEHfik0yK\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Idle Drivers\",\"col\":4}},{\"id\":\"HTQy4KqpEO\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"With Client Drivers\",\"col\":4}},{\"id\":\"Iu9mPyN7d-\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"FxcDfqXUWz\",\"type\":\"card\",\"data\":{\"card_name\":\"Documents\",\"col\":4}}]",
+ "creation": "2025-05-26 15:43:38.655529",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "users",
+ "idx": 0,
+ "indicator_color": "cyan",
+ "is_hidden": 0,
+ "label": "Rental Management",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Documents",
+   "link_count": 9,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vehicles",
+   "link_count": 0,
+   "link_to": "Vehicle",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Drivers",
+   "link_count": 0,
+   "link_to": "Driver",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Driver Mobilizations",
+   "link_count": 0,
+   "link_to": "Driver Movement",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vehicle Mobilizations",
+   "link_count": 0,
+   "link_to": "Vehicle Movement",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "LOAs",
+   "link_count": 0,
+   "link_to": "LOA",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "CICPAs",
+   "link_count": 0,
+   "link_to": "CICPA",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Traffic Fine & Accidents",
+   "link_count": 0,
+   "link_to": "Traffic Fine or Accident",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Salik or Darbs",
+   "link_count": 0,
+   "link_to": "Salik or Darbs",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vehicle Maintenance",
+   "link_count": 0,
+   "link_to": "Maintenance Activity",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-06-03 14:00:30.324267",
+ "modified_by": "Administrator",
+ "module": "Rental Management",
+ "name": "Rental Management",
+ "number_cards": [
+  {
+   "label": "With Client Vehicles",
+   "number_card_name": "With Client Vehicles"
+  },
+  {
+   "label": "Idle Vehicles",
+   "number_card_name": "Idle Vehicles Vehicles"
+  },
+  {
+   "label": "Vehicles at Workshop",
+   "number_card_name": "Workshop Vehicles"
+  },
+  {
+   "label": "Idle Drivers",
+   "number_card_name": "Idle Drivers"
+  },
+  {
+   "label": "With Client Drivers",
+   "number_card_name": "With Client Drivers"
+  },
+  {
+   "label": "Total Certificates",
+   "number_card_name": "Total Certificates-1"
+  },
+  {
+   "label": "Not Renewable",
+   "number_card_name": "Employee Certificates expired-1"
+  },
+  {
+   "label": "Expired Certificates",
+   "number_card_name": "Expired Certificates"
+  },
+  {
+   "label": "Expire in 60 Days",
+   "number_card_name": "Expire in 60 Days"
+  },
+  {
+   "label": "Expire in 30 Days",
+   "number_card_name": "Expire in 30 Days"
+  },
+  {
+   "label": "Expire in 10 Days",
+   "number_card_name": "Expire in 10 Days"
+  }
+ ],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 4.0,
+ "shortcuts": [],
+ "title": "Rental Management"
+}
