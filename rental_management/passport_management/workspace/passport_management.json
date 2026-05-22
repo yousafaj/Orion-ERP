@@ -1,0 +1,70 @@
+{
+ "charts": [
+  {
+   "chart_name": "Passports by Department",
+   "label": "Passports by Department"
+  },
+  {
+   "chart_name": "Monthly Passport Movements",
+   "label": "Monthly Passport Movements"
+  }
+ ],
+ "content": "[{\"id\":\"kpi-section\",\"type\":\"header\",\"data\":{\"text\":\"Key Metrics\",\"level\":4}},{\"id\":\"kpi-1\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Passports With Company\"}},{\"id\":\"kpi-2\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Overdue Passport Returns\"}},{\"id\":\"kpi-3\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Passports Due This Week\"}},{\"id\":\"chart-section\",\"type\":\"header\",\"data\":{\"text\":\"Charts\",\"level\":4}},{\"id\":\"chart-1\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Passports by Department\"}},{\"id\":\"chart-2\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Monthly Passport Movements\"}},{\"id\":\"shortcut-section\",\"type\":\"header\",\"data\":{\"text\":\"Quick Access\",\"level\":4}},{\"id\":\"sc-1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Passport Movement\"}},{\"id\":\"sc-2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Current Passports With Company\"}},{\"id\":\"sc-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Overdue Passport Returns\"}}]",
+ "creation": "2026-01-01 00:00:00.000000",
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "fa fa-id-card",
+ "is_hidden": 0,
+ "label": "Passport Management",
+ "module": "Passport Management",
+ "name": "Passport Management",
+ "title": "Passport Management",
+ "number_cards": [
+  { "label": "Passports With Company",    "number_card_name": "Passports With Company" },
+  { "label": "Overdue Passport Returns",  "number_card_name": "Overdue Passport Returns" },
+  { "label": "Passports Due This Week",   "number_card_name": "Passports Due This Week" }
+ ],
+ "parent_page": "",
+ "public": 1,
+ "roles": [],
+ "sequence_id": 99,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Passport Movement",
+   "link_to": "Passport Movement",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "label": "Current Passports With Company",
+   "link_to": "Current Passports With Company",
+   "type": "Report"
+  },
+  {
+   "color": "Orange",
+   "label": "Overdue Passport Returns",
+   "link_to": "Overdue Passport Returns",
+   "type": "Report"
+  },
+  {
+   "color": "Yellow",
+   "label": "Passports Due for Return",
+   "link_to": "Passports Due for Return",
+   "type": "Report"
+  },
+  {
+   "color": "Purple",
+   "label": "Department Passport Inventory",
+   "link_to": "Department Passport Inventory",
+   "type": "Report"
+  },
+  {
+   "color": "Grey",
+   "label": "Employee Passport History",
+   "link_to": "Employee Passport History",
+   "type": "Report"
+  }
+ ]
+}

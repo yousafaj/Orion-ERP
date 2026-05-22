@@ -100,6 +100,10 @@ fixtures = [
         "filters": [
             ["name", "in", ["Total Employees"]]
         ]
+    },
+    {
+        "doctype": "Role",
+        "filters": [["name", "in", ["PRO"]]]
     }
 ]
 
@@ -108,6 +112,9 @@ fixtures = [
 
 # before_install = "rental_management.install.before_install"
 # after_install = "rental_management.install.after_install"
+
+after_install = "rental_management.passport_management.install.after_install"
+after_migrate = "rental_management.passport_management.install.after_migrate"
 
 # Uninstallation
 # ------------
@@ -224,7 +231,11 @@ scheduler_events = {
         # "rental_management.rental_management.doctype.employee_deduction.employee_deduction.run_deduction_cron"
 		"rental_management.tasks.daily.daily",
         "rental_management.rental_management.scripts.certificate_notification.certificate_expiry_notification",
-        "rental_management.rental_management.doctype.employee.create_ticket_allowance"
+        "rental_management.rental_management.doctype.employee.create_ticket_allowance",
+        "rental_management.passport_management.tasks.send_overdue_passport_alerts"
+	],
+	"daily_long": [
+	    "rental_management.passport_management.tasks.send_expiry_reminders"
 	],
 	# "hourly": [
 	# 	"rental_management.tasks.hourly"
