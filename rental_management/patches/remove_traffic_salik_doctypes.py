@@ -53,6 +53,6 @@ def execute():
         table = f"tab{doctype}"
         # Check if table exists before DROP (idempotency on already-cleaned sites).
         if frappe.db.sql("SHOW TABLES LIKE %s", (table,)):
-            frappe.db.sql(f"DROP TABLE `{table}`")
+            frappe.db.sql_ddl(f"DROP TABLE `{table}`")
 
     frappe.clear_cache()

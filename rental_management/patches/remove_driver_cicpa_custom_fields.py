@@ -31,7 +31,7 @@ def _drop_column_if_exists(table, column):
         (column,),
     )
     if cols:
-        frappe.db.sql(
+        frappe.db.sql_ddl(
             "ALTER TABLE `{table}` DROP COLUMN `{column}`".format(
                 table=table, column=column
             )
