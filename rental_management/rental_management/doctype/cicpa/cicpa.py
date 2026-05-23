@@ -169,9 +169,6 @@ class CICPA(Document):
 			try:
 				vehicle_doc = frappe.get_doc("Vehicle", self.vehicle)
 
-				vehicle_doc.custom_has_cicpa = 0
-				vehicle_doc.custom_cicpa = None
-
 				vehicle_doc.custom_vehicle_certifications = [
 					row for row in vehicle_doc.get("custom_vehicle_certifications", [])
 					if not (
