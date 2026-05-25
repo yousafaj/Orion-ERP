@@ -615,25 +615,16 @@ def sync_to_outstanding(self, row):
 
 def validate_payroll_dates(doc, method=None):
 
-	last_processed_date = None
-
-	# Get Last Processed Payroll End Date
-	last_process = frappe.get_all(
+	# Get ALL submitted Process Employee Deductions for this category
+	processed_periods = frappe.get_all(
 		"Process Employee Deductions",
 		filters={
 			"docstatus": 1,
 			"employee_category": doc.employee_category,
-			"name": ["!=", doc.name]
 		},
-		fields=["payroll_date_date"],
-		order_by="payroll_date_date desc",
-		limit=1
+		fields=["payroll_start_date", "payroll_date_date", "name"],
+		order_by="payroll_start_date asc"
 	)
-
-	if last_process:
-		last_processed_date = getdate(
-			last_process[0].payroll_date_date
-		)
 
 	# Validate Child Table
 	for row in doc.employee_deduction_detail or []:
@@ -672,65 +663,34 @@ def validate_payroll_dates(doc, method=None):
 				"""
 			)
 
-		# Validate Against Last Processed Payroll
-		if last_processed_date:
+		# Validate Against ALL Processed Payroll Periods
+		if payroll_start_date:
+			for p in processed_periods:
+				proc_start = getdate(p.payroll_start_date)
+				proc_end = getdate(p.payroll_date_date)
 
-			if (
-				payroll_start_date
-				and payroll_start_date <= last_processed_date
-			):
+				if proc_start <= payroll_start_date <= proc_end:
 
-				frappe.throw(
-					f"""
-					<b>Payroll Period Already Processed</b>
-					<br><br>
+					frappe.throw(
+						f"""
+						<b>Payroll Period Already Processed</b>
+						<br><br>
 
-					Row #{row.idx} has Payroll Start Date:
-					<b>{formatdate(payroll_start_date)}</b>
+						Row #{row.idx} has Payroll Start Date:
+						<b>{formatdate(payroll_start_date)}</b>
 
-					which is already processed.
+						which falls within an already processed
+						payroll period:
+						<b>{formatdate(proc_start)} to {formatdate(proc_end)}</b>
 
-					<br><br>
+						<br><br>
 
-					Last processed payroll end date for
-					<b>{doc.employee_category}</b>
-					employees is:
+						Process Employee Deduction:
+						<b>{p.name}</b>
 
-					<b>{formatdate(last_processed_date)}</b>
+						<br><br>
 
-					<br><br>
-
-					Please select a payroll period after
-					<b>{formatdate(last_processed_date)}</b>.
-					"""
-				)
-
-			if (
-				payroll_end_date
-				and payroll_end_date <= last_processed_date
-			):
-
-				frappe.throw(
-					f"""
-					<b>Payroll Period Already Processed</b>
-					<br><br>
-
-					Row #{row.idx} has Payroll End Date:
-					<b>{formatdate(payroll_end_date)}</b>
-
-					which is already processed.
-
-					<br><br>
-
-					Last processed payroll end date for
-					<b>{doc.employee_category}</b>
-					employees is:
-
-					<b>{formatdate(last_processed_date)}</b>
-
-					<br><br>
-
-					Please select a payroll period after
-					<b>{formatdate(last_processed_date)}</b>.
-					"""
-				)
+						Please select a payroll date after
+						<b>{formatdate(proc_end)}</b>.
+						"""
+					)

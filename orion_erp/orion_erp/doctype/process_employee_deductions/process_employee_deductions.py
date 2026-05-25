@@ -31,6 +31,8 @@ class ProcessEmployeeDeductions(Document):
 		validate_duplicate_transaction(self)
 
 		if self.outstanding_installments:
+			if self.docstatus == 0:
+				fetch_new_deductions(self)
 			return
 		populate_outstanding_installments(self)
 
@@ -164,6 +166,177 @@ def populate_outstanding_installments(self):
 					"employee_deduction_parent_reference":row.parent,
 					"amount_to_be_deducted_this_month": installment_amount
 				})
+
+def fetch_new_deductions(self):
+	existing_parent_refs = set()
+	existing_child_refs = set()
+	for row in self.outstanding_installments:
+		if row.employee_deduction_parent_reference:
+			existing_parent_refs.add(row.employee_deduction_parent_reference)
+		if row.employee_deduction_reference:
+			existing_child_refs.add(row.employee_deduction_reference)
+
+	employees = frappe.get_all(
+		"Employee",
+		filters={"custom_employee_category": self.employee_category},
+		fields=["name", "employee_name"]
+	)
+
+	for emp in employees:
+		parent = frappe.get_all(
+			"Employee Deduction",
+			filters={
+				"employee": emp.name,
+				"docstatus": 1
+			},
+			fields=["name"],
+			order_by="creation desc",
+			limit=1
+		)
+
+		if not parent:
+			continue
+
+		doc = frappe.get_doc("Employee Deduction", parent[0].name)
+
+		for row in doc.employee_deduction_detail or []:
+			if flt(row.remaining_amount) <= 0:
+				continue
+			if getdate(row.payroll_start_date) < getdate(self.payroll_start_date):
+				continue
+			if getdate(row.payroll_start_date) > getdate(self.payroll_date_date):
+				continue
+			if row.name in existing_child_refs:
+				continue
+
+			installment_amount = min(row.installment_amount, row.remaining_amount)
+			self.append("outstanding_installments", {
+				"employee": doc.employee,
+				"employee_name": doc.employee_name,
+				"type_of_penalty": row.type_of_penalty,
+				"date_of_deduction_occurred": row.deduction_date,
+				"outstanding_amount": row.remaining_amount,
+				"installment_amount": installment_amount,
+				"employee_deduction_reference": row.name,
+				"employee_deduction_parent_reference": row.parent,
+				"amount_to_be_deducted_this_month": installment_amount
+			})
+
+		for row in doc.outstanding_employee_deduction_detail or []:
+			if flt(row.remaining_amount) <= 0:
+				continue
+			if getdate(row.payroll_start_date) < getdate(self.payroll_start_date):
+				continue
+			if getdate(row.payroll_start_date) > getdate(self.payroll_date_date):
+				continue
+			if row.name in existing_child_refs:
+				continue
+
+			installment_amount = min(row.installment_amount, row.remaining_amount)
+			self.append("outstanding_installments", {
+				"employee": doc.employee,
+				"employee_name": doc.employee_name,
+				"type_of_penalty": row.type_of_penalty,
+				"date_of_deduction_occurred": row.deduction_date,
+				"outstanding_amount": row.remaining_amount,
+				"installment_amount": installment_amount,
+				"employee_deduction_reference": row.name,
+				"employee_deduction_parent_reference": row.parent,
+				"amount_to_be_deducted_this_month": installment_amount
+			})
+
+
+@frappe.whitelist()
+def get_new_deductions_for_process(docname):
+	if not docname or not frappe.db.exists("Process Employee Deductions", docname):
+		return []
+
+	doc = frappe.get_doc("Process Employee Deductions", docname)
+
+	if doc.docstatus != 0:
+		return []
+
+	existing_parent_refs = set()
+	existing_child_refs = set()
+	for row in doc.outstanding_installments:
+		if row.employee_deduction_parent_reference:
+			existing_parent_refs.add(row.employee_deduction_parent_reference)
+		if row.employee_deduction_reference:
+			existing_child_refs.add(row.employee_deduction_reference)
+
+	new_rows = []
+
+	employees = frappe.get_all(
+		"Employee",
+		filters={"custom_employee_category": doc.employee_category},
+		fields=["name", "employee_name"]
+	)
+
+	for emp in employees:
+		parent = frappe.get_all(
+			"Employee Deduction",
+			filters={
+				"employee": emp.name,
+				"docstatus": 1
+			},
+			fields=["name"],
+			order_by="creation desc",
+			limit=1
+		)
+
+		if not parent:
+			continue
+
+		ed = frappe.get_doc("Employee Deduction", parent[0].name)
+
+		for row in ed.employee_deduction_detail or []:
+			if flt(row.remaining_amount) <= 0:
+				continue
+			if getdate(row.payroll_start_date) < getdate(doc.payroll_start_date):
+				continue
+			if getdate(row.payroll_start_date) > getdate(doc.payroll_date_date):
+				continue
+			if row.name in existing_child_refs:
+				continue
+
+			installment_amount = min(row.installment_amount, row.remaining_amount)
+			new_rows.append({
+				"employee": ed.employee,
+				"employee_name": ed.employee_name,
+				"type_of_penalty": row.type_of_penalty,
+				"date_of_deduction_occurred": row.deduction_date,
+				"outstanding_amount": row.remaining_amount,
+				"installment_amount": installment_amount,
+				"employee_deduction_reference": row.name,
+				"employee_deduction_parent_reference": row.parent,
+				"amount_to_be_deducted_this_month": installment_amount
+			})
+
+		for row in ed.outstanding_employee_deduction_detail or []:
+			if flt(row.remaining_amount) <= 0:
+				continue
+			if getdate(row.payroll_start_date) < getdate(doc.payroll_start_date):
+				continue
+			if getdate(row.payroll_start_date) > getdate(doc.payroll_date_date):
+				continue
+			if row.name in existing_child_refs:
+				continue
+
+			installment_amount = min(row.installment_amount, row.remaining_amount)
+			new_rows.append({
+				"employee": ed.employee,
+				"employee_name": ed.employee_name,
+				"type_of_penalty": row.type_of_penalty,
+				"date_of_deduction_occurred": row.deduction_date,
+				"outstanding_amount": row.remaining_amount,
+				"installment_amount": installment_amount,
+				"employee_deduction_reference": row.name,
+				"employee_deduction_parent_reference": row.parent,
+				"amount_to_be_deducted_this_month": installment_amount
+			})
+
+	return new_rows
+
 
 def create_additional_salary(self):
 

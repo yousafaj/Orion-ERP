@@ -185,9 +185,7 @@ doc_events = {
         "on_submit":"orion_erp.orion_erp.doctype.additional_salary.on_submit",
         "on_cancel":"orion_erp.orion_erp.doctype.additional_salary.on_cancel"
     },
-    "Leave Settlement": {
-        "on_submit": "orion_erp.orion_erp.doctype.leave_settlement.leave_settlement.mark_ticket_paid"
-    },
+
     "Vehicle": {
         "validate": "orion_erp.orion_erp.validations.vehicle_hooks.validate_vehicle"
     },

@@ -124,9 +124,9 @@ class LeaveSettlement(Document):
 		validate_ticket_allowance(self)
 
 	def on_cancel(self):
-		revert_ticket_paid(self)
-		cancel_linked_additional_deductions(self)
 		validate_salary_slip_before_cancel(self)
+		cancel_linked_additional_deductions(self)
+		revert_ticket_paid(self)
 
 
 def create_leave_settlement_deduction(self):
@@ -349,10 +349,16 @@ def mark_ticket_paid(doc, method=None):
 
 		else:
 
-			reference_table = existing_reference.replace(
-				"</tbody>",
-				f"{new_row}</tbody>"
-			)
+			# avoid duplicate reference rows
+			if doc.name not in existing_reference:
+
+				reference_table = existing_reference.replace(
+					"</tbody>",
+					f"{new_row}</tbody>"
+				)
+
+			else:
+				reference_table = existing_reference
 
 		update_data = {
 			"paid_amount": total_paid_amount,
@@ -409,7 +415,6 @@ def validate_ticket_allowance(doc):
 				"""
 			)
 
-
 def revert_ticket_paid(doc, method=None):
 
 	if not doc.ticket_allowance:
@@ -435,28 +440,21 @@ def revert_ticket_paid(doc, method=None):
 		if not ticket_detail:
 			continue
 
-		current_paid_amount = flt(
-			ticket_detail.paid_amount
-		)
-
+		current_paid_amount = flt(ticket_detail.paid_amount)
 		row_amount = flt(row.amount)
+		total_amount = flt(ticket_detail.amount)
 
 		total_paid_amount = max(
 			0,
 			current_paid_amount - row_amount
 		)
 
-		total_amount = flt(
-			ticket_detail.amount
-		)
-
-		outstanding_amount = (
+		outstanding_amount = max(
+			0,
 			total_amount - total_paid_amount
 		)
 
-		reference_html = (
-			ticket_detail.references_data or ""
-		)
+		existing_reference = ticket_detail.references_data or ""
 
 		pattern = rf"""
 			<tr>\s*
@@ -479,30 +477,35 @@ def revert_ticket_paid(doc, method=None):
 		reference_html = re.sub(
 			pattern,
 			"",
-			reference_html,
+			existing_reference,
 			flags=re.S | re.X
 		)
 
-		paid = 0
-		partial_paid = 0
+		update_data = {
+			"paid_amount": total_paid_amount,
+			"outstanding_amount": outstanding_amount,
+			"references_data": reference_html
+		}
 
-		if total_paid_amount > 0:
-			partial_paid = 1
+		if (
+			total_paid_amount >= total_amount
+			and total_amount > 0
+		):
+			update_data["paid"] = 1
+			update_data["partial_paid"] = 0
 
-		if total_paid_amount >= total_amount:
-			paid = 1
-			partial_paid = 0
+		elif total_paid_amount > 0:
+			update_data["paid"] = 0
+			update_data["partial_paid"] = 1
+
+		else:
+			update_data["paid"] = 0
+			update_data["partial_paid"] = 0
 
 		frappe.db.set_value(
 			"Ticket Allowance Detail",
 			ticket_detail.name,
-			{
-				"paid_amount": total_paid_amount,
-				"outstanding_amount": outstanding_amount,
-				"paid": paid,
-				"partial_paid": partial_paid,
-				"references_data": reference_html
-			}
+			update_data
 		)
 
 

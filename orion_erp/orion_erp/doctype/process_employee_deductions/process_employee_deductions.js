@@ -32,9 +32,19 @@ frappe.ui.form.on("Process Employee Deductions", {
 
         // disable delete row
         grid.cannot_delete_rows = true;
+
+        setTimeout(() => {
+            grid.wrapper.find('.grid-remove-rows').hide();
+            grid.wrapper.find('.grid-checkbox').hide();
+        }, 100);
+
         // rebuild grid header
         grid.make_head();
         grid.refresh();
+
+        if (frm.doc.docstatus === 0 && !frm.doc.__islocal) {
+            fetch_new_deductions(frm);
+        }
     },
 
     onload(frm) {
@@ -91,6 +101,28 @@ function set_current_fiscal_year(frm) {
             }
         });
     }
+}
+
+function fetch_new_deductions(frm) {
+
+    frappe.call({
+        method: "orion_erp.orion_erp.doctype.process_employee_deductions.process_employee_deductions.get_new_deductions_for_process",
+        args: {
+            docname: frm.doc.name
+        },
+        callback: function(r) {
+            if (!r.message || r.message.length === 0) return;
+
+            (r.message || []).forEach(function(row) {
+                let child = frm.add_child("outstanding_installments");
+                Object.keys(row).forEach(function(field) {
+                    child[field] = row[field];
+                });
+            });
+
+            frm.refresh_field("outstanding_installments");
+        }
+    });
 }
 
 function set_payroll_dates(frm) {

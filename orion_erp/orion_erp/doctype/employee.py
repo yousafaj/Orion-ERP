@@ -102,6 +102,12 @@ def create_ticket_allowance():
 
                 if not exists:
 
+                    max_idx = frappe.db.get_value(
+                        "Ticket Allowance Detail",
+                        {"parent": emp.name, "parenttype": "Employee"},
+                        "max(idx)"
+                    ) or 0
+
                     frappe.get_doc({
                         "doctype": "Ticket Allowance Detail",
                         "parent": emp.name,
@@ -110,8 +116,9 @@ def create_ticket_allowance():
                         "from_date": from_date,
                         "to_date": to_date,
                         "amount": rule.amount,
-                        "outstanding_amount":rule.amount,
-                        "paid": 0
+                        "outstanding_amount": rule.amount,
+                        "paid": 0,
+                        "idx": max_idx + 1
                     }).insert(ignore_permissions=True)
 
                 

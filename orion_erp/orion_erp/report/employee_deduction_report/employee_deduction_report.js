@@ -60,12 +60,6 @@ frappe.query_reports["Employee Deduction Report"] = {
             fieldname: "deduction_date",
             label: "Deduction Date >=",
             fieldtype: "Date"
-        },
-        {
-            fieldname: "show_paid_amount",
-            label: "Show Paid Amount",
-            fieldtype: "Check",
-            default: 1
         }
     ]
 };

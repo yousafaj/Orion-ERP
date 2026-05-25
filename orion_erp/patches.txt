@@ -12,3 +12,4 @@ orion_erp.patches.fix_leave_approver_mapping
 orion_erp.patches.set_add_total_row_employee_deduction_report
 orion_erp.patches.set_outstanding_amount_ticket_allowance
 orion_erp.patches.fix_rental_management_references
+orion_erp.patches.fix_ticket_allowance_detail_idx

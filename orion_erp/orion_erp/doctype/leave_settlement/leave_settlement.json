@@ -31,12 +31,11 @@
   "column_break_jzvq",
   "other_allowance",
   "deductions_section",
+  "leave_settlement_deductions",
   "outstanding_advance",
   "traffic_fine",
   "adjustments_if_any",
   "other_deduction",
-  "section_break_nvpu",
-  "leave_settlement_deductions",
   "total_entitlements_section",
   "total_entitlements",
   "total_deductions",
@@ -259,17 +258,13 @@
    "fieldtype": "Table",
    "label": "Leave Settlement Deductions",
    "options": "Leave Settlement Deductions"
-  },
-  {
-   "fieldname": "section_break_nvpu",
-   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-21 12:34:13.033882",
+ "modified": "2026-05-25 14:19:14.808359",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Leave Settlement",

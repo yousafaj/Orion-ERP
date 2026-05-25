@@ -124,6 +124,11 @@ frappe.ui.form.on('Employee', {
         grid.cannot_add_rows = true;
         grid.cannot_delete_rows = true;
 
+        setTimeout(() => {
+            grid.wrapper.find('.grid-remove-rows').hide();
+            grid.wrapper.find('.grid-checkbox').hide();
+        }, 100);
+
         frm.refresh_field("custom_ticket_allowance_detail");
         setTimeout(() => {
 

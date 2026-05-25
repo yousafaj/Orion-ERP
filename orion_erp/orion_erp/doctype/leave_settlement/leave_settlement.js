@@ -21,19 +21,21 @@ frappe.ui.form.on('Leave Settlement', {
 
         setTimeout(() => {
 
-            frm.fields_dict
-                .leave_settlement_deductions
-                .grid
-                .wrapper
-                .find('.grid-remove-rows')
-                .hide();
+            let ls_grid = frm.fields_dict
+                .leave_settlement_deductions.grid;
 
-            frm.fields_dict
-                .ticket_allowance
-                .grid
-                .wrapper
-                .find('.grid-remove-rows')
-                .hide();
+            ls_grid.wrapper
+                .find('.grid-remove-rows').hide();
+            ls_grid.wrapper
+                .find('.grid-checkbox').hide();
+
+            let ta_grid = frm.fields_dict
+                .ticket_allowance.grid;
+
+            ta_grid.wrapper
+                .find('.grid-remove-rows').hide();
+            ta_grid.wrapper
+                .find('.grid-checkbox').hide();
 
         }, 200);
     },
@@ -41,7 +43,7 @@ frappe.ui.form.on('Leave Settlement', {
         fetch_ticket_allowance(frm);
     },
     type_of_settlement: function(frm) {
-        
+
         const deduction_allowed_types = [
             "Vacation Settlement",
             "Final Settlement"
@@ -52,10 +54,14 @@ frappe.ui.form.on('Leave Settlement', {
                 frm.doc.type_of_settlement
             )
         ) {
-
             frm.call(
                 "populate_leave_settlement_deductions"
-            );
+            ).then(() => {
+                frm.refresh_field("leave_settlement_deductions");
+            });
+        } else {
+            frm.clear_table("leave_settlement_deductions");
+            frm.refresh_field("leave_settlement_deductions");
         }
         fetch_ticket_allowance(frm);
     },
@@ -65,25 +71,28 @@ frappe.ui.form.on('Leave Settlement', {
             "Final Settlement"
         ];
 
+        if (!frm.doc.employee) {
+            frm.clear_table("leave_settlement_deductions");
+            frm.refresh_field("leave_settlement_deductions");
+            return;
+        }
+
         if (
             deduction_allowed_types.includes(
                 frm.doc.type_of_settlement
             )
         ) {
-
             frm.call(
                 "populate_leave_settlement_deductions"
             ).then(() => {
-
+                frm.refresh_field("leave_settlement_deductions");
                 fetch_ticket_allowance(frm);
             });
-        }
-
-        else {
-
+        } else {
+            frm.clear_table("leave_settlement_deductions");
+            frm.refresh_field("leave_settlement_deductions");
             fetch_ticket_allowance(frm);
         }
-        if (!frm.doc.employee) return;
 
         frappe.db.get_doc('Employee', frm.doc.employee).then(emp => {
 

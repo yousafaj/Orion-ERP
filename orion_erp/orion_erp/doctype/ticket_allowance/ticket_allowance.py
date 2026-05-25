@@ -18,6 +18,7 @@ class TicketAllowance(Document):
 		parent: DF.Data
 		parentfield: DF.Data
 		parenttype: DF.Data
+		remark: DF.Text | None
 		to: DF.Date | None
 	# end: auto-generated types
 	pass
