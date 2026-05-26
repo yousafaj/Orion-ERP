@@ -1,0 +1,293 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "HR/LS/.YYYY./.####",
+ "creation": "2026-04-09 08:15:30.816573",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_4sg8",
+  "type_of_settlement",
+  "employee",
+  "employee_name",
+  "position",
+  "department",
+  "column_break_orai",
+  "posting_date",
+  "date_of_settlement",
+  "monthly_salary",
+  "doj__re_joining_date",
+  "total_service",
+  "last_working_day",
+  "company",
+  "amended_from",
+  "entitlements_section",
+  "salary_due",
+  "leave_pay",
+  "gratuity_pay",
+  "ticket_allowance",
+  "section_break_xohm",
+  "overtime_allowance",
+  "column_break_jzvq",
+  "other_allowance",
+  "deductions_section",
+  "leave_settlement_deductions",
+  "outstanding_advance",
+  "traffic_fine",
+  "adjustments_if_any",
+  "other_deduction",
+  "total_entitlements_section",
+  "total_entitlements",
+  "total_deductions",
+  "column_break_bztu",
+  "total_settlement_payable",
+  "section_break_cjdn",
+  "remark"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_4sg8",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Leave Settlement",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "type_of_settlement",
+   "fieldtype": "Select",
+   "label": "Type of Settlement",
+   "options": "\nVacation Settlement\nFinal Settlement\nLabour Court Settlement\nInternal Transfer Settlement"
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "position",
+   "fieldtype": "Link",
+   "label": "Position",
+   "options": "Designation",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.custom_department_of_working_company",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_orai",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date_of_settlement",
+   "fieldtype": "Date",
+   "label": "Date of Settlement",
+   "reqd": 1
+  },
+  {
+   "fieldname": "monthly_salary",
+   "fieldtype": "Currency",
+   "label": "Monthly Salary",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.date_of_joining",
+   "fieldname": "doj__re_joining_date",
+   "fieldtype": "Date",
+   "label": "DOJ / Re Joining Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_service",
+   "fieldtype": "Data",
+   "label": "Total Service"
+  },
+  {
+   "fieldname": "last_working_day",
+   "fieldtype": "Date",
+   "label": "Last Working Day"
+  },
+  {
+   "fieldname": "entitlements_section",
+   "fieldtype": "Section Break",
+   "label": "Entitlements"
+  },
+  {
+   "depends_on": "eval:doc.type_of_settlement!=\"Internal Transfer Settlement\"",
+   "fieldname": "salary_due",
+   "fieldtype": "Table",
+   "label": "Salary Due",
+   "options": "Salary Due"
+  },
+  {
+   "fieldname": "leave_pay",
+   "fieldtype": "Table",
+   "label": "Leave Pay",
+   "options": "Leave Pay"
+  },
+  {
+   "depends_on": "eval:doc.type_of_settlement!=\"Labour Court Settlement\"",
+   "fieldname": "ticket_allowance",
+   "fieldtype": "Table",
+   "label": "Ticket Allowance",
+   "options": "Ticket Allowance"
+  },
+  {
+   "fieldname": "section_break_xohm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "overtime_allowance",
+   "fieldtype": "Currency",
+   "label": "Overtime Allowance"
+  },
+  {
+   "fieldname": "column_break_jzvq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "other_allowance",
+   "fieldtype": "Currency",
+   "label": "Other Allowance"
+  },
+  {
+   "fieldname": "deductions_section",
+   "fieldtype": "Section Break",
+   "label": "Deductions"
+  },
+  {
+   "fieldname": "outstanding_advance",
+   "fieldtype": "Currency",
+   "label": "Outstanding Advance"
+  },
+  {
+   "fieldname": "traffic_fine",
+   "fieldtype": "Currency",
+   "label": "Traffic fine"
+  },
+  {
+   "fieldname": "adjustments_if_any",
+   "fieldtype": "Currency",
+   "label": "Adjustments, if any"
+  },
+  {
+   "fieldname": "other_deduction",
+   "fieldtype": "Currency",
+   "label": "Other deduction"
+  },
+  {
+   "fieldname": "total_entitlements_section",
+   "fieldtype": "Section Break",
+   "label": "Total Entitlements\t \t"
+  },
+  {
+   "fieldname": "total_entitlements",
+   "fieldtype": "Currency",
+   "label": "Total Entitlements"
+  },
+  {
+   "fieldname": "total_deductions",
+   "fieldtype": "Currency",
+   "label": "Total Deductions"
+  },
+  {
+   "fieldname": "column_break_bztu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_settlement_payable",
+   "fieldtype": "Currency",
+   "label": "Total Settlement Payable"
+  },
+  {
+   "fieldname": "section_break_cjdn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "remark",
+   "fieldtype": "Long Text",
+   "label": "Remark"
+  },
+  {
+   "depends_on": "eval:doc.type_of_settlement==\"Final Settlement\"",
+   "fieldname": "gratuity_pay",
+   "fieldtype": "Table",
+   "label": "Gratuity Pay",
+   "options": "Gratuity Pay"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "leave_settlement_deductions",
+   "fieldtype": "Table",
+   "label": "Leave Settlement Deductions",
+   "options": "Leave Settlement Deductions"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-05-25 14:19:14.808359",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Leave Settlement",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
