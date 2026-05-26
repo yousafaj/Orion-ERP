@@ -30,7 +30,9 @@
   "show_trigger_additional_deduction_non_office",
   "trigger_addtional_deduction_for_non_office_employee",
   "employee_tab",
-  "default_bank_name_for_c3_pay"
+  "default_bank_name_for_c3_pay",
+  "permissions_tab",
+  "allowed_roles"
  ],
  "fields": [
   {
@@ -173,13 +175,25 @@
    "fieldname": "show_trigger_additional_deduction_non_office",
    "fieldtype": "Check",
    "label": "Show Trigger Additional Deduction Non Office"
+  },
+  {
+   "fieldname": "permissions_tab",
+   "fieldtype": "Tab Break",
+   "label": "Permissions"
+  },
+  {
+   "description": "Select roles that will be granted full access to the Role Permission for Page and Report manager and Role Permission Manager.",
+   "fieldname": "allowed_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Allowed Roles for Role Permission Manager",
+   "options": "Role Details"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-05-14 13:36:54.293454",
+ "modified": "2026-05-26 10:56:18.350671",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Orion Settings",
