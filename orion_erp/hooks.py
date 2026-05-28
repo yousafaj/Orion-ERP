@@ -117,6 +117,7 @@ fixtures = [
 
 after_migrate = ["orion_erp.setup.after_migrate"]
 
+
 # Integration Setup
 # ------------------
 # To set up dependencies/integrations with other apps
