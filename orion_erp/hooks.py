@@ -48,7 +48,8 @@ doctype_js = {
     "Additional Salary": "public/js/additional_salary.js",
     "Leave Application": "public/js/leave_application.js",
     "Salary Slip": "public/js/salary_slip.js",
-    "Job Offer":"public/js/job_offer.js"
+    "Job Offer":"public/js/job_offer.js",
+    "Driver": "public/js/driver.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
@@ -100,6 +101,10 @@ fixtures = [
         "filters": [
             ["name", "in", ["Total Employees"]]
         ]
+    },
+    {
+        "doctype": "Role",
+        "filters": [["name", "in", ["PRO"]]]
     }
 ]
 
@@ -108,6 +113,9 @@ fixtures = [
 
 # before_install = "orion_erp.install.before_install"
 # after_install = "orion_erp.install.after_install"
+
+after_install = "orion_erp.passport_management.install.after_install"
+after_migrate = "orion_erp.orion_erp.install.after_migrate"
 
 # Uninstallation
 # ------------
@@ -193,7 +201,8 @@ doc_events = {
         "validate": "orion_erp.orion_erp.validations.vehicle_hooks.validate_vehicle"
     },
     "Driver": {
-        "validate": "orion_erp.orion_erp.validations.driver_hooks.validate_driver"
+        "validate": "orion_erp.orion_erp.validations.driver_hooks.validate_driver",
+        "after_insert": "orion_erp.orion_erp.validations.driver_hooks.after_insert_driver"
     },
     "Customer": {
         "validate": "orion_erp.orion_erp.validations.customer_hooks.validate_customer"
@@ -226,6 +235,12 @@ scheduler_events = {
 		"orion_erp.tasks.daily.daily",
         "orion_erp.orion_erp.scripts.certificate_notification.certificate_expiry_notification",
         "orion_erp.orion_erp.doctype.employee.create_ticket_allowance"
+        "orion_erp.passport_management.tasks.send_overdue_passport_alerts",
+        "orion_erp.orion_erp.doctype.cicpa.cicpa.auto_expire_cicpas",
+        "orion_erp.orion_erp.doctype.loa.loa.auto_expire_loas"
+	],
+	"daily_long": [
+	    "orion_erp.passport_management.tasks.send_expiry_reminders"
 	],
 	# "hourly": [
 	# 	"orion_erp.tasks.hourly"

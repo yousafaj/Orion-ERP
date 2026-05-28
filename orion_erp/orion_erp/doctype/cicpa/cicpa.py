@@ -13,8 +13,10 @@ class CICPA(Document):
 
 		active: DF.Check
 		amended_from: DF.Link | None
-		cicpa_status: DF.Literal["", "Active", "Cancelled", "Expired"]
+		cicpa_no: DF.Data | None
+		cicpa_status: DF.Literal["", "Active", "Cancelled", "Lost", "Expired"]
 		cicpa_type: DF.Literal["", "Driver", "Vehicle"]
+		company: DF.Link | None
 		document: DF.Attach | None
 		driver: DF.Link | None
 		expiry_date: DF.Date
@@ -108,6 +110,26 @@ class CICPA(Document):
 				frappe.throw(_("Failed to update CICPA expiry date in Driver: {0}").format(str(e)))
 
 	def before_cancel(self):
+		# Keep the status field in sync and free the LOA quota, mirroring the
+		# manual "Mark as Cancelled" flow. Only do this if the status is still
+		# Active — if the user already transitioned the CICPA via mark_cicpa_status
+		# the quota has already been freed, so skip to avoid double-counting.
+		if self.cicpa_status == "Active":
+			if self.loa:
+				try:
+					loa = frappe.get_doc("LOA", self.loa)
+					if self.cicpa_type == "Vehicle":
+						loa.total_created_vehicle_cicpa = max(0, (loa.total_created_vehicle_cicpa or 0) - 1)
+						loa.remaining_vehicle_quota = (loa.remaining_vehicle_quota or 0) + 1
+						loa.total_cancelled_vehicle_cicpa = (loa.total_cancelled_vehicle_cicpa or 0) + 1
+					elif self.cicpa_type == "Driver":
+						loa.total_created_driver_cicpa = max(0, (loa.total_created_driver_cicpa or 0) - 1)
+						loa.remaining_driver_quota = (loa.remaining_driver_quota or 0) + 1
+						loa.total_cancelled_driver_cicpa = (loa.total_cancelled_driver_cicpa or 0) + 1
+					loa.save(ignore_permissions=True)
+				except Exception:
+					frappe.log_error(frappe.get_traceback(), "CICPA before_cancel: LOA quota update failed")
+			self.db_set("cicpa_status", "Cancelled", update_modified=True)
 
 		if self.loa:
 			self.db_set("loa", None, update_modified=False)
@@ -147,9 +169,6 @@ class CICPA(Document):
 			try:
 				vehicle_doc = frappe.get_doc("Vehicle", self.vehicle)
 
-				vehicle_doc.custom_has_cicpa = 0
-				vehicle_doc.custom_cicpa = None
-
 				vehicle_doc.custom_vehicle_certifications = [
 					row for row in vehicle_doc.get("custom_vehicle_certifications", [])
 					if not (
@@ -175,9 +194,6 @@ class CICPA(Document):
 			try:
 				driver_doc = frappe.get_doc("Driver", self.driver)
 
-				driver_doc.custom_has_cicpa = 0
-				driver_doc.custom_cicpa = None
-
 				driver_doc.custom_certification_list = [
 					row for row in driver_doc.get("custom_certification_list", [])
 					if not (
@@ -198,3 +214,47 @@ class CICPA(Document):
 				frappe.throw(
 					_("Failed to clean CICPA from Driver: {0}").format(str(e))
 				)
+
+
+@frappe.whitelist()
+def mark_cicpa_status(cicpa, new_status):
+	if new_status not in ("Cancelled", "Lost", "Expired"):
+		frappe.throw(_("Invalid CICPA status."))
+
+	doc = frappe.get_doc("CICPA", cicpa)
+	if doc.docstatus != 1:
+		frappe.throw(_("CICPA must be submitted before status can be changed."))
+	if doc.cicpa_status != "Active":
+		frappe.throw(_("CICPA status is already {0}.").format(doc.cicpa_status))
+
+	doc.db_set("cicpa_status", new_status, update_modified=True)
+
+	if doc.loa:
+		loa = frappe.get_doc("LOA", doc.loa)
+		if doc.cicpa_type == "Vehicle":
+			loa.total_created_vehicle_cicpa = max(0, (loa.total_created_vehicle_cicpa or 0) - 1)
+			loa.remaining_vehicle_quota = (loa.remaining_vehicle_quota or 0) + 1
+			if new_status == "Cancelled":
+				loa.total_cancelled_vehicle_cicpa = (loa.total_cancelled_vehicle_cicpa or 0) + 1
+		elif doc.cicpa_type == "Driver":
+			loa.total_created_driver_cicpa = max(0, (loa.total_created_driver_cicpa or 0) - 1)
+			loa.remaining_driver_quota = (loa.remaining_driver_quota or 0) + 1
+			if new_status == "Cancelled":
+				loa.total_cancelled_driver_cicpa = (loa.total_cancelled_driver_cicpa or 0) + 1
+		loa.save(ignore_permissions=True)
+
+
+def auto_expire_cicpas():
+	today = frappe.utils.nowdate()
+	candidates = frappe.get_all(
+		"CICPA",
+		filters={"docstatus": 1, "cicpa_status": "Active", "expiry_date": ["<", today]},
+		pluck="name",
+	)
+	for name in candidates:
+		try:
+			mark_cicpa_status(name, "Expired")
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			frappe.log_error(frappe.get_traceback(), f"auto_expire_cicpas failed for {name}")

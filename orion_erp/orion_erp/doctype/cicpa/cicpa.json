@@ -7,6 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "loa",
+  "company",
+  "cicpa_no",
   "cicpa_type",
   "active",
   "cicpa_status",
@@ -14,9 +16,7 @@
   "issue_date",
   "expiry_date",
   "document",
-  "section_break_fkse",
   "vehicle",
-  "column_break_rwoa",
   "driver",
   "section_break_ayka",
   "amended_from"
@@ -37,17 +37,27 @@
    "search_index": 1
   },
   {
+   "depends_on": "eval:doc.cicpa_type=='Vehicle'",
    "fieldname": "vehicle",
    "fieldtype": "Link",
    "label": "Vehicle",
-   "options": "Vehicle",
-   "read_only": 1
+   "mandatory_depends_on": "eval:doc.cicpa_type=='Vehicle'",
+   "options": "Vehicle"
   },
   {
+   "depends_on": "eval:doc.cicpa_type=='Driver'",
    "fieldname": "driver",
    "fieldtype": "Link",
    "label": "Driver",
-   "options": "Driver",
+   "mandatory_depends_on": "eval:doc.cicpa_type=='Driver'",
+   "options": "Driver"
+  },
+  {
+   "fetch_from": "loa.issuing_authority",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Customer",
    "read_only": 1
   },
   {
@@ -66,12 +76,11 @@
    "reqd": 1
   },
   {
-   "fieldname": "section_break_fkse",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_rwoa",
-   "fieldtype": "Column Break"
+   "allow_on_submit": 1,
+   "fieldname": "cicpa_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "CICPA No"
   },
   {
    "fieldname": "document",
@@ -105,11 +114,12 @@
    "label": "Active"
   },
   {
+   "allow_on_submit": 1,
    "default": "Active",
    "fieldname": "cicpa_status",
    "fieldtype": "Select",
    "label": "CICPA Status",
-   "options": "\nActive\nCancelled\nExpired",
+   "options": "\nActive\nCancelled\nLost\nExpired",
    "read_only": 1
   }
  ],
