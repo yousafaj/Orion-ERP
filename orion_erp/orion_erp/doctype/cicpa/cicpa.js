@@ -13,7 +13,7 @@ frappe.ui.form.on("CICPA", {
 						__("Mark this CICPA as {0}? This cannot be undone.", [__(new_status)]),
 						function () {
 							frappe.call({
-								method: "rental_management.rental_management.doctype.cicpa.cicpa.mark_cicpa_status",
+								method: "orion_erp.orion_erp.doctype.cicpa.cicpa.mark_cicpa_status",
 								args: { cicpa: frm.doc.name, new_status: new_status },
 								freeze: true,
 								callback: function (r) {
