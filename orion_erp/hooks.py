@@ -115,6 +115,8 @@ fixtures = [
 # before_uninstall = "orion_erp.uninstall.before_uninstall"
 # after_uninstall = "orion_erp.uninstall.after_uninstall"
 
+after_migrate = ["orion_erp.setup.after_migrate"]
+
 # Integration Setup
 # ------------------
 # To set up dependencies/integrations with other apps
@@ -242,10 +244,16 @@ scheduler_events = {
 
 # Overriding Methods
 # ------------------------------
-#
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "orion_erp.event.get_events"
-# }
+override_whitelisted_methods = {
+	"frappe.core.page.permission_manager.permission_manager.get_roles_and_doctypes": "orion_erp.orion_erp.override.permission_manager.get_roles_and_doctypes",
+	"frappe.core.page.permission_manager.permission_manager.get_permissions": "orion_erp.orion_erp.override.permission_manager.get_permissions",
+	"frappe.core.page.permission_manager.permission_manager.add": "orion_erp.orion_erp.override.permission_manager.add",
+	"frappe.core.page.permission_manager.permission_manager.update": "orion_erp.orion_erp.override.permission_manager.update",
+	"frappe.core.page.permission_manager.permission_manager.remove": "orion_erp.orion_erp.override.permission_manager.remove",
+	"frappe.core.page.permission_manager.permission_manager.reset": "orion_erp.orion_erp.override.permission_manager.reset",
+	"frappe.core.page.permission_manager.permission_manager.get_users_with_role": "orion_erp.orion_erp.override.permission_manager.get_users_with_role",
+	"frappe.core.page.permission_manager.permission_manager.get_standard_permissions": "orion_erp.orion_erp.override.permission_manager.get_standard_permissions",
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
