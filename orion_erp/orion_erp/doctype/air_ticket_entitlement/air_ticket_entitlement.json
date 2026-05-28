@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:ATE-{#####}",
+ "creation": "2025-09-15 17:02:32.588223",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "employee_onboarding_date",
+  "ticket_amount",
+  "ticket_entitlement_duration",
+  "column_break_pujc",
+  "status",
+  "section_break_cxf6",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_cxf6",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Air Ticket Entitlement",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fetch_from": "employee.date_of_joining",
+   "fieldname": "employee_onboarding_date",
+   "fieldtype": "Date",
+   "label": "Employee onboarding date"
+  },
+  {
+   "fieldname": "ticket_amount",
+   "fieldtype": "Currency",
+   "label": "Ticket Amount"
+  },
+  {
+   "fieldname": "ticket_entitlement_duration",
+   "fieldtype": "Data",
+   "label": "Ticket Entitlement Duration"
+  },
+  {
+   "fieldname": "column_break_pujc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nPending\nPaid"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-16 16:32:05.142878",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Air Ticket Entitlement",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
