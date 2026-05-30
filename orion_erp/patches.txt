@@ -7,7 +7,6 @@
 orion_erp.patches.update_probation_end_date
 orion_erp.patches.fix_invalid_cell_numbers
 orion_erp.patches.set_user_id_in_employee
-orion_erp.patches.delete_all_attendance_sql
 orion_erp.patches.fix_leave_approver_mapping
 orion_erp.patches.set_add_total_row_employee_deduction_report
 orion_erp.patches.set_outstanding_amount_ticket_allowance

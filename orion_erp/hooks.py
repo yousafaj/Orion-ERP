@@ -115,7 +115,6 @@ fixtures = [
 # after_install = "orion_erp.install.after_install"
 
 after_install = "orion_erp.passport_management.install.after_install"
-after_migrate = "orion_erp.orion_erp.install.after_migrate"
 
 # Uninstallation
 # ------------
