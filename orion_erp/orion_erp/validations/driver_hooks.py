@@ -1,100 +1,60 @@
 import frappe
-from frappe import _
+
 
 def validate_driver(doc, method):
-    loa_to_recalc = None
-    linked_cicpa_name = None
-    remarks = ""
-    cicpa_doc = None
+    pull_certificates_from_employee(doc)
+    ensure_driver_certification_types(doc)
+    if not doc.is_new():
+        sync_existing_certificates(doc)
+
+
+def after_insert_driver(doc, method):
     sync_existing_certificates(doc)
-    if doc.custom_cicpa:
-        if hasattr(doc, "custom_certification_list"):
-            cicpa_exists = any(
-                row.certification_name == "CICPA" and row.reference_no == doc.custom_cicpa
-                for row in doc.custom_certification_list
-            )
-            if cicpa_exists:
-                return
 
-        try:
-            cicpa_doc = frappe.get_doc("CICPA", doc.custom_cicpa)
-            loa_to_recalc = cicpa_doc.loa
-            linked_cicpa_name = cicpa_doc.name
-        except frappe.DoesNotExistError:
-            pass
 
-    if doc.custom_has_cicpa and cicpa_doc:
-        frappe.db.set_value("CICPA", cicpa_doc.name, "driver", doc.name)
-        remarks = "Adding Driver"
+def pull_certificates_from_employee(doc):
+    if not doc.is_new() or not doc.employee or doc.get("custom_certification_list"):
+        return
 
-        if hasattr(doc, "custom_certification_list"):
-            already_exists = any(
-                row.reference_no == cicpa_doc.name
-                for row in doc.custom_certification_list
-            )
-            if not already_exists:
-                new_row = doc.append("custom_certification_list", {})
-                new_row.certification_name = "CICPA"
-                new_row.date_of_issue = cicpa_doc.issue_date
-                new_row.date_of_expiry = cicpa_doc.expiry_date
-                new_row.attachment = cicpa_doc.document
-                new_row.reference_no = cicpa_doc.name
+    emp_rows = frappe.get_all(
+        "Employee cdt",
+        filters={"parent": doc.employee, "parentfield": "custom_certificates"},
+        fields=["certification_name", "reference_no", "date_of_issue", "date_of_expiry", "attachment"],
+        order_by="idx asc",
+    )
+    for row in emp_rows:
+        doc.append("custom_certification_list", row)
 
-    else:
-        cicpa_docs = frappe.get_all("CICPA", filters={"driver": doc.name}, fields=["name", "loa"])
-        for cicpa in cicpa_docs:
-            frappe.db.set_value("CICPA", cicpa.name, "driver", None)
-            frappe.db.set_value("CICPA", cicpa.name, "cicpa_status", "Cancelled")
-            frappe.db.set_value("CICPA", cicpa.name, "active", "0")
-            loa_to_recalc = cicpa.loa or loa_to_recalc
-            linked_cicpa_name = cicpa.name
-            remarks = "Removing Driver"
 
-            if hasattr(doc, "custom_certification_list"):
-                doc.custom_certification_list = [
-                    row for row in doc.custom_certification_list
-                    if row.reference_no != cicpa.name
-                ]
+def ensure_driver_certification_types(doc):
+    for row in doc.get("custom_certification_list", []) or []:
+        cert_name = getattr(row, "certification_name", None)
+        _ensure_cert_type(cert_name)
 
-    if loa_to_recalc:
-        cicpa_list = frappe.get_all(
-            "CICPA",
-            filters={
-                "loa": loa_to_recalc,
-                "cicpa_type": "Driver"
-            },
-            fields=["name", "driver", "cicpa_status"]
-        )
 
-        allocated_driver = 0
-        cancelled_driver = 0
-
-        for d in cicpa_list:
-            if d.cicpa_status == "Cancelled":
-                cancelled_driver += 1
-            elif d.driver:
-                allocated_driver += 1
-
-        loa_doc = frappe.get_doc("LOA", loa_to_recalc)
-        loa_doc.allocated_driver_quota = allocated_driver
-        loa_doc.total_cancelled_driver_cicpa = cancelled_driver
-        loa_doc.remaining_driver_quota = (
-            loa_doc.total_driver_quota - allocated_driver - cancelled_driver
-        )
-
-        loa_doc.save(ignore_permissions=True)
-
-    if linked_cicpa_name and remarks:
-        cicpa_record = frappe.get_doc("CICPA", linked_cicpa_name)
+def _ensure_cert_type(cert_name):
+    if cert_name and not frappe.db.exists("Driver Certification Type", cert_name):
         frappe.get_doc({
-            "doctype": "CICPA Logs",
-            "cicpa": cicpa_record.name,
-            "loa": cicpa_record.loa,
-            "vehicle": cicpa_record.vehicle,
-            "driver": cicpa_record.driver,
-            "remarks": remarks,
-            "docstatus": 1
+            "doctype": "Driver Certification Type",
+            "type_name": cert_name,
         }).insert(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def get_employee_certificates_for_driver(employee):
+    if not employee:
+        return []
+
+    rows = frappe.get_all(
+        "Employee cdt",
+        filters={"parent": employee, "parentfield": "custom_certificates"},
+        fields=["certification_name", "reference_no", "date_of_issue", "date_of_expiry", "attachment"],
+        order_by="idx asc",
+    )
+    for r in rows:
+        _ensure_cert_type(r.get("certification_name"))
+    return rows
+
 
 def sync_existing_certificates(doc):
     for row in getattr(doc, "custom_certification_list", []):
