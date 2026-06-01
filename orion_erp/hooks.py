@@ -224,7 +224,8 @@ scheduler_events = {
         # "orion_erp.orion_erp.doctype.employee_deduction.employee_deduction.run_deduction_cron"
 		"orion_erp.tasks.daily.daily",
         "orion_erp.orion_erp.scripts.certificate_notification.certificate_expiry_notification",
-        "orion_erp.orion_erp.doctype.employee.create_ticket_allowance"
+        "orion_erp.orion_erp.doctype.employee.create_ticket_allowance",
+        "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.restore_delegations"
 	],
 	# "hourly": [
 	# 	"orion_erp.tasks.hourly"
