@@ -107,7 +107,27 @@ def create_customer(**kwargs) -> "frappe.model.document.Document":
 	return doc
 
 
+def ensure_location_custom_field() -> None:
+	"""orion_erp's `LOA locations cdt.location_code` fetches from
+	`location.custom_location_code`, but the app does not ship that Custom Field
+	(a real orion_erp bug — fresh installs break on LOA creation). Recreate it so
+	tests mirror a correctly-set-up site.
+	"""
+	if not frappe.db.exists("Custom Field", {"dt": "Location", "fieldname": "custom_location_code"}):
+		frappe.get_doc(
+			{
+				"doctype": "Custom Field",
+				"dt": "Location",
+				"fieldname": "custom_location_code",
+				"label": "Location Code",
+				"fieldtype": "Data",
+				"insert_after": "location_name",
+			}
+		).insert(ignore_permissions=True)
+
+
 def create_location(**kwargs) -> "frappe.model.document.Document":
+	ensure_location_custom_field()
 	doc = frappe.get_doc(
 		{
 			"doctype": "Location",
