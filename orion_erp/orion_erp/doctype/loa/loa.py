@@ -1,7 +1,7 @@
 # Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
 from frappe.model.document import Document
 
 
@@ -20,7 +20,6 @@ class LOA(Document):
 		allocated_vehicle_quota: DF.Int
 		amended_from: DF.Link | None
 		contract_number: DF.Data
-		contract_year: DF.Int
 		document: DF.Attach | None
 		end_user: DF.Link
 		expiry_date: DF.Date
@@ -42,3 +41,24 @@ class LOA(Document):
 		total_vehicle_quota: DF.Int
 	# end: auto-generated types
 	pass
+
+
+def auto_expire_loas():
+	today = frappe.utils.nowdate()
+	candidates = frappe.get_all(
+		"LOA",
+		filters={"docstatus": 1, "loa_status": "Active", "expiry_date": ["<", today]},
+		pluck="name",
+	)
+	for name in candidates:
+		try:
+			frappe.db.set_value(
+				"LOA",
+				name,
+				{"loa_status": "Expired", "active": 0},
+				update_modified=True,
+			)
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			frappe.log_error(frappe.get_traceback(), f"auto_expire_loas failed for {name}")
