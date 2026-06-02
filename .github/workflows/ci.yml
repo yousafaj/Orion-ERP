@@ -1,0 +1,109 @@
+name: CI
+
+# Runs the orion_erp test suite on a throwaway Frappe site, exactly mirroring the
+# local setup: init a v15 bench, install erpnext + hrms + orion_erp, migrate, then
+# `run-tests --app orion_erp`. The guard test (tests/test_controllers_have_tests.py)
+# fails the build if a new logic-bearing doctype lacks real tests.
+
+on:
+  push:
+    branches: [yousaf-dev, main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout orion_erp
+        uses: actions/checkout@v4
+        with:
+          path: orion_erp
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Check for syntax errors & merge conflicts
+        run: |
+          python -m compileall -q "${GITHUB_WORKSPACE}/orion_erp"
+          if grep -lr --exclude-dir=node_modules --exclude-dir=.git "^<<<<<<< " "${GITHUB_WORKSPACE}/orion_erp"; then
+            echo "Found merge conflict markers"; exit 1
+          fi
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libcups2-dev mariadb-client
+
+      - name: Install frappe-bench
+        run: pip install frappe-bench
+
+      - name: Init bench (frappe version-15)
+        run: |
+          bench init --skip-redis-config-generation --frappe-branch version-15 --python "$(which python)" ~/frappe-bench
+
+      - name: Configure bench to use CI services
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench set-config -g db_host 127.0.0.1
+          bench set-config -g db_port 3306
+          bench set-config -g redis_cache    redis://127.0.0.1:6379
+          bench set-config -g redis_queue    redis://127.0.0.1:6379
+          bench set-config -g redis_socketio redis://127.0.0.1:6379
+          # stop the watcher/scheduler from being required
+          sed -i '/redis/d;/watch/d;/schedule/d;/socketio/d' Procfile
+
+      - name: Get apps (erpnext, hrms, orion_erp)
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench get-app erpnext --branch version-15 --resolve-deps
+          bench get-app hrms --branch version-15
+          bench get-app "${GITHUB_WORKSPACE}/orion_erp"
+
+      - name: Create test site + install apps
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench new-site test_site \
+            --mariadb-root-password root \
+            --admin-password admin \
+            --db-root-username root \
+            --mariadb-user-host-login-scope='%'
+          bench --site test_site install-app erpnext hrms orion_erp
+          # custom-field columns: orion_erp needs a follow-up migrate after install
+          bench --site test_site migrate
+          bench --site test_site set-config allow_tests true
+
+      - name: Run orion_erp tests
+        working-directory: /home/runner/frappe-bench
+        # --skip-test-records: orion_erp tests build their own data via
+        # orion_erp/tests/fixtures.py, so we skip Frappe's global auto test-records
+        # (which otherwise fail on orion_erp's "Passport no" required-cert validation).
+        run: bench --site test_site run-tests --app orion_erp --skip-test-records
