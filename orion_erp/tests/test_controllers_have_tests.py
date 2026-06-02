@@ -32,6 +32,7 @@ PENDING = {
 	"existing_certificates",
 	"cicpa_logs",
 	"orion_settings",
+	"leave_delegation",
 }
 
 # Document lifecycle hooks that signal "this controller has real logic".
