@@ -125,6 +125,14 @@ after_install = "orion_erp.passport_management.install.after_install"
 after_migrate = ["orion_erp.setup.after_migrate"]
 
 
+# Testing
+# -------
+# Bootstrap erpnext/hrms standard fixtures (Warehouse Types like "Transit", the
+# territory/customer-group trees, default UOMs, a test Company) before orion_erp
+# tests run on a fresh site. Only invoked by the test runner.
+before_tests = "hrms.tests.test_utils.before_tests"
+
+
 # Integration Setup
 # ------------------
 # To set up dependencies/integrations with other apps

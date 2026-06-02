@@ -24,10 +24,21 @@ def ensure_uom(name: str = "Nos") -> str:
 	return name
 
 
+def ensure_warehouse_type(name: str = "Transit") -> str:
+	"""erpnext's Company.on_update auto-creates warehouses that link Warehouse Type
+	"Transit", which ships only in the setup-wizard fixtures. Ensure it on fresh sites."""
+	if not frappe.db.exists("Warehouse Type", name):
+		wt = frappe.new_doc("Warehouse Type")
+		wt.name = name
+		wt.insert(ignore_permissions=True)
+	return name
+
+
 def get_company() -> str:
 	"""Return a test Company name, creating it once (reuses the HRMS helper)."""
 	from hrms.tests.test_utils import create_company
 
+	ensure_warehouse_type("Transit")
 	return create_company("_Test Orion Company").name
 
 
