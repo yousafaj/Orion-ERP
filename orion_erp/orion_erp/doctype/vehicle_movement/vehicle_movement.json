@@ -7,55 +7,105 @@
  "engine": "InnoDB",
  "field_order": [
   "detail_section",
-  "status",
   "vehicle",
   "movement_date",
   "rent_type",
+  "rental_status",
+  "column_break_nqeo",
+  "project_to",
+  "customer",
+  "demobilize_date",
+  "info_section",
   "vehicle_type",
   "vehicle_ownership_status",
   "vehicle_state",
-  "column_break_nqeo",
-  "project_id",
-  "project_to",
-  "location_to",
-  "customer",
-  "location",
+  "column_break_info",
   "location_from",
+  "location_to",
+  "driver_section",
+  "driver_shifts",
   "section_break_uoeg",
   "vehicle_checklist",
   "loa",
   "contract",
+  "deprecated_section",
+  "status",
+  "project_id",
+  "location",
   "section_break_bzfb",
   "amended_from"
  ],
  "fields": [
   {
-   "fieldname": "section_break_bzfb",
-   "fieldtype": "Section Break"
+   "fieldname": "detail_section",
+   "fieldtype": "Section Break",
+   "label": "Rental"
   },
   {
-   "fieldname": "amended_from",
+   "fieldname": "vehicle",
    "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Vehicle Movement",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
+   "in_list_view": 1,
+   "label": "Vehicle",
+   "options": "Vehicle",
+   "reqd": 1
   },
   {
    "fieldname": "movement_date",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Movement Date",
+   "label": "Start Date",
    "reqd": 1
   },
   {
-   "fieldname": "vehicle",
-   "fieldtype": "Link",
-   "label": "Vehicle",
-   "options": "Vehicle",
+   "fieldname": "rent_type",
+   "fieldtype": "Select",
+   "label": "Rent Type",
+   "options": "\nWithout Driver\nWith Driver",
    "reqd": 1
+  },
+  {
+   "default": "Active",
+   "fieldname": "rental_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Rental Status",
+   "options": "Active\nClosed",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "column_break_nqeo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project_to",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1,
+   "description": "Auto-filled from the Project when it has one; editable."
+  },
+  {
+   "depends_on": "eval:doc.demobilize_date",
+   "fieldname": "demobilize_date",
+   "fieldtype": "Date",
+   "label": "Demobilize Date",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:false",
+   "fieldname": "info_section",
+   "fieldtype": "Section Break",
+   "label": "Vehicle Info"
   },
   {
    "fetch_from": "vehicle.custom_vehicle_type",
@@ -72,44 +122,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "column_break_nqeo",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval: doc.status === 'Demobilise';",
-   "fieldname": "project_id",
-   "fieldtype": "Link",
-   "label": "Project from",
-   "mandatory_depends_on": "eval: doc.status === 'Demobilise';",
-   "options": "Project",
-   "read_only": 1
-  },
-  {
-   "depends_on": "eval: doc.status === 'Demobilise';",
-   "fieldname": "customer",
-   "fieldtype": "Link",
-   "label": "From Customer",
-   "options": "Customer",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "project_id.custom_location",
-   "fieldname": "location",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Location",
-   "options": "Location",
-   "read_only": 1
-  },
-  {
-   "depends_on": "eval: doc.status === 'Mobilise';",
-   "fieldname": "rent_type",
-   "fieldtype": "Select",
-   "label": "Rent Type",
-   "mandatory_depends_on": "eval: doc.status === 'Mobilise';",
-   "options": "\nWithout Driver\nWith Driver"
-  },
-  {
    "fetch_from": "vehicle.custom_state",
    "fieldname": "vehicle_state",
    "fieldtype": "Data",
@@ -117,9 +129,39 @@
    "read_only": 1
   },
   {
+   "fieldname": "column_break_info",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "vehicle.custom_last_location",
+   "fieldname": "location_from",
+   "fieldtype": "Link",
+   "label": "Location From",
+   "options": "Location"
+  },
+  {
+   "fieldname": "location_to",
+   "fieldtype": "Link",
+   "label": "Location To",
+   "options": "Location"
+  },
+  {
+   "fieldname": "driver_section",
+   "fieldtype": "Section Break",
+   "label": "Drivers",
+   "depends_on": "eval:doc.rent_type=='With Driver'"
+  },
+  {
+   "depends_on": "eval:doc.rent_type=='With Driver'",
+   "fieldname": "driver_shifts",
+   "fieldtype": "Table",
+   "label": "Driver Shifts",
+   "options": "Vehicle Movement Driver Shift"
+  },
+  {
    "fieldname": "section_break_uoeg",
    "fieldtype": "Section Break",
-   "label": "Attachments  "
+   "label": "Attachments"
   },
   {
    "fieldname": "vehicle_checklist",
@@ -137,43 +179,54 @@
    "label": "Contract"
   },
   {
-   "fetch_from": "vehicle.custom_last_location",
-   "fieldname": "location_from",
-   "fieldtype": "Link",
-   "label": "Location From",
-   "options": "Location"
-  },
-  {
-   "fieldname": "location_to",
-   "fieldtype": "Link",
-   "label": "Location To",
-   "options": "Location"
+   "collapsible": 1,
+   "fieldname": "deprecated_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Deprecated"
   },
   {
    "fieldname": "status",
    "fieldtype": "Select",
-   "label": "Mobilisation Status",
+   "label": "Mobilisation Status (deprecated)",
    "options": "\nAvailable for Use\nMobilise\nDemobilise\nBreakdown",
-   "reqd": 1
+   "hidden": 1
   },
   {
-   "fieldname": "detail_section",
-   "fieldtype": "Section Break",
-   "label": "Detail"
-  },
-  {
-   "depends_on": "eval: doc.status === 'Mobilise';",
-   "fieldname": "project_to",
+   "fieldname": "project_id",
    "fieldtype": "Link",
-   "label": "Project to",
-   "mandatory_depends_on": "eval: doc.status === 'Mobilise';",
-   "options": "Project"
+   "label": "Project from (deprecated)",
+   "options": "Project",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "label": "Location (deprecated)",
+   "options": "Location",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_bzfb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Vehicle Movement",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-19 14:30:14.346044",
+ "modified": "2026-06-03 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Vehicle Movement",

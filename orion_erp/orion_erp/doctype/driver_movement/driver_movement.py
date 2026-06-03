@@ -27,6 +27,17 @@ class DriverMovement(Document):
         vehicle_type: DF.Data | None
     # end: auto-generated types
 
+    def validate(self):
+        # Driver Movement is deprecated: driver assignment is now handled inside
+        # Vehicle Movement (rent type "With Driver"). Block creating new records,
+        # but leave existing ones operable. The methods below are retained only
+        # for historical records.
+        if self.is_new():
+            frappe.throw(_(
+                "Driver Movement is deprecated. Assign drivers directly on the "
+                "Vehicle Movement form (Rent Type = 'With Driver')."
+            ))
+
     def on_submit(self):
         try:                
             self.update_driver_shift_vehicle()

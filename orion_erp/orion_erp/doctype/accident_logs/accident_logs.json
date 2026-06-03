@@ -10,9 +10,16 @@
   "vrn",
   "location",
   "incident_date",
+  "amount",
   "incident_details"
  ],
  "fields": [
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Cost / Amount"
+  },
   {
    "fieldname": "project",
    "fieldtype": "Link",

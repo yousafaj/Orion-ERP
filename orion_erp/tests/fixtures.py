@@ -86,6 +86,88 @@ def create_vehicle(**kwargs) -> "frappe.model.document.Document":
 	return doc
 
 
+def ensure_nationality(name: str = "_Test Nationality") -> str:
+	if not frappe.db.exists("Nationality", name):
+		doc = frappe.new_doc("Nationality")
+		doc.name = name  # Nationality uses prompt naming
+		doc.insert(ignore_permissions=True)
+	return name
+
+
+def ensure_employee_certificate(name: str = "Passport no") -> str:
+	"""orion_erp's employee validation requires a 'Passport no' certificate. The
+	cert name is a Link to 'Employee Certificate'."""
+	if not frappe.db.exists("Employee Certificate", name):
+		# Employee Certificate is named by its `type_name` field.
+		frappe.get_doc({"doctype": "Employee Certificate", "type_name": name}).insert(ignore_permissions=True)
+	return name
+
+
+def ensure_shift_type(name: str = "_Test Day Shift") -> str:
+	if not frappe.db.exists("Shift Type", name):
+		frappe.get_doc(
+			{
+				"doctype": "Shift Type",
+				"name": name,
+				"start_time": "08:00:00",
+				"end_time": "17:00:00",
+			}
+		).insert(ignore_permissions=True)
+	return name
+
+
+def create_employee(**kwargs) -> "frappe.model.document.Document":
+	"""Create a minimal orion-valid Employee (carries the required 'Passport no'
+	certificate so orion's employee validation passes)."""
+	ensure_employee_certificate("Passport no")
+	doc = frappe.get_doc(
+		{
+			"doctype": "Employee",
+			"first_name": kwargs.pop("first_name", None) or f"_Test Emp {frappe.generate_hash(length=5)}",
+			"gender": kwargs.pop("gender", "Male"),
+			"date_of_birth": kwargs.pop("date_of_birth", "1990-01-01"),
+			"date_of_joining": kwargs.pop("date_of_joining", "2020-01-01"),
+			"company": kwargs.pop("company", None) or get_company(),
+			"custom_nationality": kwargs.pop("custom_nationality", None) or ensure_nationality(),
+			"custom_total_salary_as_per_offer_letter": kwargs.pop(
+				"custom_total_salary_as_per_offer_letter", "0"
+			),
+			"custom_certificates": kwargs.pop(
+				"custom_certificates",
+				[
+					{
+						"certification_name": "Passport no",
+						"reference_no": f"P-{frappe.generate_hash(length=6)}",
+						"date_of_issue": "2020-01-01",
+						"date_of_expiry": "2030-01-01",
+					}
+				],
+			),
+			**kwargs,
+		}
+	)
+	doc.insert(ignore_permissions=True)
+	return doc
+
+
+def create_driver(**kwargs) -> "frappe.model.document.Document":
+	"""Create an ERPNext Driver linked to a fresh orion Employee."""
+	employee = kwargs.pop("employee", None) or create_employee().name
+	nationality = frappe.db.get_value("Employee", employee, "custom_nationality") or ensure_nationality()
+	doc = frappe.get_doc(
+		{
+			"doctype": "Driver",
+			"full_name": kwargs.pop("full_name", None) or f"_Test Driver {frappe.generate_hash(length=5)}",
+			"employee": employee,
+			"custom_nationality": kwargs.pop("custom_nationality", None) or nationality,
+			"status": kwargs.pop("status", "Active"),
+			**kwargs,
+		}
+	)
+	doc.insert(ignore_permissions=True)
+	return doc
+
+
 # --------------------------------------------------------------------------
 # Parties / locations (prerequisites for LOA + CICPA)
 # --------------------------------------------------------------------------
@@ -143,6 +225,9 @@ def create_location(**kwargs) -> "frappe.model.document.Document":
 		{
 			"doctype": "Location",
 			"location_name": kwargs.pop("location_name", None) or f"_Test Location {frappe.generate_hash(length=6)}",
+			# LOA.validate warns if a location has no code, so default one (pass
+			# custom_location_code="" explicitly to test the missing-code path).
+			"custom_location_code": kwargs.pop("custom_location_code", f"LC-{frappe.generate_hash(length=4)}"),
 			**kwargs,
 		}
 	)
@@ -192,6 +277,56 @@ def create_loa(do_not_submit: bool = False, **kwargs) -> "frappe.model.document.
 	}
 	values.update(kwargs)
 	doc = frappe.get_doc(values)
+	doc.insert(ignore_permissions=True)
+	if not do_not_submit:
+		doc.submit()
+	return doc
+
+
+# --------------------------------------------------------------------------
+# Vehicle Movement (period-based rental)
+# --------------------------------------------------------------------------
+def create_vehicle_movement(do_not_submit: bool = False, **kwargs) -> "frappe.model.document.Document":
+	"""Create a Vehicle Movement (rental). Defaults to a Without-Driver rental of a
+	freshly-created Idle vehicle to a freshly-created customer/project.
+
+	Pass `vehicle=`, `customer=`, `project_to=`, `movement_date=`, `rent_type=`,
+	`driver_shifts=[{driver, shift}, ...]` to override.
+	"""
+	vehicle = kwargs.pop("vehicle", None) or create_vehicle().name
+	customer = kwargs.pop("customer", None) or create_customer().name
+	project = kwargs.pop("project_to", None) or create_project(customer=customer).name
+	values = {
+		"doctype": "Vehicle Movement",
+		"vehicle": vehicle,
+		"customer": customer,
+		"project_to": project,
+		"movement_date": kwargs.pop("movement_date", nowdate()),
+		"rent_type": kwargs.pop("rent_type", "Without Driver"),
+	}
+	values.update(kwargs)
+	doc = frappe.get_doc(values)
+	doc.insert(ignore_permissions=True)
+	if not do_not_submit:
+		doc.submit()
+	return doc
+
+
+# --------------------------------------------------------------------------
+# Monthly Billing
+# --------------------------------------------------------------------------
+def create_monthly_billing(customer, billing_month, do_not_submit: bool = False, **kwargs):
+	"""Create + build a Monthly Billing sheet for a customer/month (submitted by
+	default). Returns the document."""
+	doc = frappe.get_doc(
+		{
+			"doctype": "Monthly Billing",
+			"customer": customer,
+			"billing_month": billing_month,
+			**kwargs,
+		}
+	)
+	doc.build()
 	doc.insert(ignore_permissions=True)
 	if not do_not_submit:
 		doc.submit()

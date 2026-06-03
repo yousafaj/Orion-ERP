@@ -235,6 +235,11 @@ scheduler_events = {
     "cron": {
         "0 6 30 * *": [
             "orion_erp.orion_erp.doctype.additional_salary.create_monthly_allowances"
+        ],
+        # 1st of every month, 02:00 — build last month's Monthly Billing sheets so
+        # Accounts never miss invoicing a customer-month.
+        "0 2 1 * *": [
+            "orion_erp.orion_erp.doctype.monthly_billing.monthly_billing.create_monthly_billing_sheets"
         ]
     },
 	"daily": [

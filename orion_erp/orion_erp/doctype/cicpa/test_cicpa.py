@@ -36,16 +36,19 @@ class TestCICPA(FrappeTestCase):
 			create_cicpa(loa=loa.name, cicpa_type="Vehicle", do_not_submit=True)
 
 	def test_on_submit_increments_loa_created_counter(self):
-		loa = create_loa(do_not_submit=True)
+		loa = create_loa(do_not_submit=True, total_vehicle_quota=8, remaining_vehicle_quota=8)
 		create_cicpa(loa=loa.name, cicpa_type="Vehicle")
 		loa.reload()
 		self.assertEqual(loa.total_created_vehicle_cicpa, 1)
+		# Submitting a CICPA must consume one unit of the remaining quota.
+		self.assertEqual(loa.remaining_vehicle_quota, 7)
 
 	def test_mark_status_expired_frees_the_quota(self):
-		loa = create_loa(do_not_submit=True)
+		loa = create_loa(do_not_submit=True, total_vehicle_quota=8, remaining_vehicle_quota=8)
 		cicpa = create_cicpa(loa=loa.name, cicpa_type="Vehicle")
 		loa.reload()
 		self.assertEqual(loa.total_created_vehicle_cicpa, 1)
+		self.assertEqual(loa.remaining_vehicle_quota, 7)
 
 		mark_cicpa_status(cicpa.name, "Expired")
 
@@ -53,6 +56,8 @@ class TestCICPA(FrappeTestCase):
 		loa.reload()
 		self.assertEqual(cicpa.cicpa_status, "Expired")
 		self.assertEqual(loa.total_created_vehicle_cicpa, 0)
+		# Expiring it returns the consumed unit, restoring the original quota.
+		self.assertEqual(loa.remaining_vehicle_quota, 8)
 
 	def test_mark_status_rejects_double_transition(self):
 		loa = create_loa(do_not_submit=True)
@@ -70,3 +75,15 @@ class TestCICPA(FrappeTestCase):
 
 		cicpa.reload()
 		self.assertEqual(cicpa.cicpa_status, "Expired")
+
+	def test_trashing_a_draft_cicpa_leaves_quota_untouched(self):
+		# A draft CICPA never consumed quota, so deleting it must not change counters.
+		loa = create_loa(do_not_submit=True, total_vehicle_quota=8, remaining_vehicle_quota=8)
+		cicpa = create_cicpa(loa=loa.name, cicpa_type="Vehicle", do_not_submit=True)
+		loa.reload()
+		created_before = loa.total_created_vehicle_cicpa
+		remaining_before = loa.remaining_vehicle_quota
+		cicpa.delete()
+		loa.reload()
+		self.assertEqual(loa.total_created_vehicle_cicpa, created_before)
+		self.assertEqual(loa.remaining_vehicle_quota, remaining_before)

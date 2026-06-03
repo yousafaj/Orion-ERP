@@ -6,66 +6,44 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "post_fine",
-  "column_break_rdey",
-  "status",
   "section_break_gvlb",
   "vehicle",
-  "vehicle_type",
-  "shift",
-  "driver",
-  "employment_type",
-  "column_break_luxv",
   "date",
-  "project",
   "customer",
-  "fine_status",
+  "driver",
+  "column_break_rdey",
+  "status",
   "section_break_rqqw",
   "detail",
+  "accident_section",
   "accident_detail",
   "section_break_ucfa",
   "closing_status",
-  "column_break_qljo",
   "evidence",
+  "column_break_qljo",
+  "total_amount",
+  "employee_deduction",
+  "hidden_section",
+  "project",
+  "shift",
+  "employment_type",
+  "vehicle_type",
+  "fine_status",
+  "post_fine",
   "section_break_kjdx",
   "amended_from"
  ],
  "fields": [
   {
+   "fieldname": "section_break_gvlb",
+   "fieldtype": "Section Break"
+  },
+  {
    "fieldname": "vehicle",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Vehicle",
    "options": "Vehicle"
-  },
-  {
-   "fetch_from": "vehicle.custom_vehicle_type",
-   "fieldname": "vehicle_type",
-   "fieldtype": "Data",
-   "label": "Vehicle Type",
-   "read_only": 1
-  },
-  {
-   "fieldname": "shift",
-   "fieldtype": "Link",
-   "label": "Shift",
-   "options": "Shift Type"
-  },
-  {
-   "fieldname": "driver",
-   "fieldtype": "Link",
-   "label": "Driver",
-   "options": "Driver"
-  },
-  {
-   "fieldname": "employment_type",
-   "fieldtype": "Link",
-   "label": "Employment Type",
-   "options": "Employment Type",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_luxv",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "date",
@@ -75,28 +53,142 @@
    "reqd": 1
   },
   {
-   "fieldname": "project",
-   "fieldtype": "Link",
-   "label": "Project",
-   "options": "Project"
-  },
-  {
-   "fetch_from": "project.customer",
    "fieldname": "customer",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Customer",
    "options": "Customer",
+   "description": "Auto-filled from the vehicle's rental on this date; editable."
+  },
+  {
+   "fieldname": "driver",
+   "fieldtype": "Link",
+   "label": "Driver",
+   "options": "Driver"
+  },
+  {
+   "fieldname": "column_break_rdey",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Fine Status",
+   "options": "\nOpen\nClosed",
    "read_only": 1
   },
   {
    "fieldname": "section_break_rqqw",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Fine Detail"
   },
   {
    "fieldname": "detail",
    "fieldtype": "Table",
-   "label": "Fine Detail",
+   "label": "Fines",
    "options": "Fines cdt"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "accident_section",
+   "fieldtype": "Section Break",
+   "label": "Accident Detail"
+  },
+  {
+   "fieldname": "accident_detail",
+   "fieldtype": "Table",
+   "label": "Accidents",
+   "options": "Accident Logs"
+  },
+  {
+   "fieldname": "section_break_ucfa",
+   "fieldtype": "Section Break",
+   "label": "Responsibility & Closing"
+  },
+  {
+   "allow_on_submit": 1,
+   "description": "Set by Accounts after the fine is recorded.",
+   "fieldname": "closing_status",
+   "fieldtype": "Select",
+   "label": "Responsibility",
+   "options": "\nPaid by Client\nPaid by Driver\nPaid by Company",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "evidence",
+   "fieldtype": "Attach",
+   "label": "Evidence"
+  },
+  {
+   "fieldname": "column_break_qljo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_deduction",
+   "fieldtype": "Link",
+   "label": "Employee Deduction",
+   "options": "Employee Deduction",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "hidden_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Deprecated"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "hidden": 1
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Link",
+   "label": "Shift",
+   "options": "Shift Type",
+   "hidden": 1
+  },
+  {
+   "fieldname": "employment_type",
+   "fieldtype": "Link",
+   "label": "Employment Type",
+   "options": "Employment Type",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fetch_from": "vehicle.custom_vehicle_type",
+   "fieldname": "vehicle_type",
+   "fieldtype": "Data",
+   "label": "Vehicle Type",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "fine_status",
+   "fieldtype": "Select",
+   "label": "Fine Type",
+   "options": "\nFaulty\nNot Faulty",
+   "hidden": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "post_fine",
+   "fieldtype": "Check",
+   "label": "Existing Fine",
+   "hidden": 1
   },
   {
    "fieldname": "section_break_kjdx",
@@ -111,75 +203,12 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Traffic Fine or Accident",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "fieldname": "fine_status",
-   "fieldtype": "Select",
-   "label": "Fine Type",
-   "options": "\nFaulty\nNot Faulty"
-  },
-  {
-   "default": "0",
-   "fieldname": "post_fine",
-   "fieldtype": "Check",
-   "label": "Existing Fine"
-  },
-  {
-   "fieldname": "section_break_gvlb",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "accident_detail",
-   "fieldtype": "Table",
-   "label": "Accident Detail",
-   "options": "Accident Logs"
-  },
-  {
-   "fieldname": "section_break_ucfa",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "closing_status",
-   "fieldtype": "Select",
-   "label": "Closing Status",
-   "options": "\nPaid by Client\nPaid by Driver\nPaid by Company"
-  },
-  {
-   "fieldname": "column_break_qljo",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "evidence",
-   "fieldtype": "Attach",
-   "label": "Evidence"
-  },
-  {
-   "default": "Open",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Fine Status",
-   "options": "\nOpen\nClosed",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_rdey",
-   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-23 17:21:32.803354",
+ "modified": "2026-06-03 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Traffic Fine or Accident",
@@ -197,6 +226,28 @@
    "role": "System Manager",
    "share": 1,
    "submit": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Accounts Manager",
    "write": 1
   }
  ],

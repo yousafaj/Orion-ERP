@@ -2,61 +2,47 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Vehicle Movement", {
-
-    vehicle(frm) {
-        if (frm.doc.vehicle) {
-            frappe.call({
-                method: "frappe.client.get_value",
-                args: {
-                    doctype: "Vehicle",
-                    filters: { name: frm.doc.vehicle },
-                    fieldname: "custom_project"
-                },
-                callback: function (r) {
-                    if (r.message) {
-                        frm.set_value("project_id", r.message.custom_project);
-                    }
-                }
-            });
-        }
-        else{
-            frm.set_value("project_id", null);
-        }
+    setup(frm) {
+        // Only Idle, Active vehicles can start a new rental.
+        frm.set_query("vehicle", () => ({
+            filters: { custom_state: "Idle", custom_status: "Active" }
+        }));
     },
 
-    status(frm) {
-        if (frm.doc.status) {
-            frm.set_query("vehicle", () => {
-                if (frm.doc.status === "Mobilise") {
-                    return {
-                        filters: {
-                            custom_state: "Idle",
-                            custom_status: "Active"
-                        }
-                    };
-                } else if (frm.doc.status === "Demobilise") {
-                    return {
-                        filters: {
-                            custom_state: "With Client",
-                            custom_status: "Active"
-                        }
-                    };
-                }
-                else if (frm.doc.status === "Breakdown") {
-                    return {
-                        filters: [
-                            ["custom_status", "=", "Active"]
-                        ]
-                    };
-                }
-                else if (frm.doc.status === "Available for Use") {
-                    return {
-                        filters: {
-                            custom_state: "Workshop",
-                            custom_status: "Active"
-                        }
-                    };
-                }
+    project_to(frm) {
+        // Auto-fill Customer from the project when it has one — but keep it editable
+        // so a project without a customer can still have one entered manually.
+        if (!frm.doc.project_to || frm.doc.customer) return;
+        frappe.db.get_value("Project", frm.doc.project_to, "customer").then((r) => {
+            if (r && r.message && r.message.customer) {
+                frm.set_value("customer", r.message.customer);
+            }
+        });
+    },
+
+    refresh(frm) {
+        if (frm.doc.docstatus === 1 && frm.doc.rental_status === "Active") {
+            frm.add_custom_button(__("Demobilize"), () => {
+                frappe.prompt(
+                    [{
+                        fieldname: "demobilize_date",
+                        label: __("Demobilize Date"),
+                        fieldtype: "Date",
+                        reqd: 1,
+                        default: frappe.datetime.get_today()
+                    }],
+                    (values) => {
+                        frappe.call({
+                            method: "orion_erp.orion_erp.doctype.vehicle_movement.vehicle_movement.demobilize",
+                            args: { name: frm.doc.name, demobilize_date: values.demobilize_date },
+                            freeze: true,
+                            freeze_message: __("Demobilizing…"),
+                            callback: () => frm.reload_doc()
+                        });
+                    },
+                    __("Demobilize Vehicle"),
+                    __("Confirm")
+                );
             });
         }
     },

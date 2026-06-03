@@ -1,24 +1,46 @@
 import frappe
 from frappe.utils import nowdate, getdate
 
-def daily():
-    validate_vehicle()
 
-def validate_vehicle():
-    vehicles = frappe.get_all("Vehicle", filters={"custom_status": "Active"}, fields=["name", "custom_vehicle_type", "custom_asset_mapping", "custom_rent_end_date"])
+def daily():
+    deactivate_expired_vehicles()
+
+
+def deactivate_expired_vehicles():
+    """Deactivate vehicles that should no longer be active:
+      * Owned vehicles whose mapped Asset has been Sold.
+      * Rented vehicles whose rent period has ended.
+
+    Ownership lives in `custom_ownership_status` (Owned/Rented). The earlier
+    version checked `custom_vehicle_type` (Light/Heavy) by mistake, so this job
+    never deactivated anything.
+    """
+    vehicles = frappe.get_all(
+        "Vehicle",
+        filters={"custom_status": "Active"},
+        fields=["name", "custom_ownership_status", "custom_asset_mapping", "custom_rent_end_date"],
+    )
 
     for v in vehicles:
-        if v.custom_vehicle_type == "Owned" and v.custom_asset_mapping:
+        deactivate = False
+
+        if v.custom_ownership_status == "Owned" and v.custom_asset_mapping:
             asset_status = frappe.db.get_value("Asset", v.custom_asset_mapping, "status")
             if asset_status == "Sold":
-                frappe.db.set_value("Vehicle", v.name, "custom_status", "Inactive")
-                frappe.db.commit()
+                deactivate = True
 
-        elif v.custom_vehicle_type == "Rented" and v.custom_rent_end_date:
+        elif v.custom_ownership_status == "Rented" and v.custom_rent_end_date:
             try:
-                rent_end = getdate(v.custom_rent_end_date)
-                if rent_end < getdate(nowdate()):
-                    frappe.db.set_value("Vehicle", v.name, "custom_status", "Inactive")
-                    frappe.db.commit()
-            except Exception as e:
-                frappe.log_error(f"Error parsing rent_end_date for Vehicle {v.name}: {str(e)}")
+                if getdate(v.custom_rent_end_date) < getdate(nowdate()):
+                    deactivate = True
+            except Exception:
+                frappe.log_error(
+                    frappe.get_traceback(),
+                    f"daily: bad rent_end_date for Vehicle {v.name}",
+                )
+                continue
+
+        if deactivate:
+            veh = frappe.get_doc("Vehicle", v.name)
+            veh.custom_status = "Inactive"
+            veh.save(ignore_permissions=True)

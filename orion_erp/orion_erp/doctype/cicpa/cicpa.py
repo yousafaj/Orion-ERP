@@ -2,6 +2,16 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+
+def _notify_loa(loa_name):
+	"""Push a realtime event so an open LOA form reloads its quota live (no manual
+	refresh) after a CICPA changes it."""
+	if loa_name:
+		frappe.publish_realtime(
+			"orion_loa_quota_updated", {"loa": loa_name}, doctype="LOA", docname=loa_name
+		)
+
+
 class CICPA(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
@@ -47,27 +57,39 @@ class CICPA(Document):
 
 				if self.cicpa_type == "Vehicle":
 					loa_doc.total_created_vehicle_cicpa = (loa_doc.total_created_vehicle_cicpa or 0) + 1
+					loa_doc.remaining_vehicle_quota = max(0, (loa_doc.remaining_vehicle_quota or 0) - 1)
 
 				elif self.cicpa_type == "Driver":
 					loa_doc.total_created_driver_cicpa = (loa_doc.total_created_driver_cicpa or 0) + 1
+					loa_doc.remaining_driver_quota = max(0, (loa_doc.remaining_driver_quota or 0) - 1)
 
 				loa_doc.save(ignore_permissions=True)
+				_notify_loa(loa_doc.name)
 			except Exception as e:
 				frappe.log_error(frappe.get_traceback(), "Error updating LOA CICPA count on submit")
 				frappe.throw(_("Failed to update LOA record: {0}").format(str(e)))
 
 	def on_trash(self):
-		if self.loa:
+		# Only adjust LOA counters when this CICPA actually contributed to them:
+		# it must have been SUBMITTED (docstatus 1) and still Active. A draft never
+		# incremented the counters, and Cancelled/Lost/Expired ones were already
+		# reconciled by before_cancel / mark_cicpa_status. Keep total_created and
+		# remaining_quota symmetric — the old version decremented created without
+		# restoring remaining, and touched counters for drafts too.
+		if self.loa and self.docstatus == 1 and self.cicpa_status == "Active":
 			try:
 				loa_doc = frappe.get_doc("LOA", self.loa)
 
-				if self.cicpa_type == "Vehicle" and loa_doc.total_created_vehicle_cicpa:
+				if self.cicpa_type == "Vehicle":
 					loa_doc.total_created_vehicle_cicpa = max(0, (loa_doc.total_created_vehicle_cicpa or 0) - 1)
+					loa_doc.remaining_vehicle_quota = (loa_doc.remaining_vehicle_quota or 0) + 1
 
-				elif self.cicpa_type == "Driver" and loa_doc.total_created_driver_cicpa:
+				elif self.cicpa_type == "Driver":
 					loa_doc.total_created_driver_cicpa = max(0, (loa_doc.total_created_driver_cicpa or 0) - 1)
+					loa_doc.remaining_driver_quota = (loa_doc.remaining_driver_quota or 0) + 1
 
 				loa_doc.save(ignore_permissions=True)
+				_notify_loa(loa_doc.name)
 			except Exception as e:
 				frappe.log_error(frappe.get_traceback(), "Error updating LOA CICPA count on delete")
 				frappe.throw(_("Failed to update LOA record during deletion: {0}").format(str(e)))
@@ -127,6 +149,7 @@ class CICPA(Document):
 						loa.remaining_driver_quota = (loa.remaining_driver_quota or 0) + 1
 						loa.total_cancelled_driver_cicpa = (loa.total_cancelled_driver_cicpa or 0) + 1
 					loa.save(ignore_permissions=True)
+					_notify_loa(loa.name)
 				except Exception:
 					frappe.log_error(frappe.get_traceback(), "CICPA before_cancel: LOA quota update failed")
 			self.db_set("cicpa_status", "Cancelled", update_modified=True)
@@ -242,6 +265,7 @@ def mark_cicpa_status(cicpa, new_status):
 			if new_status == "Cancelled":
 				loa.total_cancelled_driver_cicpa = (loa.total_cancelled_driver_cicpa or 0) + 1
 		loa.save(ignore_permissions=True)
+		_notify_loa(loa.name)
 
 
 def auto_expire_cicpas():

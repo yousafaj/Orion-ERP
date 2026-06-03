@@ -2,40 +2,41 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Maintenance Activity", {
-	existing_maintenance(frm) {
-        if (!frm.doc.vehicle) {
-            frappe.msgprint("Please select a Vehicle first.");
-            return;
-        }
+	refresh(frm) {
+		if (frm.doc.docstatus === 1 && frm.doc.vehicle) {
+			frm.add_custom_button(__("Return to Service"), () => {
+				frappe.call({
+					method: "orion_erp.orion_erp.doctype.maintenance_activity.maintenance_activity.return_to_service",
+					args: { name: frm.doc.name },
+					freeze: true,
+					callback: () => {
+						frappe.show_alert({ message: __("Vehicle returned to service."), indicator: "green" });
+					},
+				});
+			});
+		}
+	},
 
-        frappe.call({
-            method: "frappe.client.get_list",
-            args: {
-                doctype: "Driver Movement",
-                filters: {
-                    vehicle: frm.doc.vehicle,
-                    mobilization_status: "Mobilize"
-                },
-                fields: ["name", "driver", "shift", "project", "creation"],
-                order_by: "creation desc",
-                limit_page_length: 1
-            },
-            callback: function (r) {
-                if (r.message && r.message.length > 0) {
-                    const last_mob = r.message[0];
-                    frm.set_value("driver", last_mob.driver);
-                    frm.set_value("shift", last_mob.shift);
-                    frm.set_value("project", last_mob.project);
-                } else {
-                    frappe.msgprint("No Mobilization record found for this vehicle.");
-                }
-            }
-        });
-    },
+	vehicle(frm) {
+		fill_customer_from_rental(frm);
+	},
 
-    vehicle(frm) {
-        if (frm.doc.existing_maintenance == 1) {
-            frm.events.existing_maintenance(frm); 
-        }
-    }
+	date(frm) {
+		fill_customer_from_rental(frm);
+	},
 });
+
+// Auto-fill Customer from the vehicle's rental on the activity date.
+function fill_customer_from_rental(frm) {
+	if (!frm.doc.vehicle || !frm.doc.date) return;
+	frappe.call({
+		method: "orion_erp.orion_erp.doctype.monthly_billing.monthly_billing.rental_customer",
+		args: { vehicle: frm.doc.vehicle, on_date: frm.doc.date },
+		callback: (r) => {
+			if (r.message && r.message.customer) {
+				frm.set_value("customer", r.message.customer);
+				frm.set_value("project", r.message.project);
+			}
+		},
+	});
+}
