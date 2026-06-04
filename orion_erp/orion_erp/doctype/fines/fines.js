@@ -1,9 +1,9 @@
 // Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 // For license information, please see license.txt
 
-const FINE = "orion_erp.orion_erp.doctype.traffic_fine_or_accident.traffic_fine_or_accident";
+const FINE = "orion_erp.orion_erp.doctype.fines.fines";
 
-frappe.ui.form.on("Traffic Fine or Accident", {
+frappe.ui.form.on("Fines", {
 	refresh(frm) {
 		const is_accounts =
 			frappe.user.has_role("Accounts Manager") || frappe.user.has_role("System Manager");

@@ -20,7 +20,7 @@
   {"hidden": 0, "is_query_report": 0, "label": "CICPAs", "link_count": 0, "link_to": "CICPA", "link_type": "DocType", "onboard": 0, "type": "Link"},
   {"hidden": 0, "is_query_report": 0, "label": "Charges", "link_count": 0, "onboard": 0, "type": "Card Break"},
   {"hidden": 0, "is_query_report": 0, "label": "Salik / Tolls", "link_count": 0, "link_to": "Salik or Darbs", "link_type": "DocType", "onboard": 0, "type": "Link"},
-  {"hidden": 0, "is_query_report": 0, "label": "Fines", "link_count": 0, "link_to": "Traffic Fine or Accident", "link_type": "DocType", "onboard": 0, "type": "Link"}
+  {"hidden": 0, "is_query_report": 0, "label": "Fines", "link_count": 0, "link_to": "Fines", "link_type": "DocType", "onboard": 0, "type": "Link"}
  ],
  "modified": "2026-06-04 10:00:00.000000",
  "modified_by": "Administrator",

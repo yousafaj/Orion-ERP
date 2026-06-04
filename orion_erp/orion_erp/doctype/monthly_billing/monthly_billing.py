@@ -246,7 +246,7 @@ class MonthlyBilling(Document):
     def _build_fine_lines(self, m_start, m_end):
         # One line per client-responsible fine dated in the month for this customer.
         fines = frappe.get_all(
-            "Traffic Fine or Accident",
+            "Fines",
             filters={
                 "docstatus": 1,
                 "customer": self.customer,

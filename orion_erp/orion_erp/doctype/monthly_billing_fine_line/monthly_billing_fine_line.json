@@ -16,8 +16,8 @@
    "fieldname": "traffic_fine",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Traffic Fine / Accident",
-   "options": "Traffic Fine or Accident",
+   "label": "Fine",
+   "options": "Fines",
    "read_only": 1
   },
   {
