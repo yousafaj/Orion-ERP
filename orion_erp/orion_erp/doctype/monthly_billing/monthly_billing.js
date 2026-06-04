@@ -3,14 +3,15 @@
 
 frappe.ui.form.on("Monthly Billing", {
 	refresh(frm) {
-		// Build / refresh the billable lines while still a draft.
-		if (frm.doc.docstatus === 0 && !frm.is_new()) {
-			frm.add_custom_button(__("Build Lines"), () => {
+		// Refresh the billable lines from current data — available until invoiced
+		// (the sheet also auto-rebuilds on every save).
+		if (!frm.is_new() && frm.doc.docstatus !== 2 && !frm.doc.invoiced) {
+			frm.add_custom_button(__("Refresh Lines"), () => {
 				frappe.call({
 					method: "orion_erp.orion_erp.doctype.monthly_billing.monthly_billing.build",
 					args: { name: frm.doc.name },
 					freeze: true,
-					freeze_message: __("Building…"),
+					freeze_message: __("Refreshing…"),
 					callback: () => frm.reload_doc(),
 				});
 			});

@@ -3,8 +3,30 @@
 
 frappe.ui.form.on("LOA", {
     refresh: function(frm) {
-        // Live-update the remaining quota when a CICPA changes this LOA, so no
-        // manual refresh is needed. Register the listener once per form.
+        // Always pull the latest quota counters from the DB whenever the LOA is
+        // shown — the route cache can serve stale values after a CICPA was created
+        // (and you navigated away and back). This needs no realtime/socketio.
+        if (frm.doc.name && !frm.is_new() && !frm.is_dirty()) {
+            const qfields = [
+                "remaining_vehicle_quota", "remaining_driver_quota",
+                "total_created_vehicle_cicpa", "total_created_driver_cicpa",
+                "total_cancelled_vehicle_cicpa", "total_cancelled_driver_cicpa",
+            ];
+            frappe.db.get_value("LOA", frm.doc.name, qfields).then((r) => {
+                const v = (r && r.message) || {};
+                let changed = false;
+                qfields.forEach((f) => {
+                    if (v[f] !== undefined && frm.doc[f] !== v[f]) {
+                        frm.doc[f] = v[f];
+                        frm.refresh_field(f);
+                        changed = true;
+                    }
+                });
+                if (changed) frm.dashboard.clear_comment();
+            });
+        }
+
+        // Also live-update when the LOA form is open while a CICPA changes it.
         if (!frm.__loa_quota_listener) {
             frm.__loa_quota_listener = true;
             frappe.realtime.on("orion_loa_quota_updated", function(data) {

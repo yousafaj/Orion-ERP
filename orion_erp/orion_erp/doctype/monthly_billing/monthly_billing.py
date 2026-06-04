@@ -52,6 +52,25 @@ def rental_customer(vehicle, on_date):
     return {"customer": r.customer, "project": r.project_to} if r else {}
 
 
+def _offhire_days_in_month(rental, month_start, month_end) -> int:
+    """Inclusive count of off-hire (workshop) days of a rental that fall in the month
+    — these are subtracted from billable days. An open off-hire counts through month end."""
+    total = 0
+    rows = frappe.get_all(
+        "Vehicle Off Hire",
+        filters={"parent": rental, "parenttype": "Vehicle Movement"},
+        fields=["from_date", "to_date"],
+    )
+    for row in rows:
+        if not row.from_date:
+            continue
+        start = max(getdate(row.from_date), getdate(month_start))
+        end = min(getdate(row.to_date) if row.to_date else getdate(month_end), getdate(month_end))
+        if end >= start:
+            total += date_diff(end, start) + 1
+    return total
+
+
 def billable_days(rental_start, rental_end, month_start, month_end) -> int:
     """Inclusive count of days the rental period overlaps the calendar month.
     Open rentals (no demobilize date) are counted through the month end."""
@@ -133,6 +152,12 @@ class MonthlyBilling(Document):
                 )
             )
 
+    def before_save(self):
+        # Always (re)build from current rentals/tolls/fines until the sheet is
+        # invoiced — so it's never stale/empty and needs no manual "Build".
+        if not self.invoiced:
+            self.build()
+
     # -- Build -------------------------------------------------------------
     def build(self):
         """(Re)compute all billable lines for this customer + month. Idempotent."""
@@ -151,34 +176,33 @@ class MonthlyBilling(Document):
         self._recompute_totals()
 
     def _build_vehicle_lines(self, m_start, m_end, days_in_month):
+        # Only invoiceable movements are billed (idle/internal are excluded).
         rentals = frappe.get_all(
             "Vehicle Movement",
             filters={
                 "docstatus": 1,
                 "customer": self.customer,
+                "invoiceable": 1,
                 "movement_date": ["<=", m_end],
             },
-            fields=["name", "vehicle", "rent_type", "movement_date", "demobilize_date"],
+            fields=["name", "vehicle", "driver", "movement_date", "demobilize_date"],
         )
         for r in rentals:
             # skip rentals that ended before this month started
             if r.demobilize_date and getdate(r.demobilize_date) < getdate(m_start):
                 continue
             days = billable_days(r.movement_date, r.demobilize_date, m_start, m_end)
+            # workshop / off-hire days in this month are not billed
+            days = max(0, days - _offhire_days_in_month(r.name, m_start, m_end))
             if days <= 0:
                 continue
-            drivers = frappe.get_all(
-                "Vehicle Movement Driver Shift",
-                filters={"parent": r.name, "parenttype": "Vehicle Movement"},
-                pluck="driver",
-            )
             self.append(
                 "vehicle_lines",
                 {
                     "vehicle": r.vehicle,
                     "rental": r.name,
-                    "rent_type": r.rent_type,
-                    "drivers": ", ".join(d for d in drivers if d),
+                    "rent_type": "With Driver" if r.driver else "Without Driver",
+                    "drivers": r.driver or "",
                     "period_from": max(getdate(r.movement_date), getdate(m_start)),
                     "period_to": min(
                         getdate(r.demobilize_date) if r.demobilize_date else getdate(m_end),
@@ -190,16 +214,19 @@ class MonthlyBilling(Document):
             )
 
     def _build_salik_lines(self, m_start, m_end):
-        # Aggregate matched Salik Charge rows for this customer in this month.
+        # Sum each vehicle's toll crossings dated in the month attributed to THIS
+        # customer (by the rental active on each crossing date). Company-cost rows
+        # (no client rental) are excluded.
         if not frappe.db.exists("DocType", "Salik Charge"):
             return
         charges = frappe.get_all(
             "Salik Charge",
             filters={
                 "parenttype": "Salik or Darbs",
+                "parentfield": "crossings",
                 "docstatus": 1,
                 "customer": self.customer,
-                "matched": 1,
+                "company_cost": 0,
                 "charge_date": ["between", [m_start, m_end]],
             },
             fields=["vehicle", "parent as salik_batch", "amount"],
@@ -217,7 +244,7 @@ class MonthlyBilling(Document):
             )
 
     def _build_fine_lines(self, m_start, m_end):
-        # Only fines the CUSTOMER is responsible for are billable.
+        # One line per client-responsible fine dated in the month for this customer.
         fines = frappe.get_all(
             "Traffic Fine or Accident",
             filters={
@@ -226,15 +253,12 @@ class MonthlyBilling(Document):
                 "closing_status": "Paid by Client",
                 "date": ["between", [m_start, m_end]],
             },
-            fields=["name", "vehicle"],
+            fields=["name", "vehicle", "amount"],
         )
-        has_total = frappe.db.has_column("Traffic Fine or Accident", "total_amount")
         for f in fines:
-            amount = flt(frappe.db.get_value("Traffic Fine or Accident", f.name, "total_amount")) if has_total else 0.0
-            fine_count = frappe.db.count("Fines cdt", {"parent": f.name, "parenttype": "Traffic Fine or Accident"})
             self.append(
                 "fine_lines",
-                {"traffic_fine": f.name, "vehicle": f.vehicle, "fine_count": fine_count or 1, "amount": amount},
+                {"traffic_fine": f.name, "vehicle": f.vehicle, "fine_count": 1, "amount": flt(f.amount)},
             )
 
     def _recompute_totals(self):
@@ -248,10 +272,12 @@ class MonthlyBilling(Document):
 # ---------------------------------------------------------------------------
 @frappe.whitelist()
 def build(name):
-    """Operations/auto: (re)build the billable lines on a draft sheet."""
+    """Refresh the billable lines from current data (works until the sheet is invoiced)."""
     doc = frappe.get_doc("Monthly Billing", name)
     if doc.docstatus == 2:
-        frappe.throw(_("Cannot build a cancelled sheet."))
+        frappe.throw(_("Cannot refresh a cancelled sheet."))
+    if doc.invoiced:
+        frappe.throw(_("This month is already invoiced — unmark it first to refresh."))
     doc.build()
     doc.save(ignore_permissions=True)
     return doc.name
@@ -268,9 +294,8 @@ def build_monthly_billing(customer, billing_month):
     )
     if existing:
         doc = frappe.get_doc("Monthly Billing", existing)
-        if doc.docstatus == 0:
-            doc.build()
-            doc.save(ignore_permissions=True)
+        if not doc.invoiced:
+            doc.save(ignore_permissions=True)  # before_save rebuilds
         return doc.name
 
     doc = frappe.get_doc(
@@ -280,9 +305,8 @@ def build_monthly_billing(customer, billing_month):
             "billing_month": billing_month,
         }
     )
-    doc.build()
-    doc.insert(ignore_permissions=True)
-    doc.submit()
+    doc.insert(ignore_permissions=True)  # before_save builds
+    doc.submit()  # before_save rebuilds with the latest data
     return doc.name
 
 
@@ -317,7 +341,7 @@ def create_monthly_billing_sheets():
     customers = set()
     rentals = frappe.get_all(
         "Vehicle Movement",
-        filters={"docstatus": 1, "movement_date": ["<=", m_end]},
+        filters={"docstatus": 1, "invoiceable": 1, "movement_date": ["<=", m_end]},
         fields=["customer", "demobilize_date"],
     )
     for r in rentals:

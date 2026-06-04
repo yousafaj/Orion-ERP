@@ -1,110 +1,159 @@
 # Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 # For license information, please see license.txt
 
+import io
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt
+from frappe.utils import flt, getdate
 
 from orion_erp.orion_erp.doctype.monthly_billing.monthly_billing import rental_on_date
+from orion_erp.orion_erp.doctype.salik_or_darbs.salik_or_darbs import _build_plate_index, _norm_plate
+
+_RESP_TEMPLATE_HEADERS = ["Date", "Plate", "Amount", "Reference", "Responsibility"]
+_RESP_MAP = {
+    "client": "Paid by Client",
+    "driver": "Paid by Driver",
+    "employee": "Paid by Driver",
+    "company": "Paid by Company",
+}
 
 
 class TrafficFineorAccident(Document):
-    # begin: auto-generated types
-    # This code is auto-generated. Do not modify anything in this block.
-
-    from typing import TYPE_CHECKING
-
-    if TYPE_CHECKING:
-        from frappe.types import DF
-        from orion_erp.orion_erp.doctype.accident_logs.accident_logs import AccidentLogs
-        from orion_erp.orion_erp.doctype.fines_cdt.fines_cdt import Finescdt
-
-        accident_detail: DF.Table[AccidentLogs]
-        amended_from: DF.Link | None
-        closing_status: DF.Literal["", "Paid by Client", "Paid by Driver", "Paid by Company"]
-        customer: DF.Link | None
-        date: DF.Date
-        detail: DF.Table[Finescdt]
-        driver: DF.Link | None
-        employee_deduction: DF.Link | None
-        employment_type: DF.Link | None
-        evidence: DF.Attach | None
-        fine_status: DF.Literal["", "Faulty", "Not Faulty"]
-        post_fine: DF.Check
-        project: DF.Link | None
-        shift: DF.Link | None
-        status: DF.Literal["", "Open", "Closed"]
-        total_amount: DF.Currency
-        vehicle: DF.Link | None
-        vehicle_type: DF.Data | None
-    # end: auto-generated types
-
     def validate(self):
-        self._set_customer_from_rental()
-        # Sum the recorded amounts (fines + accident costs) for billing/deduction.
-        self.total_amount = sum(flt(r.amount) for r in (self.detail or [])) + sum(
-            flt(r.amount) for r in (self.accident_detail or [])
-        )
-
-    def _set_customer_from_rental(self):
-        """Auto-fill Customer (the company the fine belongs to) from the rental
-        active on this date, so it's shown directly without opening the Project.
-        Leaves a manually-set customer alone."""
-        if self.customer or not (self.vehicle and self.date):
-            return
-        rental = rental_on_date(self.vehicle, self.date)
-        if rental:
-            self.customer = rental.customer
-            self.project = rental.project_to
-
-    def on_submit(self):
-        # Operations records the fine with evidence and submits; Accounts assign
-        # Responsibility (closing_status) afterwards. Status stays Open until then.
-        if not self.evidence:
-            frappe.throw(_("You must attach Evidence before submitting this document."))
+        # Auto-fill Customer/Driver from the vehicle's rental on the fine date.
+        if self.vehicle and self.date and (not self.customer or not self.driver):
+            rental = rental_on_date(self.vehicle, self.date)
+            if rental:
+                self.customer = self.customer or rental.customer
+                if not self.driver:
+                    self.driver = frappe.db.get_value("Vehicle Movement", rental.name, "driver")
+        # A fine with no client rental is company-borne by default.
+        if not self.closing_status and not self.customer:
+            self.closing_status = "Paid by Company"
 
     def on_update_after_submit(self):
-        # Once Accounts set Responsibility, mark the record Closed.
         if self.closing_status and self.status != "Closed":
             self.db_set("status", "Closed", update_modified=True)
 
 
 @frappe.whitelist()
 def create_employee_deduction(name):
-    """Accounts-only: for a Driver-responsible fine/accident, create a DRAFT
-    Employee Deduction shell for the driver's employee. Accounts then add the
-    penalty installment rows (with the amount shown in remarks) and submit."""
+    """Accounts-only: for a Driver-responsible fine, create a DRAFT Employee Deduction."""
     frappe.only_for(("Accounts Manager", "System Manager"))
     doc = frappe.get_doc("Traffic Fine or Accident", name)
-
     if doc.closing_status != "Paid by Driver":
         frappe.throw(_("Employee deduction applies only when Responsibility is 'Paid by Driver'."))
     if doc.employee_deduction:
-        frappe.throw(
-            _("An Employee Deduction already exists for this record: {0}").format(doc.employee_deduction)
-        )
+        frappe.throw(_("An Employee Deduction already exists: {0}").format(doc.employee_deduction))
     if not doc.driver:
-        frappe.throw(_("Set the Driver before creating an employee deduction."))
-
+        frappe.throw(_("Set the Driver first."))
     employee = frappe.db.get_value("Driver", doc.driver, "employee")
     if not employee:
         frappe.throw(_("Driver {0} has no linked Employee.").format(doc.driver))
-    employee_name = frappe.db.get_value("Employee", employee, "employee_name")
 
     deduction = frappe.get_doc(
         {
             "doctype": "Employee Deduction",
             "naming_series": "EMP-DED-.YYYY.-",
             "employee": employee,
-            "employee_name": employee_name,
+            "employee_name": frappe.db.get_value("Employee", employee, "employee_name"),
             "transaction_date": doc.date,
-            "remarks": _(
-                "Traffic Fine / Accident {0} — Vehicle {1} — Amount AED {2}. "
-                "Add penalty installment row(s) and submit."
-            ).format(doc.name, doc.vehicle or "-", flt(doc.total_amount)),
+            "remarks": _("Fine {0} — Vehicle {1} — AED {2}. Add penalty rows and submit.").format(
+                doc.name, doc.vehicle or "-", flt(doc.amount)
+            ),
         }
     )
     deduction.insert(ignore_permissions=True)
     doc.db_set("employee_deduction", deduction.name, update_modified=True)
     return deduction.name
+
+
+# ---------------------------------------------------------------------------
+# Bulk import — one Excel → one Fine document per row
+# ---------------------------------------------------------------------------
+@frappe.whitelist()
+def import_fines(file_url):
+    frappe.has_permission("Traffic Fine or Accident", "create", throw=True)
+    rows = _read_fine_workbook(file_url)
+    if not rows:
+        frappe.throw(_("No data rows found in the attached Excel."))
+    plate_index = _build_plate_index()
+    created, unmatched = 0, 0
+    for r in rows:
+        vehicle = plate_index.get(_norm_plate(r.get("plate")))
+        if not vehicle:
+            unmatched += 1
+            continue
+        date = getdate(r["date"]) if r.get("date") else frappe.utils.nowdate()
+        rental = rental_on_date(vehicle, date)
+        resp = _RESP_MAP.get(str(r.get("responsibility") or "").strip().lower())
+        if not resp:
+            resp = "Paid by Client" if rental else "Paid by Company"
+        doc = frappe.get_doc(
+            {
+                "doctype": "Traffic Fine or Accident",
+                "date": date,
+                "vehicle": vehicle,
+                "amount": flt(r.get("amount")),
+                "ref_no": r.get("ref"),
+                "customer": rental.customer if rental else None,
+                "driver": frappe.db.get_value("Vehicle Movement", rental.name, "driver") if rental else None,
+                "closing_status": resp,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        doc.submit()
+        created += 1
+    return {"created": created, "unmatched": unmatched}
+
+
+@frappe.whitelist()
+def download_template():
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Fines"
+    ws.append(_RESP_TEMPLATE_HEADERS)
+    buf = io.BytesIO()
+    wb.save(buf)
+    frappe.response["filename"] = "fines_template.xlsx"
+    frappe.response["filecontent"] = buf.getvalue()
+    frappe.response["type"] = "download"
+
+
+def _read_fine_workbook(file_url):
+    import openpyxl
+
+    file_name = frappe.db.get_value("File", {"file_url": file_url}, "name")
+    if not file_name:
+        frappe.throw(_("Could not resolve the attached file."))
+    content = frappe.get_doc("File", file_name).get_content()
+    wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        return []
+    header = [str(c).strip().lower() if c is not None else "" for c in rows[0]]
+
+    def find(keys):
+        for i, h in enumerate(header):
+            if any(k in h for k in keys):
+                return i
+        return None
+
+    col = {
+        "date": find(("date",)),
+        "plate": find(("plate", "vehicle", "number")),
+        "amount": find(("amount", "fine", "aed", "value")),
+        "ref": find(("ref", "reference", "fine no", "number")),
+        "responsibility": find(("responsib", "liable", "paid by")),
+    }
+    out = []
+    for raw in rows[1:]:
+        if raw is None or all(c is None for c in raw):
+            continue
+        out.append({k: (raw[i] if i is not None and i < len(raw) else None) for k, i in col.items()})
+    return out

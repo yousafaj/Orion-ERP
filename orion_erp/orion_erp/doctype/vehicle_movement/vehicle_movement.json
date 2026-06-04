@@ -9,29 +9,31 @@
   "detail_section",
   "vehicle",
   "movement_date",
-  "rent_type",
-  "rental_status",
+  "driver",
+  "invoiceable",
   "column_break_nqeo",
   "project_to",
   "customer",
   "demobilize_date",
+  "rental_status",
   "info_section",
   "vehicle_type",
   "vehicle_ownership_status",
   "vehicle_state",
-  "column_break_info",
-  "location_from",
-  "location_to",
-  "driver_section",
-  "driver_shifts",
+  "off_hire_section",
+  "off_hire",
   "section_break_uoeg",
   "vehicle_checklist",
   "loa",
   "contract",
   "deprecated_section",
+  "rent_type",
+  "driver_shifts",
   "status",
   "project_id",
   "location",
+  "location_from",
+  "location_to",
   "section_break_bzfb",
   "amended_from"
  ],
@@ -57,21 +59,19 @@
    "reqd": 1
   },
   {
-   "fieldname": "rent_type",
-   "fieldtype": "Select",
-   "label": "Rent Type",
-   "options": "\nWithout Driver\nWith Driver",
-   "reqd": 1
+   "fieldname": "driver",
+   "fieldtype": "Link",
+   "label": "Driver",
+   "options": "Driver",
+   "description": "Optional — the driver assigned with this vehicle."
   },
   {
-   "default": "Active",
-   "fieldname": "rental_status",
-   "fieldtype": "Select",
+   "default": "1",
+   "fieldname": "invoiceable",
+   "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Rental Status",
-   "options": "Active\nClosed",
-   "read_only": 1,
-   "allow_on_submit": 1
+   "label": "Invoiceable",
+   "description": "On = billed monthly to the client. Off = idle / internal-office use (not billed)."
   },
   {
    "fieldname": "column_break_nqeo",
@@ -82,21 +82,32 @@
    "fieldtype": "Link",
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.invoiceable"
   },
   {
    "fieldname": "customer",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Customer",
    "options": "Customer",
-   "reqd": 1,
-   "description": "Auto-filled from the Project when it has one; editable."
+   "mandatory_depends_on": "eval:doc.invoiceable",
+   "description": "Auto-filled from the Project; editable."
   },
   {
    "depends_on": "eval:doc.demobilize_date",
    "fieldname": "demobilize_date",
    "fieldtype": "Date",
    "label": "Demobilize Date",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "default": "Active",
+   "fieldname": "rental_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Rental Status",
+   "options": "Active\nClosed",
    "read_only": 1,
    "allow_on_submit": 1
   },
@@ -129,34 +140,17 @@
    "read_only": 1
   },
   {
-   "fieldname": "column_break_info",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fetch_from": "vehicle.custom_last_location",
-   "fieldname": "location_from",
-   "fieldtype": "Link",
-   "label": "Location From",
-   "options": "Location"
-  },
-  {
-   "fieldname": "location_to",
-   "fieldtype": "Link",
-   "label": "Location To",
-   "options": "Location"
-  },
-  {
-   "fieldname": "driver_section",
+   "fieldname": "off_hire_section",
    "fieldtype": "Section Break",
-   "label": "Drivers",
-   "depends_on": "eval:doc.rent_type=='With Driver'"
+   "label": "Off-Hire (Workshop — not billed)"
   },
   {
-   "depends_on": "eval:doc.rent_type=='With Driver'",
-   "fieldname": "driver_shifts",
+   "allow_on_submit": 1,
+   "fieldname": "off_hire",
    "fieldtype": "Table",
-   "label": "Driver Shifts",
-   "options": "Vehicle Movement Driver Shift"
+   "label": "Off-Hire Periods",
+   "options": "Vehicle Off Hire",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_uoeg",
@@ -186,6 +180,20 @@
    "label": "Deprecated"
   },
   {
+   "fieldname": "rent_type",
+   "fieldtype": "Select",
+   "label": "Rent Type",
+   "options": "\nWithout Driver\nWith Driver",
+   "hidden": 1
+  },
+  {
+   "fieldname": "driver_shifts",
+   "fieldtype": "Table",
+   "label": "Driver Shifts",
+   "options": "Vehicle Movement Driver Shift",
+   "hidden": 1
+  },
+  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Mobilisation Status (deprecated)",
@@ -209,6 +217,20 @@
    "read_only": 1
   },
   {
+   "fieldname": "location_from",
+   "fieldtype": "Link",
+   "label": "Location From",
+   "options": "Location",
+   "hidden": 1
+  },
+  {
+   "fieldname": "location_to",
+   "fieldtype": "Link",
+   "label": "Location To",
+   "options": "Location",
+   "hidden": 1
+  },
+  {
    "fieldname": "section_break_bzfb",
    "fieldtype": "Section Break"
   },
@@ -226,7 +248,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-03 10:00:00.000000",
+ "modified": "2026-06-04 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Vehicle Movement",

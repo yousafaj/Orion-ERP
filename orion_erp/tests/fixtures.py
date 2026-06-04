@@ -302,13 +302,35 @@ def create_vehicle_movement(do_not_submit: bool = False, **kwargs) -> "frappe.mo
 		"customer": customer,
 		"project_to": project,
 		"movement_date": kwargs.pop("movement_date", nowdate()),
-		"rent_type": kwargs.pop("rent_type", "Without Driver"),
+		"invoiceable": kwargs.pop("invoiceable", 1),
 	}
-	values.update(kwargs)
+	values.update(kwargs)  # driver=, invoiceable=, demobilize_date=, …
 	doc = frappe.get_doc(values)
 	doc.insert(ignore_permissions=True)
 	if not do_not_submit:
 		doc.submit()
+	return doc
+
+
+def create_vehicle_no_plate_code(**kwargs) -> "frappe.model.document.Document":
+	"""A Vehicle missing the now-mandatory custom_plate_code / custom_ownership_status,
+	mirroring the 359 live vehicles. Inserted with ignore_mandatory so tracking-state
+	updates (which must use db.set_value) can be regression-tested."""
+	ensure_uom("Nos")
+	doc = frappe.get_doc(
+		{
+			"doctype": "Vehicle",
+			"license_plate": kwargs.pop("license_plate", None) or f"_TNP-{frappe.generate_hash(length=8)}",
+			"make": "_Test Make",
+			"model": "_Test Model",
+			"last_odometer": 0,
+			"fuel_type": "Petrol",
+			"uom": "Nos",
+			**kwargs,
+		}
+	)
+	doc.flags.ignore_mandatory = True
+	doc.insert(ignore_permissions=True)
 	return doc
 
 

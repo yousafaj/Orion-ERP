@@ -119,7 +119,7 @@
    "fieldname": "cicpa_status",
    "fieldtype": "Select",
    "label": "CICPA Status",
-   "options": "\nActive\nCancelled\nLost\nExpired",
+   "options": "\nActive\nCancelled\nExpired",
    "read_only": 1
   }
  ],

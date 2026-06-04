@@ -28,7 +28,6 @@ frappe.ui.form.on("CICPA", {
 			};
 
 			add_mark_button("Mark as Cancelled", "Cancelled");
-			add_mark_button("Mark as Lost", "Lost");
 			add_mark_button("Mark as Expired", "Expired");
 		}
 	},

@@ -12,6 +12,7 @@ ORION_FLEET_CARDS = [
     "Expired Certificates",
     "With Client Vehicles",
     "Idle Vehicles Vehicles",
+    "Internal Use Vehicles",
     "Workshop Vehicles",
     "With Client Drivers",
     "Idle Drivers",

@@ -41,6 +41,6 @@ def deactivate_expired_vehicles():
                 continue
 
         if deactivate:
-            veh = frappe.get_doc("Vehicle", v.name)
-            veh.custom_status = "Inactive"
-            veh.save(ignore_permissions=True)
+            # db.set_value — never full-save the Vehicle (re-validates mandatory custom
+            # fields some live vehicles are missing).
+            frappe.db.set_value("Vehicle", v.name, "custom_status", "Inactive")

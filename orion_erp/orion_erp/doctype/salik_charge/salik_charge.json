@@ -7,14 +7,12 @@
  "engine": "InnoDB",
  "field_order": [
   "charge_date",
-  "plate",
-  "vehicle",
-  "customer",
+  "gate",
   "amount",
-  "matched",
-  "rental",
-  "project",
-  "unmatched_reason"
+  "customer",
+  "company_cost",
+  "vehicle",
+  "rental"
  ],
  "fields": [
   {
@@ -24,39 +22,16 @@
    "label": "Date"
   },
   {
-   "fieldname": "plate",
+   "fieldname": "gate",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Plate"
-  },
-  {
-   "fieldname": "vehicle",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Vehicle",
-   "options": "Vehicle",
-   "read_only": 1
+   "label": "Gate"
   },
   {
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Amount"
-  },
-  {
-   "default": "0",
-   "fieldname": "matched",
-   "fieldtype": "Check",
-   "in_list_view": 1,
-   "label": "Matched",
-   "read_only": 1
-  },
-  {
-   "fieldname": "rental",
-   "fieldtype": "Link",
-   "label": "Rental",
-   "options": "Vehicle Movement",
-   "read_only": 1
   },
   {
    "fieldname": "customer",
@@ -67,23 +42,32 @@
    "read_only": 1
   },
   {
-   "fieldname": "project",
-   "fieldtype": "Link",
-   "label": "Project",
-   "options": "Project",
+   "default": "0",
+   "fieldname": "company_cost",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Company Cost",
    "read_only": 1
   },
   {
-   "fieldname": "unmatched_reason",
-   "fieldtype": "Data",
-   "label": "Unmatched Reason",
+   "fieldname": "vehicle",
+   "fieldtype": "Link",
+   "label": "Vehicle",
+   "options": "Vehicle",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rental",
+   "fieldtype": "Link",
+   "label": "Rental",
+   "options": "Vehicle Movement",
    "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-03 10:00:00.000000",
+ "modified": "2026-06-04 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Salik Charge",

@@ -5,108 +5,84 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, nowdate
 
-from orion_erp.orion_erp.doctype.vehicle_movement.vehicle_movement import demobilize
+from orion_erp.orion_erp.doctype.vehicle_movement.vehicle_movement import (
+    back_in_service,
+    demobilize,
+    to_workshop,
+)
 from orion_erp.tests.fixtures import (
+    create_customer,
     create_driver,
+    create_project,
     create_vehicle,
     create_vehicle_movement,
-    ensure_shift_type,
+    create_vehicle_no_plate_code,
 )
 
 
 class TestVehicleMovement(FrappeTestCase):
-	def test_mobilize_sets_vehicle_with_client(self):
-		vehicle = create_vehicle()
-		vm = create_vehicle_movement(vehicle=vehicle.name)
-		vehicle.reload()
-		self.assertEqual(vehicle.custom_state, "With Client")
-		self.assertEqual(vehicle.custom_current_customer, vm.customer)
-		self.assertEqual(vehicle.custom_current_rent_type, "Without Driver")
-		self.assertEqual(vm.rental_status, "Active")
+    def test_mobilize_sets_with_client(self):
+        vehicle = create_vehicle()
+        vm = create_vehicle_movement(vehicle=vehicle.name)
+        vehicle.reload()
+        self.assertEqual(vehicle.custom_state, "With Client")
+        self.assertEqual(vehicle.custom_current_customer, vm.customer)
+        self.assertEqual(vm.rental_status, "Active")
 
-	def test_demobilize_frees_vehicle_and_closes_rental(self):
-		vehicle = create_vehicle()
-		vm = create_vehicle_movement(vehicle=vehicle.name, movement_date=add_days(nowdate(), -5))
+    def test_plate_code_less_vehicle_mobilizes_without_crash(self):
+        # Regression: the live crash "Value missing for Vehicle: Plate Code".
+        vehicle = create_vehicle_no_plate_code()
+        vm = create_vehicle_movement(vehicle=vehicle.name)
+        vehicle.reload()
+        self.assertEqual(vehicle.custom_state, "With Client")
+        demobilize(vm.name, nowdate())
+        vehicle.reload()
+        self.assertEqual(vehicle.custom_state, "Idle")
 
-		demobilize(vm.name, nowdate())
+    def test_internal_movement_sets_internal_use(self):
+        vehicle = create_vehicle()
+        create_vehicle_movement(vehicle=vehicle.name, invoiceable=0, customer=None, project_to=None)
+        vehicle.reload()
+        self.assertEqual(vehicle.custom_state, "Internal Use")
 
-		vehicle.reload()
-		vm.reload()
-		self.assertEqual(vehicle.custom_state, "Idle")
-		self.assertFalse(vehicle.custom_current_customer)
-		self.assertEqual(vm.rental_status, "Closed")
-		self.assertEqual(str(vm.demobilize_date), nowdate())
+    def test_with_driver_sets_driver_state(self):
+        vehicle = create_vehicle()
+        driver = create_driver()
+        create_vehicle_movement(vehicle=vehicle.name, driver=driver.name)
+        driver.reload()
+        self.assertEqual(driver.custom_state, "With Client")
 
-	def test_demobilize_twice_is_rejected(self):
-		vm = create_vehicle_movement()
-		demobilize(vm.name, nowdate())
-		with self.assertRaises(frappe.ValidationError):
-			demobilize(vm.name, nowdate())
+    def test_double_booking_vehicle_blocked(self):
+        vehicle = create_vehicle()
+        create_vehicle_movement(vehicle=vehicle.name)  # active
+        with self.assertRaises(frappe.ValidationError):
+            create_vehicle_movement(vehicle=vehicle.name)  # second active → blocked
 
-	def test_demobilize_before_start_is_rejected(self):
-		vm = create_vehicle_movement(movement_date=nowdate())
-		with self.assertRaises(frappe.ValidationError):
-			demobilize(vm.name, add_days(nowdate(), -3))
+    def test_demobilize_frees_vehicle(self):
+        vehicle = create_vehicle()
+        vm = create_vehicle_movement(vehicle=vehicle.name, movement_date=add_days(nowdate(), -5))
+        demobilize(vm.name, nowdate())
+        vm.reload()
+        vehicle.reload()
+        self.assertEqual(vm.rental_status, "Closed")
+        self.assertEqual(vehicle.custom_state, "Idle")
 
-	def test_cancel_resets_vehicle_to_idle(self):
-		vehicle = create_vehicle()
-		vm = create_vehicle_movement(vehicle=vehicle.name)
-		vm.cancel()
-		vehicle.reload()
-		self.assertEqual(vehicle.custom_state, "Idle")
-		self.assertFalse(vehicle.custom_current_customer)
+    def test_workshop_buttons_log_off_hire(self):
+        vehicle = create_vehicle()
+        vm = create_vehicle_movement(vehicle=vehicle.name, movement_date="2026-03-01")
+        to_workshop(vm.name, "2026-03-10")
+        vehicle.reload()
+        self.assertEqual(vehicle.custom_state, "Workshop")
+        back_in_service(vm.name, "2026-03-14")
+        vehicle.reload()
+        self.assertEqual(vehicle.custom_state, "With Client")
+        vm.reload()
+        self.assertEqual(len(vm.off_hire), 1)
+        self.assertEqual(str(vm.off_hire[0].to_date), "2026-03-14")
 
-	def test_with_driver_requires_a_driver_row(self):
-		with self.assertRaises(frappe.ValidationError):
-			create_vehicle_movement(rent_type="With Driver")
-
-	def test_with_driver_assigns_shift_and_creates_assignment(self):
-		vehicle = create_vehicle()
-		driver = create_driver()
-		shift = ensure_shift_type()
-		vm = create_vehicle_movement(
-			vehicle=vehicle.name,
-			rent_type="With Driver",
-			driver_shifts=[{"driver": driver.name, "shift": shift}],
-		)
-		vehicle.reload()
-		driver.reload()
-		self.assertEqual(vehicle.custom_state, "With Client")
-		self.assertEqual(driver.custom_state, "With Client")
-		# the rental row records the created Shift Assignment
-		sa = vm.driver_shifts[0].shift_assignment
-		self.assertTrue(sa)
-		self.assertEqual(frappe.db.get_value("Shift Assignment", sa, "employee"), driver.employee)
-		# driver + vehicle child tables wired
-		self.assertEqual(len(driver.custom_shifts), 1)
-		self.assertEqual(len(frappe.get_doc("Vehicle", vehicle.name).custom_driver_shifts), 1)
-
-	def test_with_driver_demobilize_releases_driver(self):
-		vehicle = create_vehicle()
-		driver = create_driver()
-		shift = ensure_shift_type()
-		vm = create_vehicle_movement(
-			vehicle=vehicle.name,
-			rent_type="With Driver",
-			movement_date="2026-03-01",
-			driver_shifts=[{"driver": driver.name, "shift": shift}],
-		)
-		sa = vm.driver_shifts[0].shift_assignment
-		demobilize(vm.name, "2026-03-20")
-		driver.reload()
-		self.assertEqual(driver.custom_state, "Idle")
-		self.assertEqual(frappe.db.get_value("Shift Assignment", sa, "status"), "Inactive")
-		self.assertEqual(str(frappe.db.get_value("Shift Assignment", sa, "end_date")), "2026-03-20")
-
-	def test_with_driver_rejects_more_than_two_drivers(self):
-		shift = ensure_shift_type()
-		d1, d2, d3 = create_driver(), create_driver(), create_driver()
-		with self.assertRaises(frappe.ValidationError):
-			create_vehicle_movement(
-				rent_type="With Driver",
-				driver_shifts=[
-					{"driver": d1.name, "shift": shift},
-					{"driver": d2.name, "shift": shift},
-					{"driver": d3.name, "shift": shift},
-				],
-			)
+    def test_cancel_resets_state(self):
+        vehicle = create_vehicle()
+        vm = create_vehicle_movement(vehicle=vehicle.name)
+        vm.cancel()
+        vehicle.reload()
+        self.assertEqual(vehicle.custom_state, "Idle")

@@ -126,6 +126,37 @@ class TestMonthlyBilling(FrappeTestCase):
         self.assertEqual(doc.docstatus, 1)
         self.assertEqual(doc.total_vehicle_days, 28)  # Feb 2026, full month
 
+    def test_refresh_picks_up_rental_added_after_submit(self):
+        from orion_erp.orion_erp.doctype.monthly_billing.monthly_billing import build as refresh
+
+        customer, project = self._customer_with_project()
+        sheet = create_monthly_billing(customer, "2026-03-01")  # submitted, no rentals yet
+        self.assertEqual(sheet.total_vehicle_days, 0)
+        vehicle = create_vehicle()
+        create_vehicle_movement(
+            vehicle=vehicle.name, customer=customer, project_to=project, movement_date="2026-03-01"
+        )
+        refresh(sheet.name)  # Refresh Lines on a submitted (not-invoiced) sheet
+        sheet.reload()
+        self.assertEqual(sheet.total_vehicle_days, 31)  # March, full month
+
+    def test_off_hire_days_excluded_from_billing(self):
+        from orion_erp.orion_erp.doctype.vehicle_movement.vehicle_movement import (
+            back_in_service,
+            to_workshop,
+        )
+
+        customer, project = self._customer_with_project()
+        vehicle = create_vehicle()
+        vm = create_vehicle_movement(
+            vehicle=vehicle.name, customer=customer, project_to=project, movement_date="2026-03-01"
+        )
+        to_workshop(vm.name, "2026-03-10")
+        back_in_service(vm.name, "2026-03-14")  # 5 off-hire days (10-14 incl.)
+        sheet = create_monthly_billing(customer, "2026-03-01", do_not_submit=True)
+        # March full month (31) for an ongoing rental, minus 5 workshop days = 26
+        self.assertEqual(sheet.vehicle_lines[0].billable_days, 26)
+
     def test_month_close_job_creates_submitted_sheet(self):
         prev_month = get_first_day(add_months(getdate(nowdate()), -1))
         customer, project = self._customer_with_project()

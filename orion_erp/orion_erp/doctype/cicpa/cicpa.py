@@ -108,7 +108,7 @@ class CICPA(Document):
 						break
 
 				if updated:
-					vehicle_doc.save(ignore_permissions=True)
+					vehicle_doc.flags.ignore_mandatory = True; vehicle_doc.save(ignore_permissions=True)
 			except Exception as e:
 				frappe.log_error(frappe.get_traceback(), "Error updating CICPA expiry date in Vehicle")
 				frappe.throw(_("Failed to update CICPA expiry date in Vehicle: {0}").format(str(e)))
@@ -126,7 +126,7 @@ class CICPA(Document):
 						break
 
 				if updated:
-					driver_doc.save(ignore_permissions=True)
+					driver_doc.flags.ignore_mandatory = True; driver_doc.save(ignore_permissions=True)
 			except Exception as e:
 				frappe.log_error(frappe.get_traceback(), "Error updating CICPA expiry date in Driver")
 				frappe.throw(_("Failed to update CICPA expiry date in Driver: {0}").format(str(e)))
@@ -200,7 +200,7 @@ class CICPA(Document):
 					)
 				]
 
-				vehicle_doc.save(ignore_permissions=True)
+				vehicle_doc.flags.ignore_mandatory = True; vehicle_doc.save(ignore_permissions=True)
 				if self.vehicle:
 					self.db_set("vehicle", None, update_modified=False)
 
@@ -225,7 +225,7 @@ class CICPA(Document):
 					)
 				]
 
-				driver_doc.save(ignore_permissions=True)
+				driver_doc.flags.ignore_mandatory = True; driver_doc.save(ignore_permissions=True)
 				if self.driver:
 					self.db_set("driver", None, update_modified=False)
 
@@ -241,7 +241,7 @@ class CICPA(Document):
 
 @frappe.whitelist()
 def mark_cicpa_status(cicpa, new_status):
-	if new_status not in ("Cancelled", "Lost", "Expired"):
+	if new_status not in ("Cancelled", "Expired"):
 		frappe.throw(_("Invalid CICPA status."))
 
 	doc = frappe.get_doc("CICPA", cicpa)
