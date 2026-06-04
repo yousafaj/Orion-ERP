@@ -183,7 +183,11 @@ permission_query_conditions = {
 
 doc_events = {
     "Leave Application":{
-         "validate":"orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
+         "validate":[
+             "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
+             "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
+             "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave"
+         ],
 
         "on_update":"orion_erp.orion_erp.validations.leave_application.handle_leave_approval"
     },
@@ -211,10 +215,17 @@ doc_events = {
         "validate": ["orion_erp.orion_erp.validations.employee_hooks.validate_employee",
                     "orion_erp.orion_erp.doctype.employee.validate_allowance_amounts"],
         "after_insert": "orion_erp.orion_erp.doctype.employee.create_salary_structure_assignment",
-        "on_update": "orion_erp.orion_erp.doctype.employee.create_salary_structure_assignment"
+        "on_update": [
+            "orion_erp.orion_erp.doctype.employee.create_salary_structure_assignment",
+            "orion_erp.orion_erp.doctype.employee.create_leave_policy_assignment",
+            "orion_erp.orion_erp.doctype.employee.auto_allocate_hajj_umrah"
+        ]
     },
     "Asset": {
         "autoname": "orion_erp.orion_erp.scripts.autoname_assets.autoname_asset"
+    },
+    "Leave Type": {
+        "validate": "orion_erp.orion_erp.validations.leave_type.validate_no_casual_leave"
     }
 }
 
@@ -238,7 +249,11 @@ scheduler_events = {
         "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.restore_delegations",
         "orion_erp.passport_management.tasks.send_overdue_passport_alerts",
         "orion_erp.orion_erp.doctype.cicpa.cicpa.auto_expire_cicpas",
-        "orion_erp.orion_erp.doctype.loa.loa.auto_expire_loas"
+        "orion_erp.orion_erp.doctype.loa.loa.auto_expire_loas",
+        "orion_erp.orion_erp.doctype.employee.auto_renew_leave_policy_assignments",
+        "orion_erp.orion_erp.scripts.hajj_umrah_allocation.allocate_hajj_umrah_yearly_for_all",
+        "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_monthly_accrual",
+        "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_carry_forward"
 	],
 	"daily_long": [
 	    "orion_erp.passport_management.tasks.send_expiry_reminders"
