@@ -278,6 +278,10 @@ function handle_submit_button(frm) {
 
     let can_submit = false;
 
+    if (current_user === "Administrator") {
+        can_submit = true;
+    }
+
     let active_approvers = APPROVAL_FLOW.filter(
         row => frm.doc[row.approver_field]
     );

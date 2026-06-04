@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import flt, getdate
 
 
 APPROVAL_FLOW = [
@@ -316,3 +317,84 @@ def get_employee_details(employee):
         return data[0]
 
     return {}
+
+
+def validate_annual_leave_avail(doc, method=None):
+    if doc.leave_type != "Annual Leave" or doc.docstatus == 1:
+        return
+
+    employee_doj = frappe.db.get_value("Employee", doc.employee, "date_of_joining")
+    if not employee_doj:
+        return
+
+    doj = getdate(employee_doj)
+    today = getdate()
+
+    if doj > today:
+        frappe.throw(_("Employee has not yet joined."))
+
+    completed_months = get_completed_months(doj, today)
+
+    balance = frappe.db.sql("""
+        SELECT COALESCE(SUM(leaves), 0)
+        FROM `tabLeave Ledger Entry`
+        WHERE employee = %s
+          AND leave_type = 'Annual Leave'
+          AND docstatus = 1
+          AND is_expired = 0
+    """, doc.employee)[0][0] or 0
+
+    balance = flt(balance)
+
+    if completed_months < 12 and doc.total_leave_days > balance:
+        frappe.throw(
+            _(
+                "You have not completed 1 year of service yet. "
+                "Annual Leave avail is restricted to your accrued balance of {0} days."
+            ).format(balance)
+        )
+
+
+def get_completed_months(doj, ref_date):
+    months = (ref_date.year - doj.year) * 12 + (ref_date.month - doj.month)
+    if ref_date.day < doj.day:
+        months -= 1
+    return max(0, months)
+
+
+def validate_hajj_umrah_leave(doc, method=None):
+    if doc.leave_type != "HAJI/ UMRAH LEAVE":
+        return
+
+    religion = frappe.db.get_value("Employee", doc.employee, "custom_religion")
+    if religion != "Muslim":
+        frappe.throw(
+            _("Hajj/Umrah Leave is only applicable to Muslim employees."),
+            title=_("Ineligible")
+        )
+
+    max_days = frappe.db.get_value("Leave Type", doc.leave_type, "max_leaves_allowed") or 0
+    if max_days and doc.total_leave_days > max_days:
+        frappe.throw(
+            _("Hajj/Umrah Leave cannot exceed {0} days as per the Leave Type configuration. You have requested {1} days.").format(
+                frappe.bold(str(max_days)),
+                frappe.bold(str(doc.total_leave_days))
+            ),
+            title=_("Exceeds Maximum Leave Days")
+        )
+
+    existing = frappe.db.exists("Leave Application", {
+        "employee": doc.employee,
+        "leave_type": doc.leave_type,
+        "docstatus": 1,
+        "status": "Approved",
+        "name": ["!=", doc.name]
+    })
+
+    if existing:
+        frappe.throw(
+            _("Employee has already availed Hajj/Umrah Leave. This leave type can only be availed once during the entire employment period."),
+            title=_("Already Availed")
+        )
+
+
