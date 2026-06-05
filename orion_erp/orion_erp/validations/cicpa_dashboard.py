@@ -110,8 +110,8 @@ def get_expired_cicpas_count():
 
 def setup_cicpa_workspace_widgets():
     """
-    Creates the Custom HTML Block and Number Cards, then dynamically integrates them 
-    into the 'Rental Management' Workspace database record if they aren't already.
+    Creates the Custom HTML Block and Number Cards, then dynamically integrates them
+    into the 'Orion Fleet' Workspace database record if they aren't already.
     Executed safely during bench migrations.
     """
     try:
@@ -478,9 +478,9 @@ setTimeout(window.loadCICPAExpiries, 150);
             block.html = html_content
             block.save(ignore_permissions=True)
 
-        # 4. Safely integrate widgets into Rental Management Workspace
-        if frappe.db.exists("Workspace", "Rental Management"):
-            workspace = frappe.get_doc("Workspace", "Rental Management")
+        # 4. Safely integrate widgets into the Orion Fleet Workspace
+        if frappe.db.exists("Workspace", "Orion Fleet"):
+            workspace = frappe.get_doc("Workspace", "Orion Fleet")
             
             # Check if the block widget is already present in workspace content
             content_list = json.loads(workspace.content or "[]")

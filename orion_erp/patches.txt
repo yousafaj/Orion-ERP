@@ -16,3 +16,4 @@ orion_erp.patches.fix_ticket_allowance_detail_idx
 orion_erp.patches.sync_cancelled_cicpa_status
 orion_erp.patches.remove_vehicle_cicpa_and_vehicle_no
 orion_erp.patches.remove_accident_logs
+orion_erp.patches.remove_rental_management_workspace

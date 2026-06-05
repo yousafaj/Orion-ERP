@@ -10,6 +10,8 @@ ORION_FLEET_CARDS = [
     "Expire in 30 Days",
     "Expire in 60 Days",
     "Expired Certificates",
+    "CICPAs Expiring (30 Days)",
+    "Expired CICPAs",
     "With Client Vehicles",
     "Idle Vehicles Vehicles",
     "Internal Use Vehicles",
