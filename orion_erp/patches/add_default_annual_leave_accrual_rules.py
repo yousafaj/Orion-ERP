@@ -1,8 +1,22 @@
 import frappe
+from frappe import _
 
 
 def execute():
     if not frappe.db.exists("Leave Type", "Annual Leave"):
+        return
+
+    meta = frappe.get_meta("Leave Type")
+    target_field = meta.get_field("custom_annual_leave_accrual_rules")
+    if not target_field or not target_field.options:
+        frappe.log_error(
+            _("Field custom_annual_leave_accrual_rules not found on Leave Type meta. Skipping patch.")
+        )
+        return
+    if not frappe.db.exists("DocType", target_field.options):
+        frappe.log_error(
+            _("Child table {0} does not exist. Skipping patch.").format(target_field.options)
+        )
         return
 
     leave_type = frappe.get_doc("Leave Type", "Annual Leave")
