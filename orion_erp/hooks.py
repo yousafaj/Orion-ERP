@@ -186,10 +186,14 @@ doc_events = {
          "validate":[
              "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
              "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
-             "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave"
+             "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
+             "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.auto_delegate_leave_application"
          ],
 
-        "on_update":"orion_erp.orion_erp.validations.leave_application.handle_leave_approval"
+        "on_update":[
+            "orion_erp.orion_erp.validations.leave_application.handle_leave_approval",
+            "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.handle_auto_delegation_on_update"
+        ]
     },
     "Salary Structure Assignment":{
         "validate":"orion_erp.orion_erp.validations.salary_structure_assignment.validate_ssa_employee_category"
