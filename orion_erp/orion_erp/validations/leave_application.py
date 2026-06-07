@@ -132,9 +132,17 @@ def handle_leave_approval(doc, method=None):
 
     if all_approved:
 
+        update_leave_application_status(doc)
+
+        if doc.docstatus != 1:
+            frappe.msgprint(
+                _("All approvers have approved. Please submit the document.")
+            )
+
         return
 
     send_next_approval_email(doc)
+    update_leave_application_status(doc)
 
 # NEXT APPROVER EMAIL
 def send_next_approval_email(doc):
@@ -362,6 +370,45 @@ def get_completed_months(doj, ref_date):
     return max(0, months)
 
 
+def validate_medical_certificate(doc, method=None):
+    if not doc.leave_type:
+        return
+
+    leave_type = frappe.db.get_value(
+        "Leave Type",
+        doc.leave_type,
+        [
+            "custom_medical_certificate_required",
+            "custom_medical_certificate_required_by"
+        ],
+        as_dict=True
+    )
+
+    if not leave_type or not leave_type.custom_medical_certificate_required:
+        doc.custom_medical_certificate_status = ""
+        return
+
+    if doc.custom_medical_certificate:
+        doc.custom_medical_certificate_status = "Submitted"
+        return
+
+    # For List View / Reports
+    doc.custom_medical_certificate_status = "Pending"
+
+    hrs_text = ""
+    if leave_type.custom_medical_certificate_required_by:
+        hrs_text = _(
+            " The certificate should be submitted within {0} hours."
+        ).format(leave_type.custom_medical_certificate_required_by)
+
+    frappe.msgprint(
+        title=_("Medical Certificate Required"),
+        indicator="orange",
+        msg=_(
+            "A medical certificate is required for the selected leave type and has not yet been attached."
+        ) + hrs_text
+    )
+
 def validate_hajj_umrah_leave(doc, method=None):
     if doc.leave_type != "HAJI/ UMRAH LEAVE":
         return
@@ -398,3 +445,128 @@ def validate_hajj_umrah_leave(doc, method=None):
         )
 
 
+def update_leave_application_status(doc):
+
+    active_flow = []
+
+    for row in APPROVAL_FLOW:
+
+        approver = doc.get(row["approver_field"])
+        status = doc.get(row["status_field"])
+
+        if approver:
+
+            active_flow.append({
+                "approver_field": row["approver_field"],
+                "status": status
+            })
+
+    # =====================================================
+    # REJECTED
+    # =====================================================
+
+    for row in active_flow:
+
+        if row["status"] == "Rejected":
+
+            doc.db_set(
+                "custom_approval_status",
+                "Rejected"
+            )
+
+            return
+
+    # =====================================================
+    # CANCELLED
+    # =====================================================
+
+    for row in active_flow:
+
+        if row["status"] == "Cancelled":
+
+            doc.db_set(
+                "custom_approval_status",
+                "Cancelled"
+            )
+
+            return
+
+    approval_labels = {
+
+        "leave_approver":
+        "Pending Approval from Approver 2",
+
+        "custom_leave_approver_1":
+        "Pending Approval from Approver 3",
+
+        "custom_leave_approver_2":
+        "Pending Approval from Approver 4",
+
+        "custom_leave_approver_4":
+        "Pending Approval from Approver 5",
+
+        "custom_leave_approver_5":
+        "Pending Approval from Approver 6"
+    }
+
+    last_approved = None
+
+    for row in active_flow:
+
+        if row["status"] == "Approved":
+
+            last_approved = row["approver_field"]
+
+        else:
+            break
+
+    # =====================================================
+    # FULLY APPROVED
+    # =====================================================
+
+    all_approved = all(
+        row["status"] == "Approved"
+        for row in active_flow
+    )
+
+    if all_approved:
+
+        doc.db_set(
+            "custom_approval_status",
+            "Submit Pending"
+        )
+
+        return
+
+    # =====================================================
+    # PARTIAL APPROVAL
+    # =====================================================
+
+    if last_approved:
+
+        doc.db_set(
+            "custom_approval_status",
+            approval_labels.get(last_approved)
+        )
+
+        return
+
+    # =====================================================
+    # DEFAULT
+    # =====================================================
+
+    doc.db_set(
+        "custom_approval_status",
+        "Pending Approval from Approver 1"
+    )
+
+
+# =========================================================
+# ON SUBMIT
+# =========================================================
+def on_submit_leave_application(doc, method=None):
+
+    doc.db_set(
+        "custom_approval_status",
+        "Approved"
+    )

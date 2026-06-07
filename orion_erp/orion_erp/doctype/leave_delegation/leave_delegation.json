@@ -1,19 +1,21 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:LD-{YYYY}-{delegator_user}-{#####}",
- "creation": "2026-05-31 19:28:00.000000",
+ "autoname": "naming_series:",
+ "creation": "2026-05-31 19:28:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "delegator_user",
   "delegate_user",
+  "naming_series",
   "column_break_1",
   "valid_from",
   "valid_to",
   "is_active",
   "section_break_details",
-  "leave_delegation_detail"
+  "leave_delegation_detail",
+  "amended_from"
  ],
  "fields": [
   {
@@ -68,20 +70,35 @@
    "label": "Leave Delegation Details",
    "options": "Leave Delegation Detail",
    "reqd": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Leave Delegation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-31 19:28:00.000000",
+ "modified": "2026-06-05 17:27:38.766629",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Leave Delegation",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
-   "amend": 0,
    "cancel": 1,
    "create": 1,
    "delete": 1,
@@ -96,10 +113,7 @@
    "write": 1
   },
   {
-   "amend": 0,
-   "cancel": 0,
    "create": 1,
-   "delete": 0,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -111,18 +125,12 @@
    "write": 1
   },
   {
-   "amend": 0,
-   "cancel": 0,
    "create": 1,
-   "delete": 0,
    "email": 1,
-   "export": 0,
    "print": 1,
    "read": 1,
-   "report": 0,
    "role": "HR User",
    "share": 1,
-   "submit": 0,
    "write": 1
   }
  ],

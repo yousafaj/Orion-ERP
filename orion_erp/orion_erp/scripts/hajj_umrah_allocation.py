@@ -40,7 +40,7 @@ def auto_allocate_for_year(employee, doj, today):
     if has_approved:
         return False
 
-    max_days = frappe.get_value("Leave Type", leave_type, "max_leaves_allowed") or 21
+    max_days = frappe.get_value("Leave Type", leave_type, "max_leaves_allowed") or 30
 
     completed = (today.year - doj.year) * 12 + (today.month - doj.month)
     if today.day < doj.day:
