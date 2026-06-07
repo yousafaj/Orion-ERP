@@ -53,7 +53,8 @@ doctype_js = {
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
-doctype_list_js = {"Employee": "public/js/employee_list.js",}
+doctype_list_js = {"Employee": "public/js/employee_list.js",
+                   "Leave Application": "public/js/leave_application_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -184,15 +185,19 @@ permission_query_conditions = {
 doc_events = {
     "Leave Application":{
          "validate":[
-             "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
-             "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
-             "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
-             "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.auto_delegate_leave_application"
+              "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
+              "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
+              "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
+              "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
+              "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.auto_delegate_leave_application"
          ],
 
         "on_update":[
             "orion_erp.orion_erp.validations.leave_application.handle_leave_approval",
             "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.handle_auto_delegation_on_update"
+        ],
+        "on_submit":[
+            "orion_erp.orion_erp.validations.leave_application.on_submit_leave_application"
         ]
     },
     "Salary Structure Assignment":{
