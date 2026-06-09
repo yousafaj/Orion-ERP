@@ -47,6 +47,26 @@ class LeaveDelegation(Document):
         if self.valid_from and self.valid_to and self.valid_from > self.valid_to:
             frappe.throw(_("Valid From must be before Valid To"))
 
+        if self.valid_from and self.valid_to and self.delegator_user:
+            existing = frappe.db.get_value(
+                "Leave Delegation",
+                {
+                    "delegator_user": self.delegator_user,
+                    "docstatus": 1,
+                    "is_active": 1,
+                    "valid_from": ["<=", self.valid_to],
+                    "valid_to": [">=", self.valid_from],
+                    "name": ["!=", self.name],
+                },
+                "name"
+            )
+            if existing:
+                frappe.throw(
+                    _("An active Leave Delegation ({0}) already exists for {1} with overlapping dates ({2} to {3}). Please adjust the dates.").format(
+                        existing, self.delegator_user, self.valid_from, self.valid_to
+                    )
+                )
+
     def on_submit(self):
         for row in self.leave_delegation_detail:
             if not row.delegate_user:
@@ -127,7 +147,7 @@ class LeaveDelegation(Document):
 
 
 @frappe.whitelist()
-def get_pending_workflows(delegator):
+def get_pending_workflows(delegator, valid_from=None, valid_to=None):
     delegator_user = frappe.db.get_value("User", delegator, "name")
     if not delegator_user:
         return []
@@ -149,14 +169,20 @@ def get_pending_workflows(delegator):
         status_field = flow["status_field"]
         level = flow["level"]
 
-        filters = {
-            "docstatus": 0,
-            approver_field: delegator_user,
-            status_field: "Open",
-        }
+        filters = [
+            ["docstatus", "=", 0],
+            [approver_field, "=", delegator_user],
+            [status_field, "=", "Open"],
+        ]
 
         if active_delegated:
-            filters["name"] = ["not in", active_delegated]
+            filters.append(["name", "not in", active_delegated])
+
+        if valid_from:
+            filters.append(["from_date", ">=", valid_from])
+
+        if valid_to:
+            filters.append(["from_date", "<=", valid_to])
 
         leave_apps = frappe.get_all("Leave Application", filters=filters, fields=["name"])
 
@@ -170,6 +196,22 @@ def get_pending_workflows(delegator):
             })
 
     return results
+
+
+@frappe.whitelist()
+def check_overlapping_delegation(delegator_user, valid_from, valid_to, name=None):
+    filters = {
+        "delegator_user": delegator_user,
+        "docstatus": 1,
+        "is_active": 1,
+        "valid_from": ["<=", valid_to],
+        "valid_to": [">=", valid_from],
+    }
+    if name:
+        filters["name"] = ["!=", name]
+
+    existing = frappe.db.get_value("Leave Delegation", filters, "name")
+    return bool(existing)
 
 
 def auto_delegate_leave_application(doc, method=None):
