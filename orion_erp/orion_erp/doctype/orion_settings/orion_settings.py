@@ -15,8 +15,6 @@ class OrionSettings(Document):
 
 	if TYPE_CHECKING:
 		from frappe.types import DF
-		from orion_erp.orion_erp.doctype.leave_escalation_rule.leave_escalation_rule import LeaveEscalationRule
-		from orion_erp.orion_erp.doctype.leave_type_details.leave_type_details import LeaveTypeDetails
 		from orion_erp.orion_erp.doctype.role_details.role_details import RoleDetails
 		from orion_erp.orion_erp.doctype.ticket_entitlement.ticket_entitlement import TicketEntitlement
 
@@ -25,11 +23,8 @@ class OrionSettings(Document):
 		cron_schedule_date_noe: DF.Date | None
 		cron_schedule_date_oe: DF.Date | None
 		default_bank_name_for_c3_pay: DF.Data | None
-		default_escalation_user: DF.Link | None
 		last_month_for_which_payment_processed_noe: DF.Date | None
 		last_month_for_which_payment_processed_oe: DF.Date | None
-		leave_escalation_rules: DF.Table[LeaveEscalationRule]
-		leave_types_within_six_months: DF.TableMultiSelect[LeaveTypeDetails]
 		manual_paid_check_read_only_date: DF.Date | None
 		payroll_month_date_noe: DF.Date | None
 		payroll_month_date_oe: DF.Date | None

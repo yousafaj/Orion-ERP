@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, now_datetime
+from frappe.utils import flt, getdate
 
 
 APPROVAL_FLOW = [
@@ -45,8 +45,6 @@ def validate_leave_approval(doc, method=None):
     old_doc = doc.get_doc_before_save()
 
     if not old_doc:
-        if not doc.custom_last_status_change:
-            doc.custom_last_status_change = now_datetime()
         return
 
     for row in APPROVAL_FLOW:
@@ -79,20 +77,6 @@ def validate_leave_approval(doc, method=None):
 # =========================================================
 def handle_leave_approval(doc, method=None):
 
-    old_doc = doc.get_doc_before_save()
-
-    # Track status changes for auto-escalation
-    if old_doc:
-        status_changed = False
-        for row in APPROVAL_FLOW:
-            status_field = row["status_field"]
-            if old_doc.get(status_field) != doc.get(status_field):
-                status_changed = True
-                break
-        if status_changed:
-            doc.db_set("custom_last_status_change", now_datetime())
-            doc.db_set("custom_reminder_sent", 0)
-
     statuses = []
 
     for row in APPROVAL_FLOW:
@@ -123,7 +107,6 @@ def handle_leave_approval(doc, method=None):
                 0
             )
 
-        _notify_rejected(doc, old_doc)
         return
 
     
@@ -139,7 +122,6 @@ def handle_leave_approval(doc, method=None):
                 2
             )
 
-        _notify_cancelled(doc, old_doc)
         return
 
     # ALL APPROVED
@@ -150,7 +132,6 @@ def handle_leave_approval(doc, method=None):
 
     if all_approved:
 
-        _notify_approved(doc, old_doc)
         update_leave_application_status(doc)
 
         if doc.docstatus != 1:
@@ -581,101 +562,6 @@ def update_leave_application_status(doc):
 
 
 # =========================================================
-# NOTIFICATION HELPERS
-# =========================================================
-
-def _notify_approved(doc, old_doc):
-    if not old_doc:
-        return
-    old_statuses = [old_doc.get(row["status_field"]) for row in APPROVAL_FLOW if doc.get(row["approver_field"])]
-    if all(s == "Approved" for s in old_statuses):
-        return
-    employee_email = doc.get("custom_employee_user_id")
-    if not employee_email:
-        return
-    leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
-    subject = _("Leave Application Approved - {0}").format(doc.name)
-    message = f"""
-    <h3>Leave Application Approved</h3>
-    <p>Your leave application <b>{doc.name}</b> has been approved by all approvers.</p>
-    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Status</b></td><td style="padding:8px;border:1px solid #f3f3f3;">Approved</td></tr>
-    </table>
-    <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
-    """
-    frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
-
-
-def _notify_rejected(doc, old_doc):
-    if not old_doc:
-        return
-    was_rejected = any(old_doc.get(row["status_field"]) == "Rejected" for row in APPROVAL_FLOW if doc.get(row["approver_field"]))
-    if was_rejected:
-        return
-    employee_email = doc.get("custom_employee_user_id")
-    if not employee_email:
-        return
-    leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
-    subject = _("Leave Application Rejected - {0}").format(doc.name)
-    message = f"""
-    <h3>Leave Application Rejected</h3>
-    <p>Your leave application <b>{doc.name}</b> has been rejected.</p>
-    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Status</b></td><td style="padding:8px;border:1px solid #f3f3f3;">Rejected</td></tr>
-    </table>
-    <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
-    """
-    frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
-
-
-def _notify_cancelled(doc, old_doc):
-    if not old_doc:
-        return
-    was_cancelled = any(old_doc.get(row["status_field"]) == "Cancelled" for row in APPROVAL_FLOW if doc.get(row["approver_field"]))
-    if was_cancelled:
-        return
-
-    recipients = set()
-
-    employee_email = doc.get("custom_employee_user_id")
-    if employee_email:
-        recipients.add(employee_email)
-
-    for row in APPROVAL_FLOW:
-        approver = doc.get(row["approver_field"])
-        if approver:
-            recipients.add(approver)
-
-    hr_user = frappe.db.get_single_value("Orion Settings", "default_escalation_user")
-    if hr_user:
-        recipients.add(hr_user)
-
-    if not recipients:
-        return
-
-    leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
-    subject = _("Leave Application Cancelled - {0}").format(doc.name)
-    message = f"""
-    <h3>Leave Application Cancelled</h3>
-    <p>Leave application <b>{doc.name}</b> has been cancelled.</p>
-    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Status</b></td><td style="padding:8px;border:1px solid #f3f3f3;">Cancelled</td></tr>
-    </table>
-    <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
-    """
-    frappe.sendmail(recipients=list(recipients), subject=subject, message=message, now=False)
-
-
-# =========================================================
 # ON SUBMIT
 # =========================================================
 def on_submit_leave_application(doc, method=None):
@@ -684,56 +570,3 @@ def on_submit_leave_application(doc, method=None):
         "custom_approval_status",
         "Approved"
     )
-
-
-# =========================================================
-# LEAVE TYPE FILTER FOR 6-MONTH RESTRICTION
-# =========================================================
-
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def get_leave_types_for_employee(doctype, txt, searchfield, start, page_len, filters):
-    employee = filters.get("employee") if filters else None
-    if not employee:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    doj = frappe.db.get_value("Employee", employee, "date_of_joining")
-    if not doj:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    completed_months = get_completed_months(getdate(doj), getdate())
-
-    if completed_months >= 6:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    allowed_types = frappe.get_all(
-        "Leave Type Details",
-        filters={"parent": "Orion Settings", "parentfield": "leave_types_within_six_months"},
-        pluck="leave_type"
-    )
-
-    if not allowed_types:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    return frappe.db.sql("""
-        SELECT name FROM `tabLeave Type`
-        WHERE name IN %(allowed_types)s
-          AND name LIKE %(txt)s
-        LIMIT %(start)s, %(page_len)s
-    """, {"allowed_types": allowed_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
