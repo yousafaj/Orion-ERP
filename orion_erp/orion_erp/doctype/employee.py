@@ -302,19 +302,11 @@ def auto_allocate_hajj_umrah(doc, method):
 
     has_approved = frappe.db.exists("Leave Application", {
         "employee": doc.name,
-        "leave_type": leave_type,
+        "leave_type": leave_type_name,
         "docstatus": 1,
         "status": "Approved"
     })
     if has_approved:
-        return
-
-    # Skip if any allocation already exists for this leave type (don't create duplicate)
-    if frappe.db.exists("Leave Allocation", {
-        "employee": doc.name,
-        "leave_type": leave_type,
-        "docstatus": 1
-    }):
         return
 
     today = getdate()
@@ -329,12 +321,37 @@ def auto_allocate_hajj_umrah(doc, method):
     effective_from = add_months(doj, year_start_offset)
     effective_to = add_days(add_months(doj, year_start_offset + 12), -1)
 
+    exists = frappe.db.exists("Leave Allocation", {
+        "employee": doc.name,
+        "leave_type": leave_type_name,
+        "from_date": effective_from,
+        "to_date": effective_to,
+        "docstatus": 1
+    })
+    if exists:
+        return
+
+    prev_year_end = add_days(add_months(doj, year_start_offset), -1)
+    prev_allocations = frappe.get_all("Leave Allocation", {
+        "employee": doc.name,
+        "leave_type": leave_type_name,
+        "to_date": ["<=", prev_year_end],
+        "docstatus": 1,
+        "expired": 0
+    }, pluck="name")
+
+    for alloc_name in prev_allocations:
+        alloc = frappe.get_doc("Leave Allocation", alloc_name)
+        alloc.expired = 1
+        alloc.flags.ignore_permissions = True
+        alloc.save()
+
     max_days = frappe.get_value("Leave Type", leave_type, "max_leaves_allowed") or 21
 
     allocation = frappe.get_doc({
         "doctype": "Leave Allocation",
         "employee": doc.name,
-        "leave_type": leave_type,
+        "leave_type": leave_type_name,
         "from_date": effective_from,
         "to_date": effective_to,
         "new_leaves_allocated": max_days,

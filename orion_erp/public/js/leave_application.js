@@ -199,13 +199,6 @@ frappe.ui.form.on("Leave Application", {
                 frm.refresh_fields();
             }
         });
-
-        frm.set_query("leave_type", function() {
-            return {
-                query: "orion_erp.orion_erp.validations.leave_application.get_leave_types_for_employee",
-                filters: { employee: frm.doc.employee }
-            };
-        });
     },
     before_submit(frm) {
 
@@ -225,14 +218,6 @@ frappe.ui.form.on("Leave Application", {
         }
         handle_submit_button(frm);
         handle_medical_certificate_flag(frm);
-
-        frm.set_query("leave_type", function() {
-            return {
-                query: "orion_erp.orion_erp.validations.leave_application.get_leave_types_for_employee",
-                filters: { employee: frm.doc.employee }
-            };
-        });
-
         if (!frm.doc.employee) {
             return;
         }
