@@ -215,7 +215,7 @@ def check_overlapping_delegation(delegator_user, valid_from, valid_to, name=None
 
 
 def auto_delegate_leave_application(doc, method=None):
-    today = frappe.utils.today()
+    leave_start = doc.from_date or frappe.utils.today()
 
     if not hasattr(doc, '_auto_delegations'):
         doc._auto_delegations = []
@@ -234,8 +234,8 @@ def auto_delegate_leave_application(doc, method=None):
                 "delegator_user": current_approver,
                 "docstatus": 1,
                 "is_active": 1,
-                "valid_from": ["<=", today],
-                "valid_to": [">=", today],
+                "valid_from": ["<=", leave_start],
+                "valid_to": [">=", leave_start],
             },
             "name"
         )
