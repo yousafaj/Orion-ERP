@@ -29,7 +29,7 @@ def execute():
 
     tables_and_fields = {
         "Scheduled Job Type": ["method"],
-        "Number Card": ["function"],
+        "Number Card": ["function", "method"],
         "Singles": ["value"],
         "Server Script": ["script"],
         "Property Setter": ["value"],
@@ -154,6 +154,17 @@ def execute():
                 UPDATE `tabNumber Card`
                 SET function = %s
                 WHERE function = %s
+            """, (new, old))
+        except Exception:
+            pass
+
+        # Custom Number Cards store their dotted method path in `method`, NOT
+        # `function` (which only holds Count/Sum/etc.). Fix that field too.
+        try:
+            frappe.db.sql("""
+                UPDATE `tabNumber Card`
+                SET method = %s
+                WHERE method = %s
             """, (new, old))
         except Exception:
             pass

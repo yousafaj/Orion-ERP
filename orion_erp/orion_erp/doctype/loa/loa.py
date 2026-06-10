@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 
@@ -40,7 +41,32 @@ class LOA(Document):
 		total_driver_quota: DF.Int
 		total_vehicle_quota: DF.Int
 	# end: auto-generated types
-	pass
+
+	def validate(self):
+		self._fill_location_codes()
+
+	def _fill_location_codes(self):
+		"""Keep the row code and the Location master in sync, both ways:
+		  * blank row code  -> pull it from the Location;
+		  * row code typed but Location has none -> save it back to the Location.
+		Only block when a row has no code anywhere (owner wanted it never left blank)."""
+		missing = []
+		for row in self.locations or []:
+			if not row.location:
+				continue
+			master_code = frappe.db.get_value("Location", row.location, "custom_location_code")
+			if not row.location_code and master_code:
+				row.location_code = master_code
+			elif row.location_code and not master_code:
+				frappe.db.set_value("Location", row.location, "custom_location_code", row.location_code)
+			if not row.location_code:
+				missing.append(row.location)
+		if missing:
+			frappe.throw(
+				_("Enter a Location Code for: {0} (you can type it directly in the table).").format(
+					", ".join(missing)
+				)
+			)
 
 
 def auto_expire_loas():

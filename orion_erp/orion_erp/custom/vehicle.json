@@ -1261,7 +1261,7 @@
    "name": "Vehicle-custom_state",
    "no_copy": 0,
    "non_negative": 0,
-   "options": "\nIdle\nWith Client\nWorkshop",
+   "options": "\nIdle\nWith Client\nInternal Use\nWorkshop",
    "owner": "Administrator",
    "permlevel": 0,
    "placeholder": null,

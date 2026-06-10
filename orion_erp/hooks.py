@@ -116,7 +116,6 @@ fixtures = [
 # after_install = "orion_erp.install.after_install"
 
 after_install = "orion_erp.passport_management.install.after_install"
-after_migrate = "orion_erp.orion_erp.install.after_migrate"
 
 # Uninstallation
 # ------------
@@ -125,6 +124,14 @@ after_migrate = "orion_erp.orion_erp.install.after_migrate"
 # after_uninstall = "orion_erp.uninstall.after_uninstall"
 
 after_migrate = ["orion_erp.setup.after_migrate"]
+
+
+# Testing
+# -------
+# Bootstrap erpnext/hrms standard fixtures (Warehouse Types like "Transit", the
+# territory/customer-group trees, default UOMs, a test Company) before orion_erp
+# tests run on a fresh site. Only invoked by the test runner.
+before_tests = "hrms.tests.test_utils.before_tests"
 
 
 # Integration Setup
@@ -248,6 +255,11 @@ scheduler_events = {
     "cron": {
         "0 6 30 * *": [
             "orion_erp.orion_erp.doctype.additional_salary.create_monthly_allowances"
+        ],
+        # 1st of every month, 02:00 — build last month's Monthly Billing sheets so
+        # Accounts never miss invoicing a customer-month.
+        "0 2 1 * *": [
+            "orion_erp.orion_erp.doctype.monthly_billing.monthly_billing.create_monthly_billing_sheets"
         ]
     },
 	"daily": [
