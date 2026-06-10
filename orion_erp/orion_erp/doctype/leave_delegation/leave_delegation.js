@@ -90,6 +90,9 @@ frappe.ui.form.on("Leave Delegation", {
         frm.refresh_field("leave_delegation_detail");
     },
     refresh: function (frm) {
+        if (frm.doc.docstatus === 0 && frm.doc.__islocal) {
+            frm.set_value("delegator_user", frappe.session.user);
+        }
         if (frm.doc.docstatus === 0 && frm.doc.delegator_user) {
             fetch_pending_workflows(frm, true);
         }
