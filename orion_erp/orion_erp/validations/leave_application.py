@@ -80,10 +80,10 @@ def validate_leave_approval(doc, method=None):
 def handle_leave_approval(doc, method=None):
 
     old_doc = doc.get_doc_before_save()
+    status_changed = False
 
     # Track status changes for auto-escalation
     if old_doc:
-        status_changed = False
         for row in APPROVAL_FLOW:
             status_field = row["status_field"]
             if old_doc.get(status_field) != doc.get(status_field):
@@ -160,7 +160,9 @@ def handle_leave_approval(doc, method=None):
 
         return
 
-    send_next_approval_email(doc)
+    if status_changed:
+        send_next_approval_email(doc)
+
     update_leave_application_status(doc)
 
 # NEXT APPROVER EMAIL

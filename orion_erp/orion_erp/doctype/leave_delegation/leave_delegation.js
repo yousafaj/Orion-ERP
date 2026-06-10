@@ -1,4 +1,4 @@
-function fetch_pending_workflows(frm) {
+function fetch_pending_workflows(frm, append_only) {
     if (!frm.doc.delegator_user || !frm.doc.valid_from || !frm.doc.valid_to) return;
 
     frappe.call({
@@ -11,8 +11,19 @@ function fetch_pending_workflows(frm) {
         callback: function (r) {
             if (!r.message) return;
 
-            frm.clear_table("leave_delegation_detail");
+            var existing = {};
+            $.each(frm.doc.leave_delegation_detail || [], function (i, row) {
+                existing[row.document_name + "|" + row.level] = true;
+            });
+
+            if (!append_only) {
+                frm.clear_table("leave_delegation_detail");
+            }
+
             r.message.forEach(function (row) {
+                var key = row.document_name + "|" + row.level;
+                if (append_only && existing[key]) return;
+
                 let child = frm.add_child("leave_delegation_detail");
                 child.document_name = row.document_name;
                 child.level = row.level;
@@ -79,6 +90,9 @@ frappe.ui.form.on("Leave Delegation", {
         frm.refresh_field("leave_delegation_detail");
     },
     refresh: function (frm) {
+        if (frm.doc.docstatus === 0 && frm.doc.delegator_user) {
+            fetch_pending_workflows(frm, true);
+        }
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__("Restore Original Approvers"), function () {
                 frappe.call({
