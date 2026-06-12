@@ -14,6 +14,14 @@ frappe.listview_settings["Leave Application"] = {
                 "Pending": "orange",
             }[value] || "blue";
             return `<span class="indicator-pill ${color}">${value}</span>`;
+        },
+        custom_approval_status(value, df, doc) {
+            var color = {
+                "Approved": "green",
+                "Rejected": "red",
+                "Cancelled": "red",
+            }[value] || "blue";
+            return `<span class="indicator-pill ${color}">${value}</span>`;
         }
     },
 
@@ -42,7 +50,7 @@ function get_indicator_color(status) {
     }
 
     if (status === "Cancelled") {
-        return "darkgrey";
+        return "red";
     }
 
     return "blue";

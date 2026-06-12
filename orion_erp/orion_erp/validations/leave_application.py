@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, now_datetime
+from frappe.utils import flt, getdate, now_datetime, add_days
 
 
 APPROVAL_FLOW = [
@@ -138,6 +138,15 @@ def handle_leave_approval(doc, method=None):
                 "docstatus",
                 2
             )
+
+        doc.db_set("custom_last_status_change", now_datetime())
+        doc.db_set("custom_reminder_sent", 0)
+
+        for row in APPROVAL_FLOW:
+            if doc.get(row["approver_field"]):
+                doc.db_set(row["status_field"], "Cancelled")
+
+        doc.db_set("custom_approval_status", "Cancelled")
 
         _notify_cancelled(doc, old_doc)
         return
@@ -430,6 +439,35 @@ def validate_medical_certificate(doc, method=None):
         ) + hrs_text
     )
 
+def validate_paternity_leave(doc, method=None):
+    if doc.leave_type != "Paid Paternity Leave":
+        return
+
+    if not doc.custom_child_date_of_birth:
+        frappe.throw(
+            _("Child's Date of Birth is required for Paid Paternity Leave.")
+        )
+
+    child_dob = getdate(doc.custom_child_date_of_birth)
+    six_months_later = add_days(child_dob, 183)
+
+    if doc.from_date and getdate(doc.from_date) > six_months_later:
+        frappe.throw(
+            _("Paid Paternity Leave must be taken within 6 months of the child's date of birth. From Date ({0}) exceeds the 6-month period from child's date of birth ({1}).").format(
+                frappe.bold(str(doc.from_date)),
+                frappe.bold(str(doc.custom_child_date_of_birth))
+            )
+        )
+
+    if doc.to_date and getdate(doc.to_date) > six_months_later:
+        frappe.throw(
+            _("Paid Paternity Leave must be taken within 6 months of the child's date of birth. To Date ({0}) exceeds the 6-month period from child's date of birth ({1}).").format(
+                frappe.bold(str(doc.to_date)),
+                frappe.bold(str(doc.custom_child_date_of_birth))
+            )
+        )
+
+
 def validate_hajj_umrah_leave(doc, method=None):
     if doc.leave_type != "HAJI/ UMRAH LEAVE":
         return
@@ -464,6 +502,23 @@ def validate_hajj_umrah_leave(doc, method=None):
             _("Employee has already availed Hajj/Umrah Leave. This leave type can only be availed once during the entire employment period."),
             title=_("Already Availed")
         )
+
+
+def reset_status_on_amend(doc, method=None):
+    if not doc.amended_from:
+        return
+
+    if doc.get_doc_before_save():
+        return
+
+    doc.status = "Open"
+    doc.custom_status_approver1 = "Open"
+    doc.custom_status_approver2 = "Open"
+    doc.custom_status_approver4 = "Open"
+    doc.custom_status_approver5 = "Open"
+    doc.custom_approval_status = "Pending Approval from Approver 1"
+    doc.custom_last_status_change = now_datetime()
+    doc.custom_reminder_sent = 0
 
 
 def update_leave_application_status(doc):
@@ -686,6 +741,50 @@ def on_submit_leave_application(doc, method=None):
         "custom_approval_status",
         "Approved"
     )
+
+
+def on_cancel_leave_application(doc, method=None):
+
+    doc.db_set(
+        "custom_approval_status",
+        "Cancelled"
+    )
+
+
+# =========================================================
+# CANCEL DRAFT LEAVE APPLICATION
+# =========================================================
+
+@frappe.whitelist()
+def cancel_draft_leave(docname):
+    doc = frappe.get_doc("Leave Application", docname)
+
+    if doc.docstatus != 0:
+        frappe.throw(_("Only draft leave applications can be cancelled."))
+
+    if doc.status == "Cancelled":
+        frappe.throw(_("Leave application is already cancelled."))
+
+    from frappe.utils import getdate
+    if getdate(doc.from_date) <= getdate():
+        frappe.throw(_("Leave cannot be cancelled after the start date has passed."))
+
+    doc.db_set("status", "Cancelled")
+    doc.db_set("custom_status_approver1", "Cancelled")
+    doc.db_set("custom_status_approver2", "Cancelled")
+    doc.db_set("custom_status_approver4", "Cancelled")
+    doc.db_set("custom_status_approver5", "Cancelled")
+    doc.db_set("docstatus", 2)
+    doc.db_set("custom_approval_status", "Cancelled")
+
+    doc.add_comment(
+        "Info",
+        _("Leave application cancelled by {0} before start date.").format(
+            frappe.bold(frappe.session.user)
+        )
+    )
+
+    return True
 
 
 # =========================================================

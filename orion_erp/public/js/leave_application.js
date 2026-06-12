@@ -212,6 +212,8 @@ frappe.ui.form.on("Leave Application", {
         validate_all_approvals(frm);
     },
     refresh(frm) {
+        handle_cancel_button(frm);
+
         if (frm.doc.custom_approval_status) {
 
             frm.page.set_indicator(
@@ -223,6 +225,20 @@ frappe.ui.form.on("Leave Application", {
                 )
             );
         }
+
+        frappe.dom.set_style(
+            '.frappe-control[data-fieldname="custom_approval_status"] .control-value, \
+             .frappe-control[data-fieldname="custom_approval_status"] .like-disabled-input, \
+             .page-head .indicator-pill { \
+                max-width: none !important; \
+                min-width: 140px !important; \
+                white-space: nowrap !important; \
+                overflow: visible !important; \
+                text-overflow: clip !important; \
+                width: auto !important; \
+            }'
+        );
+
         handle_submit_button(frm);
         handle_medical_certificate_flag(frm);
 
@@ -573,6 +589,50 @@ function handle_submit_button(frm) {
     }
 }
 
+function handle_cancel_button(frm) {
+    $(".btn-cancel-leave").remove();
+
+    if (frm.is_new()) return;
+
+    if (frm.doc.docstatus !== 0) return;
+
+    if (frm.doc.status === "Cancelled") return;
+
+    if (!frm.doc.from_date) return;
+
+    let today = frappe.datetime.nowdate();
+    if (today >= frm.doc.from_date) return;
+
+    frappe.db.get_value("Leave Application", frm.doc.name, "name", function(r) {
+        if (!r) return;
+
+        frm.add_custom_button(
+            __("Cancel Leave"),
+            function() {
+                frappe.confirm(
+                    __("Are you sure you want to cancel this leave application?"),
+                    function() {
+                        frappe.call({
+                            method: "orion_erp.orion_erp.validations.leave_application.cancel_draft_leave",
+                            args: { docname: frm.doc.name },
+                            callback: function(r) {
+                                if (r.message) {
+                                    frappe.show_alert({
+                                        message: __("Leave application has been cancelled."),
+                                        indicator: "green"
+                                    });
+                                    frm.reload_doc();
+                                }
+                            }
+                        });
+                    }
+                );
+            }
+        );
+    });
+}
+
+
 function get_indicator_color(status) {
 
     if (
@@ -594,7 +654,7 @@ function get_indicator_color(status) {
         status === "Cancelled"
     ) {
 
-        return "darkgrey";
+        return "red";
     }
 
     return "blue";
