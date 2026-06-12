@@ -1,37 +1,54 @@
-// Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
-// For license information, please see license.txt
-
 frappe.ui.form.on("Salik or Darbs", {
-	refresh(frm) {
-		if (frm.doc.docstatus === 0 && !frm.is_new() && frm.doc.excel_attachment) {
-			frm.add_custom_button(__("Parse & Match Excel"), () => {
-				frappe.call({
-					method: "orion_erp.orion_erp.doctype.salik_or_darbs.salik_or_darbs.parse_and_match",
-					args: { name: frm.doc.name },
-					freeze: true,
-					freeze_message: __("Parsing statement…"),
-					callback: (r) => {
-						if (r.message) {
-							frappe.show_alert({
-								message: __("{0} charges parsed, {1} unmatched.", [
-									r.message.total,
-									r.message.unmatched,
-								]),
-								indicator: r.message.unmatched ? "orange" : "green",
-							});
-						}
-						frm.reload_doc();
-					},
-				});
-			}).addClass("btn-primary");
-		}
+        post_salik(frm) {
+        if (!frm.doc.vehicle) {
+            frappe.msgprint("Please select a Vehicle first.");
+            return;
+        }
 
-		if (frm.doc.unmatched_count) {
-			frm.dashboard.set_headline(
-				__("{0} toll rows did not match a vehicle/rental — review the highlighted rows.", [
-					frm.doc.unmatched_count,
-				])
-			);
-		}
-	},
+        frappe.call({
+            method: "frappe.client.get_list",
+            args: {
+                doctype: "Driver Movement",
+                filters: {
+                    vehicle: frm.doc.vehicle,
+                    mobilization_status: "Mobilize"
+                },
+                fields: ["name", "driver", "shift", "project", "creation"],
+                order_by: "creation desc",
+                limit_page_length: 1
+            },
+            callback: function (r) {
+                if (r.message && r.message.length > 0) {
+                    const last_mob = r.message[0];
+                    frm.set_value("driver", last_mob.driver);
+                    frm.set_value("shift", last_mob.shift);
+                    frm.set_value("project", last_mob.project);
+                } else {
+                    frappe.msgprint("No Mobilization record found for this vehicle.");
+                }
+            }
+        });
+    },
+
+    vehicle(frm) {
+        if (frm.doc.post_salik == 1) {
+            frm.events.post_salik(frm); 
+        }
+    }
+});
+
+frappe.ui.form.on("Fines cdt", {
+    detail_add: function(frm, cdt, cdn) {
+        const row = frappe.get_doc(cdt, cdn);
+
+        if (frm.doc.project) {
+            row.project = frm.doc.project;
+        }
+
+        if (frm.doc.vehicle) {
+            row.vrn = frm.doc.vehicle;
+        }
+
+        frm.refresh_field("detail");
+    }
 });

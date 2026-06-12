@@ -10,23 +10,16 @@
   "fine_date",
   "location",
   "fine_number",
-  "amount",
   "vrn"
  ],
  "fields": [
   {
-   "fieldname": "amount",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Amount"
-  },
-  {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Project",
    "options": "Project",
-   "read_only": 1,
-   "hidden": 1
+   "read_only": 1
   },
   {
    "fieldname": "fine_date",

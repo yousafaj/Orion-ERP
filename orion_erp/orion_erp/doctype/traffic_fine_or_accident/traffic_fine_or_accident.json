@@ -1,13 +1,15 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:SD-{date}-{######}",
- "creation": "2025-05-13 14:09:51.335215",
+ "autoname": "format:TA-{date}-{#####}",
+ "creation": "2025-05-13 14:17:51.456817",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "post_salik",
-  "section_break_mfed",
+  "post_fine",
+  "column_break_rdey",
+  "status",
+  "section_break_gvlb",
   "vehicle",
   "vehicle_type",
   "shift",
@@ -17,32 +19,30 @@
   "date",
   "project",
   "customer",
-  "type",
+  "fine_status",
   "section_break_rqqw",
   "detail",
+  "accident_detail",
+  "section_break_ucfa",
+  "closing_status",
+  "column_break_qljo",
+  "evidence",
   "section_break_kjdx",
   "amended_from"
  ],
  "fields": [
   {
-   "fieldname": "section_break_kjdx",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Salik or Darbs",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
    "fieldname": "vehicle",
    "fieldtype": "Link",
    "label": "Vehicle",
    "options": "Vehicle"
+  },
+  {
+   "fetch_from": "vehicle.custom_vehicle_type",
+   "fieldname": "vehicle_type",
+   "fieldtype": "Data",
+   "label": "Vehicle Type",
+   "read_only": 1
   },
   {
    "fieldname": "shift",
@@ -61,13 +61,6 @@
    "fieldtype": "Link",
    "label": "Employment Type",
    "options": "Employment Type",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "vehicle.custom_vehicle_type",
-   "fieldname": "vehicle_type",
-   "fieldtype": "Data",
-   "label": "Vehicle Type",
    "read_only": 1
   },
   {
@@ -102,33 +95,94 @@
   {
    "fieldname": "detail",
    "fieldtype": "Table",
-   "label": "Detail",
+   "label": "Fine Detail",
    "options": "Fines cdt"
   },
   {
-   "default": "0",
-   "fieldname": "post_salik",
-   "fieldtype": "Check",
-   "label": "Existing Salik"
-  },
-  {
-   "fieldname": "section_break_mfed",
+   "fieldname": "section_break_kjdx",
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "type",
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Traffic Fine or Accident",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Traffic Fine or Accident",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "fine_status",
    "fieldtype": "Select",
-   "label": "Type",
-   "options": "\nWith Driver\nWithout Driver"
+   "label": "Fine Type",
+   "options": "\nFaulty\nNot Faulty"
+  },
+  {
+   "default": "0",
+   "fieldname": "post_fine",
+   "fieldtype": "Check",
+   "label": "Existing Fine"
+  },
+  {
+   "fieldname": "section_break_gvlb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "accident_detail",
+   "fieldtype": "Table",
+   "label": "Accident Detail",
+   "options": "Accident Logs"
+  },
+  {
+   "fieldname": "section_break_ucfa",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "closing_status",
+   "fieldtype": "Select",
+   "label": "Closing Status",
+   "options": "\nPaid by Client\nPaid by Driver\nPaid by Company"
+  },
+  {
+   "fieldname": "column_break_qljo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "evidence",
+   "fieldtype": "Attach",
+   "label": "Evidence"
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Fine Status",
+   "options": "\nOpen\nClosed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rdey",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-20 15:12:13.234922",
+ "modified": "2025-05-23 17:21:32.803354",
  "modified_by": "Administrator",
  "module": "Orion ERP",
- "name": "Salik or Darbs",
+ "name": "Traffic Fine or Accident",
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [

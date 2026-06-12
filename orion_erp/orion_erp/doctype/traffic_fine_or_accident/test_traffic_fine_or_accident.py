@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestMaintenanceActivity(FrappeTestCase):
+class TestTrafficFineorAccident(FrappeTestCase):
 	pass
