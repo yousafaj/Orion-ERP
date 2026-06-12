@@ -1,29 +1,17 @@
 # Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
+from frappe import _
 from frappe.model.document import Document
 
 
 class MaintenanceActivity(Document):
-	# begin: auto-generated types
-	# This code is auto-generated. Do not modify anything in this block.
-
-	from typing import TYPE_CHECKING
-
-	if TYPE_CHECKING:
-		from frappe.types import DF
-		from orion_erp.orion_erp.doctype.maintenance__scheduling.maintenance__scheduling import MaintenanceScheduling
-
-		amended_from: DF.Link | None
-		customer: DF.Link | None
-		date: DF.Date | None
-		detail: DF.Table[MaintenanceScheduling]
-		driver: DF.Link | None
-		employment_type: DF.Link | None
-		project: DF.Link | None
-		shift: DF.Link | None
-		vehicle: DF.Link | None
-		vehicle_type: DF.Data | None
-	# end: auto-generated types
-	pass
+    # Deprecated for now — workshop time is tracked via the Vehicle Movement
+    # "To Workshop" / "Back in Service" off-hire buttons. New records are blocked;
+    # the doctype is retained (no production data).
+    def validate(self):
+        if self.is_new():
+            frappe.throw(
+                _("Vehicle Maintenance is currently disabled. Use 'To Workshop' on the Vehicle Movement.")
+            )

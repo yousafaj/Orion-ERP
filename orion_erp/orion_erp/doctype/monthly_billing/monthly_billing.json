@@ -1,0 +1,233 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:MB-{customer}-{month_label}",
+ "creation": "2026-06-03 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "header_section",
+  "customer",
+  "billing_month",
+  "month_label",
+  "column_break_hdr",
+  "company",
+  "invoiced",
+  "invoiced_date",
+  "external_invoice_ref",
+  "totals_section",
+  "total_vehicle_days",
+  "total_salik_amount",
+  "column_break_tot",
+  "total_fine_amount",
+  "vehicles_section",
+  "vehicle_lines",
+  "salik_section",
+  "salik_lines",
+  "fines_section",
+  "fine_lines",
+  "remarks_section",
+  "remarks",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "header_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "billing_month",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Billing Month (1st)",
+   "reqd": 1,
+   "description": "Any date in the month being billed; stored as the 1st."
+  },
+  {
+   "fieldname": "month_label",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Month",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_hdr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "default": "0",
+   "fieldname": "invoiced",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Invoiced",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "depends_on": "eval:doc.invoiced",
+   "fieldname": "invoiced_date",
+   "fieldtype": "Date",
+   "label": "Invoiced On",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "depends_on": "eval:doc.invoiced",
+   "fieldname": "external_invoice_ref",
+   "fieldtype": "Data",
+   "label": "External Invoice Ref",
+   "read_only": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "totals_section",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_vehicle_days",
+   "fieldtype": "Int",
+   "label": "Total Billable Vehicle Days",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_salik_amount",
+   "fieldtype": "Currency",
+   "label": "Total Salik Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_tot",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_fine_amount",
+   "fieldtype": "Currency",
+   "label": "Total Fine Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "vehicles_section",
+   "fieldtype": "Section Break",
+   "label": "Vehicle Rentals (days)"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "vehicle_lines",
+   "fieldtype": "Table",
+   "label": "Vehicle Rentals",
+   "options": "Monthly Billing Vehicle Line",
+   "read_only": 1
+  },
+  {
+   "fieldname": "salik_section",
+   "fieldtype": "Section Break",
+   "label": "Salik / Darb Tolls"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "salik_lines",
+   "fieldtype": "Table",
+   "label": "Salik Tolls",
+   "options": "Monthly Billing Salik Line",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fines_section",
+   "fieldtype": "Section Break",
+   "label": "Traffic Fines (billable to customer)"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "fine_lines",
+   "fieldtype": "Table",
+   "label": "Fines",
+   "options": "Monthly Billing Fine Line",
+   "read_only": 1
+  },
+  {
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Monthly Billing",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-06-03 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Monthly Billing",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

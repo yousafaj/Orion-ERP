@@ -48,11 +48,13 @@ doctype_js = {
     "Additional Salary": "public/js/additional_salary.js",
     "Leave Application": "public/js/leave_application.js",
     "Salary Slip": "public/js/salary_slip.js",
-    "Job Offer":"public/js/job_offer.js"
+    "Job Offer":"public/js/job_offer.js",
+    "Driver": "public/js/driver.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
-doctype_list_js = {"Employee": "public/js/employee_list.js",}
+doctype_list_js = {"Employee": "public/js/employee_list.js",
+                   "Leave Application": "public/js/leave_application_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -100,6 +102,10 @@ fixtures = [
         "filters": [
             ["name", "in", ["Total Employees"]]
         ]
+    },
+    {
+        "doctype": "Role",
+        "filters": [["name", "in", ["PRO"]]]
     }
 ]
 
@@ -109,6 +115,8 @@ fixtures = [
 # before_install = "orion_erp.install.before_install"
 # after_install = "orion_erp.install.after_install"
 
+after_install = "orion_erp.passport_management.install.after_install"
+
 # Uninstallation
 # ------------
 
@@ -116,6 +124,15 @@ fixtures = [
 # after_uninstall = "orion_erp.uninstall.after_uninstall"
 
 after_migrate = ["orion_erp.setup.after_migrate"]
+
+
+# Testing
+# -------
+# Bootstrap erpnext/hrms standard fixtures (Warehouse Types like "Transit", the
+# territory/customer-group trees, default UOMs, a test Company) before orion_erp
+# tests run on a fresh site. Only invoked by the test runner.
+before_tests = "hrms.tests.test_utils.before_tests"
+
 
 # Integration Setup
 # ------------------
@@ -174,9 +191,26 @@ permission_query_conditions = {
 
 doc_events = {
     "Leave Application":{
-         "validate":"orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
+         "validate":[
+              "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
+              "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
+              "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
+               "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
+               "orion_erp.orion_erp.validations.leave_application.validate_paternity_leave",
+               "orion_erp.orion_erp.validations.leave_application.reset_status_on_amend",
+               "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.auto_delegate_leave_application"
+         ],
 
-        "on_update":"orion_erp.orion_erp.validations.leave_application.handle_leave_approval"
+        "on_update":[
+            "orion_erp.orion_erp.validations.leave_application.handle_leave_approval",
+            "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.handle_auto_delegation_on_update"
+        ],
+        "on_submit":[
+            "orion_erp.orion_erp.validations.leave_application.on_submit_leave_application"
+        ],
+        "on_cancel":[
+            "orion_erp.orion_erp.validations.leave_application.on_cancel_leave_application"
+        ]
     },
     "Salary Structure Assignment":{
         "validate":"orion_erp.orion_erp.validations.salary_structure_assignment.validate_ssa_employee_category"
@@ -192,7 +226,8 @@ doc_events = {
         "validate": "orion_erp.orion_erp.validations.vehicle_hooks.validate_vehicle"
     },
     "Driver": {
-        "validate": "orion_erp.orion_erp.validations.driver_hooks.validate_driver"
+        "validate": "orion_erp.orion_erp.validations.driver_hooks.validate_driver",
+        "after_insert": "orion_erp.orion_erp.validations.driver_hooks.after_insert_driver"
     },
     "Customer": {
         "validate": "orion_erp.orion_erp.validations.customer_hooks.validate_customer"
@@ -201,10 +236,20 @@ doc_events = {
         "validate": ["orion_erp.orion_erp.validations.employee_hooks.validate_employee",
                     "orion_erp.orion_erp.doctype.employee.validate_allowance_amounts"],
         "after_insert": "orion_erp.orion_erp.doctype.employee.create_salary_structure_assignment",
-        "on_update": "orion_erp.orion_erp.doctype.employee.create_salary_structure_assignment"
+        "on_update": [
+            "orion_erp.orion_erp.doctype.employee.create_salary_structure_assignment",
+            "orion_erp.orion_erp.doctype.employee.create_leave_policy_assignment",
+            "orion_erp.orion_erp.doctype.employee.auto_allocate_hajj_umrah"
+        ]
     },
     "Asset": {
         "autoname": "orion_erp.orion_erp.scripts.autoname_assets.autoname_asset"
+    },
+    "Leave Type": {
+        "validate": "orion_erp.orion_erp.validations.leave_type.validate_no_casual_leave"
+    },
+    "Leave Encashment": {
+        "validate": "orion_erp.orion_erp.validations.leave_encashment.validate_leave_encashment"
     }
 }
 
@@ -218,13 +263,30 @@ scheduler_events = {
     "cron": {
         "0 6 30 * *": [
             "orion_erp.orion_erp.doctype.additional_salary.create_monthly_allowances"
+        ],
+        # 1st of every month, 02:00 — build last month's Monthly Billing sheets so
+        # Accounts never miss invoicing a customer-month.
+        "0 2 1 * *": [
+            "orion_erp.orion_erp.doctype.monthly_billing.monthly_billing.create_monthly_billing_sheets"
         ]
     },
 	"daily": [
         # "orion_erp.orion_erp.doctype.employee_deduction.employee_deduction.run_deduction_cron"
 		"orion_erp.tasks.daily.daily",
+        "orion_erp.orion_erp.scripts.leave_escalation.process_leave_escalations",
         "orion_erp.orion_erp.scripts.certificate_notification.certificate_expiry_notification",
-        "orion_erp.orion_erp.doctype.employee.create_ticket_allowance"
+        "orion_erp.orion_erp.doctype.employee.create_ticket_allowance",
+        "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.restore_delegations",
+        "orion_erp.passport_management.tasks.send_overdue_passport_alerts",
+        "orion_erp.orion_erp.doctype.cicpa.cicpa.auto_expire_cicpas",
+        "orion_erp.orion_erp.doctype.loa.loa.auto_expire_loas",
+        "orion_erp.orion_erp.doctype.employee.auto_renew_leave_policy_assignments",
+        "orion_erp.orion_erp.scripts.hajj_umrah_allocation.allocate_hajj_umrah_yearly_for_all",
+        "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_monthly_accrual",
+        "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_carry_forward"
+	],
+	"daily_long": [
+	    "orion_erp.passport_management.tasks.send_expiry_reminders"
 	],
 	# "hourly": [
 	# 	"orion_erp.tasks.hourly"

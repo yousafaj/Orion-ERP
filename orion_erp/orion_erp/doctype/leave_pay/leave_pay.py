@@ -15,6 +15,8 @@ class LeavePay(Document):
 		from frappe.types import DF
 
 		amount: DF.Currency
+		from_date: DF.Date | None
+		leave_type: DF.Link | None
 		parent: DF.Data
 		parentfield: DF.Data
 		parenttype: DF.Data
