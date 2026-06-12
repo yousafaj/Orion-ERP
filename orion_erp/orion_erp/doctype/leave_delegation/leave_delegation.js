@@ -33,7 +33,38 @@ function fetch_pending_workflows(frm, append_only) {
                 child.has_delegation = 1;
             });
             frm.refresh_field("leave_delegation_detail");
+            fetch_delegate_names(frm);
         },
+    });
+}
+
+function fetch_delegate_names(frm) {
+    let users = [];
+    (frm.doc.leave_delegation_detail || []).forEach(row => {
+        if (row.delegate_user && !row.employee_name) {
+            users.push(row.delegate_user);
+        }
+    });
+    if (!users.length) return;
+
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "Employee",
+            filters: { user_id: ["in", users] },
+            fields: ["user_id", "employee_name"],
+        },
+        callback: function(r) {
+            if (!r.message) return;
+            let map = {};
+            r.message.forEach(e => { map[e.user_id] = e.employee_name; });
+            (frm.doc.leave_delegation_detail || []).forEach(row => {
+                if (row.delegate_user && map[row.delegate_user]) {
+                    frappe.model.set_value(row.doctype, row.name, "employee_name", map[row.delegate_user]);
+                }
+            });
+            frm.refresh_field("leave_delegation_detail");
+        }
     });
 }
 
@@ -88,6 +119,7 @@ frappe.ui.form.on("Leave Delegation", {
             frappe.model.set_value(row.doctype, row.name, "delegate_user", frm.doc.delegate_user);
         });
         frm.refresh_field("leave_delegation_detail");
+        fetch_delegate_names(frm);
     },
     refresh: function (frm) {
         if (frm.doc.docstatus === 0 && frm.doc.__islocal) {

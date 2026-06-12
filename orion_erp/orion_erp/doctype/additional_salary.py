@@ -19,6 +19,18 @@ def on_submit(self,method):
             create_additional_deduction(self)
 
 def on_cancel(self,method):
+        if (self.salary_component == "Ticket Allowance"
+                and self.custom_auto_generated
+                and self.custom_reference_
+                and not frappe.flags.ignore_ticket_allowance_validation):
+            frappe.throw(
+                f"Cannot cancel this Additional Salary directly. "
+                f"Please cancel the linked Leave Settlement "
+                f"<a href='/app/leave-settlement/{self.custom_reference_}'>"
+                f"{self.custom_reference_}</a> instead, "
+                f"which will automatically cancel this Additional Salary."
+            )
+
         # Reverse deduction when salary is cancelled
         if self.salary_component == "Total Deduction":
             reverse_deductions(self)
