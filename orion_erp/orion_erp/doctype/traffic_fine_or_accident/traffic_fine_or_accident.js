@@ -1,8 +1,8 @@
 // Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Maintenance Activity", {
-	existing_maintenance(frm) {
+frappe.ui.form.on("Traffic Fine or Accident", {
+	post_fine(frm) {
         if (!frm.doc.vehicle) {
             frappe.msgprint("Please select a Vehicle first.");
             return;
@@ -34,8 +34,42 @@ frappe.ui.form.on("Maintenance Activity", {
     },
 
     vehicle(frm) {
-        if (frm.doc.existing_maintenance == 1) {
-            frm.events.existing_maintenance(frm); 
+        if (frm.doc.post_fine == 1) {
+            frm.events.post_fine(frm); 
         }
     }
 });
+
+frappe.ui.form.on("Fines cdt", {
+    detail_add: function(frm, cdt, cdn) {
+        const row = frappe.get_doc(cdt, cdn);
+
+        if (frm.doc.project) {
+            row.project = frm.doc.project;
+        }
+
+        if (frm.doc.vehicle) {
+            row.vrn = frm.doc.vehicle;
+        }
+
+        frm.refresh_field("detail");
+    }
+});
+
+frappe.ui.form.on("Accident Logs", {
+    accident_detail_add: function(frm, cdt, cdn) {
+        const row = frappe.get_doc(cdt, cdn);
+
+        if (frm.doc.project) {
+            row.project = frm.doc.project;
+        }
+
+        if (frm.doc.vehicle) {
+            row.vrn = frm.doc.vehicle;
+        }
+
+        frm.refresh_field("accident_detail");
+    }
+});
+
+

@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate, flt
+from frappe.utils import getdate,flt
 import re
 
 class LeaveSettlement(Document):
@@ -117,9 +117,8 @@ class LeaveSettlement(Document):
 
 	def on_submit(self):
 		mark_ticket_paid(self)
+		
 		create_leave_settlement_deduction(self)
-		create_ticket_allowance_additional_salary(self)
-		create_leave_encashment_for_settlement(self)
 
 	def validate(self):
 		validate_ticket_allowance(self)
@@ -127,47 +126,7 @@ class LeaveSettlement(Document):
 	def on_cancel(self):
 		validate_salary_slip_before_cancel(self)
 		cancel_linked_additional_deductions(self)
-		cancel_linked_ticket_allowance_additional_salary(self)
-		cancel_linked_leave_encashments(self)
 		revert_ticket_paid(self)
-
-
-@frappe.whitelist()
-def get_leave_pay_data(employee, date_of_settlement, doj=None):
-	if not employee or not date_of_settlement:
-		return []
-
-	date_of_settlement = getdate(date_of_settlement)
-
-	from hrms.hr.doctype.leave_application.leave_application import (
-		get_leave_balance_on,
-		get_leave_allocation_records,
-	)
-
-	allocation_records = get_leave_allocation_records(employee, date_of_settlement, "ANNUAL LEAVE")
-	allocation = allocation_records.get("ANNUAL LEAVE", frappe._dict())
-
-	if not allocation:
-		return []
-
-	balance = get_leave_balance_on(employee, "ANNUAL LEAVE", date_of_settlement)
-
-	leave_balance = flt(balance)
-
-	if leave_balance <= 0:
-		return []
-
-	offer_salary = flt(frappe.db.get_value("Employee", employee, "custom_total_salary_as_per_offer_letter"))
-
-	amount = (offer_salary / 30) * leave_balance if offer_salary > 0 else 0
-
-	return [{
-		"leave_type": "ANNUAL LEAVE",
-		"from": doj,
-		"to": str(date_of_settlement),
-		"tenure": leave_balance,
-		"amount": amount
-	}]
 
 
 def create_leave_settlement_deduction(self):
@@ -644,135 +603,3 @@ def validate_salary_slip_before_cancel(self):
 			"""
 
 		frappe.throw(message)
-
-
-def create_ticket_allowance_additional_salary(self):
-	if not self.ticket_allowance:
-		return
-
-	for row in self.ticket_allowance:
-		if flt(row.amount) <= 0:
-			continue
-
-		additional_salary = frappe.new_doc("Additional Salary")
-		additional_salary.employee = self.employee
-		additional_salary.employee_name = self.employee_name
-		additional_salary.company = self.company
-		additional_salary.payroll_date = self.date_of_settlement
-		additional_salary.salary_component = "Ticket Allowance"
-		additional_salary.currency = frappe.get_cached_value("Company", self.company, "default_currency")
-		additional_salary.amount = flt(row.amount)
-		additional_salary.overwrite_salary_structure_amount = 1
-		additional_salary.custom_auto_generated = 1
-		additional_salary.custom_reference_ = self.name
-
-		additional_salary.insert(ignore_permissions=True)
-		additional_salary.submit()
-
-
-def cancel_linked_ticket_allowance_additional_salary(self):
-	additional_salaries = frappe.get_all(
-		"Additional Salary",
-		filters={
-			"docstatus": 1,
-			"custom_reference_": self.name,
-			"salary_component": "Ticket Allowance"
-		},
-		fields=["name"]
-	)
-
-	if not additional_salaries:
-		return
-
-	frappe.flags.ignore_ticket_allowance_validation = True
-	try:
-		for d in additional_salaries:
-			doc = frappe.get_doc("Additional Salary", d.name)
-			doc.cancel()
-	finally:
-		frappe.flags.ignore_ticket_allowance_validation = False
-
-
-def create_leave_encashment_for_settlement(self):
-	if self.type_of_settlement != "Final Settlement" or not self.leave_pay:
-		return
-
-	leave_period = get_leave_period(self.company, self.date_of_settlement)
-
-	for row in self.leave_pay:
-		if flt(row.tenure) <= 0 or flt(row.amount) <= 0:
-			continue
-
-		if not leave_period:
-			continue
-
-		leave_encashment = frappe.new_doc("Leave Encashment")
-		leave_encashment.employee = self.employee
-		leave_encashment.employee_name = self.employee_name
-		leave_encashment.company = self.company
-		leave_encashment.leave_period = leave_period
-		leave_encashment.leave_type = row.leave_type
-		leave_encashment.encashment_date = self.date_of_settlement
-		leave_encashment.encashment_days = flt(row.tenure)
-		leave_encashment.encashment_amount = flt(row.amount)
-		leave_encashment.currency = frappe.get_cached_value("Company", self.company, "default_currency")
-		leave_encashment.custom_leave_settlement_ref = self.name
-		leave_encashment.pay_via_payment_entry = 0
-
-		leave_encashment.flags.ignore_permissions = True
-
-		if not frappe.flags.get("_leave_encashment_overrides"):
-			frappe.flags._leave_encashment_overrides = {}
-
-		frappe.flags._leave_encashment_overrides[self.employee] = {
-			"amount": flt(row.amount),
-			"days": flt(row.tenure),
-		}
-
-		leave_encashment.insert(ignore_permissions=True)
-		leave_encashment.submit()
-
-
-def cancel_linked_leave_encashments(self):
-	leave_encashments = frappe.get_all(
-		"Leave Encashment",
-		filters={
-			"docstatus": 1,
-			"custom_leave_settlement_ref": self.name
-		},
-		fields=["name", "additional_salary"]
-	)
-
-	for d in leave_encashments:
-		if d.additional_salary:
-			frappe.db.set_value(
-				"Additional Salary",
-				d.additional_salary,
-				"leave_encashment",
-				"",
-			)
-			add_doc = frappe.get_doc("Additional Salary", d.additional_salary)
-			if add_doc.docstatus == 1:
-				add_doc.cancel()
-
-		doc = frappe.get_doc("Leave Encashment", d.name)
-		doc.additional_salary = ""
-		doc.flags.ignore_links = True
-		doc.cancel()
-
-
-def get_leave_period(company, settlement_date):
-	leave_periods = frappe.get_all(
-		"Leave Period",
-		filters={
-			"company": company,
-			"from_date": ["<=", settlement_date],
-			"to_date": [">=", settlement_date],
-			"is_active": 1
-		},
-		fields=["name"],
-		order_by="from_date desc",
-		limit=1
-	)
-
-	return leave_periods[0].name if leave_periods else None

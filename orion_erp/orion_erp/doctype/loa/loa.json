@@ -11,6 +11,7 @@
   "end_user",
   "ref_no",
   "loa_status",
+  "contract_year",
   "column_break_dhsn",
   "issue_date",
   "expiry_date",
@@ -115,10 +116,10 @@
    "default": "0",
    "fieldname": "allocated_vehicle_quota",
    "fieldtype": "Int",
-   "hidden": 1,
    "label": "Allocated Vehicle Quota",
    "non_negative": 1,
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 1
   },
   {
    "fieldname": "column_break_vvmc",
@@ -129,10 +130,10 @@
    "default": "0",
    "fieldname": "allocated_driver_quota",
    "fieldtype": "Int",
-   "hidden": 1,
    "label": "Allocated Driver Quota",
    "non_negative": 1,
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 1
   },
   {
    "allow_on_submit": 1,
@@ -228,7 +229,7 @@
    "default": "0",
    "fieldname": "total_created_vehicle_cicpa",
    "fieldtype": "Int",
-   "label": "Used Vehicle Quota",
+   "label": "Total Created Vehicle CICPA",
    "read_only": 1
   },
   {
@@ -236,8 +237,14 @@
    "default": "0",
    "fieldname": "total_created_driver_cicpa",
    "fieldtype": "Int",
-   "label": "Used Driver Quota",
+   "label": "Total Created Driver CICPA",
    "read_only": 1
+  },
+  {
+   "fieldname": "contract_year",
+   "fieldtype": "Int",
+   "label": "Contract Year",
+   "non_negative": 1
   },
   {
    "fieldname": "column_break_uxdw",
@@ -248,7 +255,6 @@
    "default": "0",
    "fieldname": "total_cancelled_vehicle_cicpa",
    "fieldtype": "Int",
-   "hidden": 1,
    "label": "Cancelled Vehicle CICPA",
    "read_only": 1
   },
@@ -257,7 +263,6 @@
    "default": "0",
    "fieldname": "total_cancelled_driver_cicpa",
    "fieldtype": "Int",
-   "hidden": 1,
    "label": "Cancelled Driver CICPA",
    "read_only": 1
   }

@@ -55,7 +55,6 @@ class ExistingCertificates(Document):
 						updated = True
 						break
 				if updated:
-					parent_doc.flags.ignore_mandatory = True
 					parent_doc.save(ignore_permissions=True)
 
 			if self.certificate_name == "CICPA" and self.reference_no:

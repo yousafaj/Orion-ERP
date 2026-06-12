@@ -7,7 +7,7 @@ def get_data(data):
     data["transactions"].append(
         {
             "label": _("Documents"),
-            "items": ["Asset Handover", "Passport Movement"]
+            "items": ["Asset Handover"]
         }
     )
 

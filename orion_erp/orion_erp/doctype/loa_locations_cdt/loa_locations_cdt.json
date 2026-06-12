@@ -22,8 +22,7 @@
    "fieldname": "location_code",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Location Code",
-   "description": "Auto-filled from the Location; editable. A code typed here is saved back to the Location."
+   "label": "Location Code"
   }
  ],
  "index_web_pages_for_search": 1,

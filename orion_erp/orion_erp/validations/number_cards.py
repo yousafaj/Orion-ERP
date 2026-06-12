@@ -145,53 +145,6 @@ def get_marked_not_renew(employee_set=True):
         "route_options": filters
     }
 
-@frappe.whitelist()
-def un_invoiced_months():
-    """Submitted Monthly Billing sheets not yet marked invoiced — so a month is
-    never missed. Priority dashboard card."""
-    count = frappe.db.count("Monthly Billing", {"docstatus": 1, "invoiced": 0})
-    return {
-        "value": count,
-        "fieldtype": "Int",
-        "route": ["List", "Monthly Billing"],
-        "route_options": {"invoiced": 0, "docstatus": 1},
-    }
-
-
-@frappe.whitelist()
-def loa_quota_remaining():
-    """Total remaining vehicle + driver CICPA quota across active LOAs."""
-    rows = frappe.get_all(
-        "LOA",
-        filters={"docstatus": 1, "loa_status": "Active"},
-        fields=["remaining_vehicle_quota", "remaining_driver_quota"],
-    )
-    total = sum((r.remaining_vehicle_quota or 0) + (r.remaining_driver_quota or 0) for r in rows)
-    return {
-        "value": total,
-        "fieldtype": "Int",
-        "route": ["List", "LOA"],
-        "route_options": {"loa_status": "Active"},
-    }
-
-
-@frappe.whitelist()
-def vehicles_rent_ending_30d():
-    """Rented vehicles whose rent ends within 30 days — renew/return before lapse."""
-    today = nowdate()
-    soon = add_days(today, 30)
-    count = frappe.db.count(
-        "Vehicle",
-        {"custom_status": "Active", "custom_rent_end_date": ["between", [today, soon]]},
-    )
-    return {
-        "value": count,
-        "fieldtype": "Int",
-        "route": ["List", "Vehicle"],
-        "route_options": {"custom_rent_end_date": ["between", [today, soon]]},
-    }
-
-
 def create_route_options(count, date_filter_type=None, date_filter_value=None, employee_set=False, customer_set=False):
     route_options = {"mark_as_not_renew": 0}
     if date_filter_type:

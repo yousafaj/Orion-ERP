@@ -1,8 +1,0 @@
-# Copyright (c) 2026, Orion ERP and contributors
-# For license information, please see license.txt
-
-from frappe.model.document import Document
-
-
-class VehicleOffHire(Document):
-    pass
