@@ -214,15 +214,17 @@ frappe.ui.form.on("Leave Application", {
     refresh(frm) {
         handle_cancel_button(frm);
 
-        if (frm.doc.custom_approval_status) {
+        let status_to_show = frm.doc.custom_approval_status;
 
+        if (frm.is_new() && !status_to_show) {
+            status_to_show = "Open";
+            frm.set_value("custom_approval_status", "Open");
+        }
+
+        if (status_to_show) {
             frm.page.set_indicator(
-
-                frm.doc.custom_approval_status,
-
-                get_indicator_color(
-                    frm.doc.custom_approval_status
-                )
+                status_to_show,
+                get_indicator_color(status_to_show)
             );
         }
 
@@ -655,6 +657,13 @@ function get_indicator_color(status) {
     ) {
 
         return "red";
+    }
+
+    if (
+        status === "Open"
+    ) {
+
+        return "orange";
     }
 
     return "blue";

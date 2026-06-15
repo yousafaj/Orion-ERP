@@ -47,6 +47,8 @@ def validate_leave_approval(doc, method=None):
     if not old_doc:
         if not doc.custom_last_status_change:
             doc.custom_last_status_change = now_datetime()
+        if not doc.custom_approval_status:
+            doc.custom_approval_status = "Open"
         return
 
     for row in APPROVAL_FLOW:
@@ -516,7 +518,7 @@ def reset_status_on_amend(doc, method=None):
     doc.custom_status_approver2 = "Open"
     doc.custom_status_approver4 = "Open"
     doc.custom_status_approver5 = "Open"
-    doc.custom_approval_status = "Pending Approval from Approver 1"
+    doc.custom_approval_status = "Open"
     doc.custom_last_status_change = now_datetime()
     doc.custom_reminder_sent = 0
 
@@ -788,7 +790,9 @@ def cancel_draft_leave(docname):
 
 
 # =========================================================
-# LEAVE TYPE FILTER FOR 6-MONTH RESTRICTION
+# LEAVE TYPE FILTER
+# < 6 months → Orion Settings allowed types (ignore allocations)
+# >= 6 months → only allocated leave types
 # =========================================================
 
 @frappe.whitelist()
@@ -812,29 +816,44 @@ def get_leave_types_for_employee(doctype, txt, searchfield, start, page_len, fil
 
     completed_months = get_completed_months(getdate(doj), getdate())
 
-    if completed_months >= 6:
+    # Employee within 6 months → show only Orion Settings allowed types
+    if completed_months < 6:
+        allowed_types = frappe.get_all(
+            "Leave Type Details",
+            filters={"parent": "Orion Settings", "parentfield": "leave_types_within_six_months"},
+            pluck="leave_type"
+        )
+
+        if not allowed_types:
+            return frappe.db.sql("""
+                SELECT name FROM `tabLeave Type`
+                WHERE name LIKE %(txt)s
+                LIMIT %(start)s, %(page_len)s
+            """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
+
         return frappe.db.sql("""
             SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
+            WHERE name IN %(allowed_types)s
+              AND name LIKE %(txt)s
             LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
+        """, {"allowed_types": allowed_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
 
-    allowed_types = frappe.get_all(
-        "Leave Type Details",
-        filters={"parent": "Orion Settings", "parentfield": "leave_types_within_six_months"},
-        pluck="leave_type"
-    )
+    # Employee 6+ months → show only allocated leave types
+    allocated_types = frappe.db.sql("""
+        SELECT DISTINCT leave_type
+        FROM `tabLeave Allocation`
+        WHERE employee = %(employee)s
+          AND docstatus = 1
+          AND expired = 0
+          AND CURDATE() BETWEEN from_date AND to_date
+    """, {"employee": employee}, pluck="leave_type")
 
-    if not allowed_types:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
+    if not allocated_types:
+        return []
 
     return frappe.db.sql("""
         SELECT name FROM `tabLeave Type`
-        WHERE name IN %(allowed_types)s
+        WHERE name IN %(allocated_types)s
           AND name LIKE %(txt)s
         LIMIT %(start)s, %(page_len)s
-    """, {"allowed_types": allowed_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
+    """, {"allocated_types": allocated_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
