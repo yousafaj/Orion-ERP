@@ -45,7 +45,7 @@
    "name": "Leave Application-custom_approval_status",
    "no_copy": 0,
    "non_negative": 0,
-   "options": "Pending Approval from Approver 1\nPending Approval from Approver 2\nPending Approval from Approver 3\nPending Approval from Approver 4\nPending Approval from Approver 5\nPending Approval from Approver 6\nSubmit Pending\nApproved\nRejected\nCancelled",
+    "options": "Open\nPending Approval from Approver 1\nPending Approval from Approver 2\nPending Approval from Approver 3\nPending Approval from Approver 4\nPending Approval from Approver 5\nPending Approval from Approver 6\nSubmit Pending\nApproved\nRejected\nCancelled",
    "owner": "Administrator",
    "permlevel": 0,
    "placeholder": null,
