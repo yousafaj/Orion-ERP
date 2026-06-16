@@ -94,6 +94,7 @@ def handle_leave_approval(doc, method=None):
         if status_changed:
             doc.db_set("custom_last_status_change", now_datetime())
             doc.db_set("custom_reminder_sent", 0)
+            doc.db_set("custom_escalation_sent", 0)
 
     statuses = []
 
@@ -521,6 +522,7 @@ def reset_status_on_amend(doc, method=None):
     doc.custom_approval_status = "Open"
     doc.custom_last_status_change = now_datetime()
     doc.custom_reminder_sent = 0
+    doc.custom_escalation_sent = 0
 
 
 def update_leave_application_status(doc):
