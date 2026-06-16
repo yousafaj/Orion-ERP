@@ -49,7 +49,8 @@ doctype_js = {
     "Leave Application": "public/js/leave_application.js",
     "Salary Slip": "public/js/salary_slip.js",
     "Job Offer":"public/js/job_offer.js",
-    "Driver": "public/js/driver.js"
+    "Driver": "public/js/driver.js",
+    "Quotation": "public/js/quotation.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
@@ -268,12 +269,15 @@ scheduler_events = {
         # Accounts never miss invoicing a customer-month.
         "0 2 1 * *": [
             "orion_erp.orion_erp.doctype.monthly_billing.monthly_billing.create_monthly_billing_sheets"
+        ],
+        # Run every minute to check leave application escalation status
+        "* * * * *": [
+            "orion_erp.orion_erp.scripts.leave_escalation.process_leave_escalations"
         ]
     },
 	"daily": [
         # "orion_erp.orion_erp.doctype.employee_deduction.employee_deduction.run_deduction_cron"
 		"orion_erp.tasks.daily.daily",
-        "orion_erp.orion_erp.scripts.leave_escalation.process_leave_escalations",
         "orion_erp.orion_erp.scripts.certificate_notification.certificate_expiry_notification",
         "orion_erp.orion_erp.doctype.employee.create_ticket_allowance",
         "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.restore_delegations",
