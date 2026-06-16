@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, now_datetime
+from frappe.utils import flt, getdate, now_datetime, add_days
 
 
 APPROVAL_FLOW = [
@@ -47,6 +47,8 @@ def validate_leave_approval(doc, method=None):
     if not old_doc:
         if not doc.custom_last_status_change:
             doc.custom_last_status_change = now_datetime()
+        if not doc.custom_approval_status:
+            doc.custom_approval_status = "Open"
         return
 
     for row in APPROVAL_FLOW:
@@ -92,6 +94,7 @@ def handle_leave_approval(doc, method=None):
         if status_changed:
             doc.db_set("custom_last_status_change", now_datetime())
             doc.db_set("custom_reminder_sent", 0)
+            doc.db_set("custom_escalation_sent", 0)
 
     statuses = []
 
@@ -138,6 +141,15 @@ def handle_leave_approval(doc, method=None):
                 "docstatus",
                 2
             )
+
+        doc.db_set("custom_last_status_change", now_datetime())
+        doc.db_set("custom_reminder_sent", 0)
+
+        for row in APPROVAL_FLOW:
+            if doc.get(row["approver_field"]):
+                doc.db_set(row["status_field"], "Cancelled")
+
+        doc.db_set("custom_approval_status", "Cancelled")
 
         _notify_cancelled(doc, old_doc)
         return
@@ -430,6 +442,35 @@ def validate_medical_certificate(doc, method=None):
         ) + hrs_text
     )
 
+def validate_paternity_leave(doc, method=None):
+    if doc.leave_type != "Paid Paternity Leave":
+        return
+
+    if not doc.custom_child_date_of_birth:
+        frappe.throw(
+            _("Child's Date of Birth is required for Paid Paternity Leave.")
+        )
+
+    child_dob = getdate(doc.custom_child_date_of_birth)
+    six_months_later = add_days(child_dob, 183)
+
+    if doc.from_date and getdate(doc.from_date) > six_months_later:
+        frappe.throw(
+            _("Paid Paternity Leave must be taken within 6 months of the child's date of birth. From Date ({0}) exceeds the 6-month period from child's date of birth ({1}).").format(
+                frappe.bold(str(doc.from_date)),
+                frappe.bold(str(doc.custom_child_date_of_birth))
+            )
+        )
+
+    if doc.to_date and getdate(doc.to_date) > six_months_later:
+        frappe.throw(
+            _("Paid Paternity Leave must be taken within 6 months of the child's date of birth. To Date ({0}) exceeds the 6-month period from child's date of birth ({1}).").format(
+                frappe.bold(str(doc.to_date)),
+                frappe.bold(str(doc.custom_child_date_of_birth))
+            )
+        )
+
+
 def validate_hajj_umrah_leave(doc, method=None):
     if doc.leave_type != "HAJI/ UMRAH LEAVE":
         return
@@ -464,6 +505,24 @@ def validate_hajj_umrah_leave(doc, method=None):
             _("Employee has already availed Hajj/Umrah Leave. This leave type can only be availed once during the entire employment period."),
             title=_("Already Availed")
         )
+
+
+def reset_status_on_amend(doc, method=None):
+    if not doc.amended_from:
+        return
+
+    if doc.get_doc_before_save():
+        return
+
+    doc.status = "Open"
+    doc.custom_status_approver1 = "Open"
+    doc.custom_status_approver2 = "Open"
+    doc.custom_status_approver4 = "Open"
+    doc.custom_status_approver5 = "Open"
+    doc.custom_approval_status = "Open"
+    doc.custom_last_status_change = now_datetime()
+    doc.custom_reminder_sent = 0
+    doc.custom_escalation_sent = 0
 
 
 def update_leave_application_status(doc):
@@ -688,8 +747,54 @@ def on_submit_leave_application(doc, method=None):
     )
 
 
+def on_cancel_leave_application(doc, method=None):
+
+    doc.db_set(
+        "custom_approval_status",
+        "Cancelled"
+    )
+
+
 # =========================================================
-# LEAVE TYPE FILTER FOR 6-MONTH RESTRICTION
+# CANCEL DRAFT LEAVE APPLICATION
+# =========================================================
+
+@frappe.whitelist()
+def cancel_draft_leave(docname):
+    doc = frappe.get_doc("Leave Application", docname)
+
+    if doc.docstatus != 0:
+        frappe.throw(_("Only draft leave applications can be cancelled."))
+
+    if doc.status == "Cancelled":
+        frappe.throw(_("Leave application is already cancelled."))
+
+    from frappe.utils import getdate
+    if getdate(doc.from_date) <= getdate():
+        frappe.throw(_("Leave cannot be cancelled after the start date has passed."))
+
+    doc.db_set("status", "Cancelled")
+    doc.db_set("custom_status_approver1", "Cancelled")
+    doc.db_set("custom_status_approver2", "Cancelled")
+    doc.db_set("custom_status_approver4", "Cancelled")
+    doc.db_set("custom_status_approver5", "Cancelled")
+    doc.db_set("docstatus", 2)
+    doc.db_set("custom_approval_status", "Cancelled")
+
+    doc.add_comment(
+        "Info",
+        _("Leave application cancelled by {0} before start date.").format(
+            frappe.bold(frappe.session.user)
+        )
+    )
+
+    return True
+
+
+# =========================================================
+# LEAVE TYPE FILTER
+# < 6 months → Orion Settings allowed types (ignore allocations)
+# >= 6 months → only allocated leave types
 # =========================================================
 
 @frappe.whitelist()
@@ -713,29 +818,44 @@ def get_leave_types_for_employee(doctype, txt, searchfield, start, page_len, fil
 
     completed_months = get_completed_months(getdate(doj), getdate())
 
-    if completed_months >= 6:
+    # Employee within 6 months → show only Orion Settings allowed types
+    if completed_months < 6:
+        allowed_types = frappe.get_all(
+            "Leave Type Details",
+            filters={"parent": "Orion Settings", "parentfield": "leave_types_within_six_months"},
+            pluck="leave_type"
+        )
+
+        if not allowed_types:
+            return frappe.db.sql("""
+                SELECT name FROM `tabLeave Type`
+                WHERE name LIKE %(txt)s
+                LIMIT %(start)s, %(page_len)s
+            """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
+
         return frappe.db.sql("""
             SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
+            WHERE name IN %(allowed_types)s
+              AND name LIKE %(txt)s
             LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
+        """, {"allowed_types": allowed_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
 
-    allowed_types = frappe.get_all(
-        "Leave Type Details",
-        filters={"parent": "Orion Settings", "parentfield": "leave_types_within_six_months"},
-        pluck="leave_type"
-    )
+    # Employee 6+ months → show only allocated leave types
+    allocated_types = frappe.db.sql("""
+        SELECT DISTINCT leave_type
+        FROM `tabLeave Allocation`
+        WHERE employee = %(employee)s
+          AND docstatus = 1
+          AND expired = 0
+          AND CURDATE() BETWEEN from_date AND to_date
+    """, {"employee": employee}, pluck="leave_type")
 
-    if not allowed_types:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
+    if not allocated_types:
+        return []
 
     return frappe.db.sql("""
         SELECT name FROM `tabLeave Type`
-        WHERE name IN %(allowed_types)s
+        WHERE name IN %(allocated_types)s
           AND name LIKE %(txt)s
         LIMIT %(start)s, %(page_len)s
-    """, {"allowed_types": allowed_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
+    """, {"allocated_types": allocated_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})

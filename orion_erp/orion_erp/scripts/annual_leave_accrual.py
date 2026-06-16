@@ -1,8 +1,62 @@
 import frappe
 from frappe.utils import getdate, add_months, add_days, flt
 from hrms.hr.doctype.leave_application.leave_application import get_leave_balance_on
+from hrms.hr.doctype.leave_ledger_entry.leave_ledger_entry import (
+    expire_allocation,
+    get_remaining_leaves,
+)
 
 LEAVE_TYPE = "ANNUAL LEAVE"
+
+
+def add_to_existing_allocation(allocation_name, additional_leaves, description=None):
+    current = frappe.db.get_value(
+        "Leave Allocation",
+        allocation_name,
+        ["new_leaves_allocated", "total_leaves_allocated", "employee",
+         "leave_type", "from_date", "to_date", "company", "description"],
+        as_dict=True
+    )
+
+    new_new = flt(current.new_leaves_allocated or 0) + additional_leaves
+    new_total = frappe.db.get_value(
+        "Leave Allocation",
+        allocation_name,
+        "total_leaves_allocated"
+    )
+
+    update_fields = {
+        "new_leaves_allocated": new_new,
+        "total_leaves_allocated": flt(new_total or 0) + additional_leaves,
+    }
+
+    if description:
+        existing_desc = current.description or ""
+        if description not in existing_desc:
+            update_fields["description"] = f"{existing_desc}\n{description}".strip()
+
+    frappe.db.set_value(
+        "Leave Allocation",
+        allocation_name,
+        update_fields
+    )
+
+    ledger = frappe.get_doc({
+        "doctype": "Leave Ledger Entry",
+        "employee": current.employee,
+        "leave_type": current.leave_type,
+        "transaction_type": "Leave Allocation",
+        "transaction_name": allocation_name,
+        "leaves": additional_leaves,
+        "from_date": current.from_date,
+        "to_date": current.to_date,
+        "is_carry_forward": 0,
+        "is_expired": 0,
+        "is_lwp": 0,
+        "company": current.company,
+    })
+    ledger.flags.ignore_permissions = True
+    ledger.submit()
 
 
 def execute_monthly_accrual():
@@ -50,9 +104,19 @@ def execute_monthly_accrual():
             )
 
 
+# def test():
+#     rules = get_rules_from_leave_type()
+
+#     process_employee(
+#         employee="HR-EMP-00379",
+#         doj=getdate("2026-05-05"),
+#         month_num=1,
+#         rules=rules
+#     )
+
+
 def process_employee(employee, doj, month_num, rules):
     rate = get_rate_for_month(month_num, rules)
-
     if not rate:
         return
 
@@ -64,26 +128,89 @@ def process_employee(employee, doj, month_num, rules):
 
     description = (
         f"Month {month_num} "
+        f"| Allocated: {flt(rate, 2)} days "
         f"({service_start.strftime('%d %B %Y')} - "
         f"{service_end.strftime('%d %B %Y')})"
     )
 
-    if frappe.db.exists(
+    already_done = frappe.db.sql(
+        """SELECT name FROM `tabLeave Allocation`
+        WHERE employee = %s AND leave_type = %s AND docstatus = 1
+        AND description LIKE %s""",
+        (employee, LEAVE_TYPE, f"%{description}%"),
+        pluck=True
+    )
+
+    if already_done:
+        return
+
+    if not has_attendance_in_period(employee, service_start, service_end):
+        return
+
+    if month_num == 6:
+        months_with_attendance = 0
+        for m in range(1, 7):
+            m_start = add_months(doj, m - 1)
+            m_end = add_days(add_months(doj, m), -1)
+            if has_attendance_in_period(employee, m_start, m_end):
+                months_with_attendance += 1
+
+        catch_up = flt(months_with_attendance * 0.5, 2)
+
+        if catch_up > 0:
+            description_adj = (
+                f"6 Month Adjustment "
+                f"| Adjusted: {catch_up} days "
+                f"({months_with_attendance} months attended)"
+            )
+
+            already_adj = frappe.db.sql(
+                """SELECT name FROM `tabLeave Allocation`
+                WHERE employee = %s AND leave_type = %s AND docstatus = 1
+                AND description LIKE %s""",
+                (employee, LEAVE_TYPE, f"%{description_adj}%"),
+                pluck=True
+            )
+
+            if not already_adj:
+                overlap = frappe.db.exists(
+                    "Leave Allocation",
+                    {
+                        "employee": employee,
+                        "leave_type": LEAVE_TYPE,
+                        "from_date": ["<=", year_end],
+                        "to_date": [">=", year_start],
+                        "docstatus": 1
+                    }
+                )
+
+                if overlap:
+                    add_to_existing_allocation(overlap, catch_up, description_adj)
+                else:
+                    allocation = frappe.new_doc("Leave Allocation")
+                    allocation.employee = employee
+                    allocation.leave_type = LEAVE_TYPE
+                    allocation.from_date = year_start
+                    allocation.to_date = year_end
+                    allocation.new_leaves_allocated = catch_up
+                    allocation.description = description_adj
+                    allocation.flags.ignore_permissions = True
+                    allocation.insert(ignore_permissions=True)
+                    allocation.submit()
+
+    overlap = frappe.db.exists(
         "Leave Allocation",
         {
             "employee": employee,
             "leave_type": LEAVE_TYPE,
-            "description": description,
+            "from_date": ["<=", year_end],
+            "to_date": [">=", year_start],
             "docstatus": 1
         }
-    ):
-        return
+    )
 
-    if not has_attendance_in_period(
-        employee,
-        service_start,
-        service_end
-    ):
+    if overlap:
+        add_to_existing_allocation(overlap, flt(rate, 2), description)
         return
 
     allocation = frappe.new_doc("Leave Allocation")
@@ -167,32 +294,19 @@ def has_attendance_in_period(employee, from_date, to_date):
     )
 
 
-#carry forward logic
-
-
 def execute_carry_forward():
     today = getdate()
-
-    print("\n" + "=" * 100)
-    print("STARTING CARRY FORWARD")
-    print("TODAY:", today)
-    print("=" * 100)
 
     leave_type = frappe.get_cached_doc(
         "Leave Type",
         LEAVE_TYPE
     )
 
-    print("Leave Type:", leave_type.name)
-
     max_carry = flt(
         leave_type.maximum_carry_forwarded_leaves or 0
     )
 
-    print("Maximum Carry Forward:", max_carry)
-
     if not max_carry:
-        print("Maximum Carry Forward is 0. Exiting.")
         return
 
     employees = frappe.get_all(
@@ -204,14 +318,7 @@ def execute_carry_forward():
         fields=["name", "employee_name", "date_of_joining"]
     )
 
-    print("Total Employees Found:", len(employees))
-
     for emp in employees:
-
-        print("\n" + "-" * 100)
-        print("Employee:", emp.name)
-        print("DOJ:", emp.date_of_joining)
-
         doj = getdate(emp.date_of_joining)
 
         completed_months = get_completed_months(
@@ -219,40 +326,24 @@ def execute_carry_forward():
             today
         )
 
-        print("Completed Months:", completed_months)
-
         if (
             completed_months < 12
             or completed_months % 12 != 0
         ):
-            print(
-                f"SKIPPED -> Not Year End. "
-                f"Months={completed_months}"
-            )
             continue
-
-        print("Passed Year-End Check")
 
         anniversary_date = add_months(
             doj,
             completed_months
         )
 
-        print("Anniversary Date:", anniversary_date)
-        print("Today:", today)
-
         if anniversary_date != today:
-            print("SKIPPED -> Anniversary Date Mismatch")
             continue
-
-        print("Passed Anniversary Check")
 
         leave_year_end = add_days(
             add_months(doj, completed_months),
             -1
         )
-
-        print("Leave Year End:", leave_year_end)
 
         try:
             balance = flt(
@@ -263,11 +354,11 @@ def execute_carry_forward():
                 )
             )
 
-            print("Balance:", balance)
-
         except Exception:
-            print("ERROR FETCHING BALANCE")
-            print(frappe.get_traceback())
+            frappe.log_error(
+                frappe.get_traceback(),
+                f"Carry Forward Balance Failed - {emp.name}"
+            )
             continue
 
         carry_forward = min(
@@ -275,18 +366,18 @@ def execute_carry_forward():
             max_carry
         )
 
-        print("Carry Forward Amount:", carry_forward)
+        cf_from = add_months(doj, completed_months)
+
+        expire_previous_allocation(emp.name, cf_from)
 
         if carry_forward <= 0:
-            print("SKIPPED -> No Carry Forward Balance")
             continue
 
         description = (
-            f"Carry Forward Year "
-            f"{completed_months // 12}"
+            f"Carry Forward Year {completed_months // 12} "
+            f"| Carry Forward: {carry_forward} days "
+            f"(Balance: {balance}, Max: {max_carry})"
         )
-
-        print("Description:", description)
 
         existing = frappe.db.exists(
             "Leave Allocation",
@@ -298,13 +389,8 @@ def execute_carry_forward():
             }
         )
 
-        print("Existing Carry Forward:", existing)
-
         if existing:
-            print("SKIPPED -> Carry Forward Already Exists")
             continue
-
-        print("READY TO CREATE CARRY FORWARD")
 
         create_carry_forward(
             emp.name,
@@ -313,8 +399,15 @@ def execute_carry_forward():
             max_carry
         )
 
-        print("Carry Forward Created Successfully")
+def test1():
+    rules = get_rules_from_leave_type()
 
+    create_carry_forward(
+        employee="HR-EMP-00379",
+        doj=getdate("2026-05-05"),
+        completed_months=12,
+        max_carry=45
+    )
 
 def create_carry_forward(
     employee,
@@ -322,15 +415,10 @@ def create_carry_forward(
     completed_months,
     max_carry
 ):
-    print("\nCREATE CARRY FORWARD")
-    print("Employee:", employee)
-
     leave_year_end = add_days(
         add_months(doj, completed_months),
         -1
     )
-
-    print("Leave Year End:", leave_year_end)
 
     balance = flt(
         get_leave_balance_on(
@@ -340,39 +428,48 @@ def create_carry_forward(
         )
     )
 
-    print("Balance:", balance)
-
     carry_forward = min(
         balance,
         max_carry
     )
 
-    print("Carry Forward:", carry_forward)
-
     if carry_forward <= 0:
-        print("Skipped - No Balance Available")
         return
 
     description = (
-        f"Carry Forward Year "
-        f"{completed_months // 12}"
+        f"Carry Forward Year {completed_months // 12} "
+        f"| Carry Forward: {carry_forward} days "
+        f"(Balance: {balance}, Max: {max_carry})"
     )
 
-    print("Description:", description)
+    already_done = frappe.db.sql(
+        """SELECT name FROM `tabLeave Allocation`
+        WHERE employee = %s AND leave_type = %s AND docstatus = 1
+        AND description LIKE %s""",
+        (employee, LEAVE_TYPE, f"%{description}%"),
+        pluck=True
+    )
 
-    if frappe.db.exists(
+    if already_done:
+        return
+
+    cf_from = add_months(doj, completed_months)
+    cf_to = add_days(add_months(doj, completed_months + 12), -1)
+
+    overlap = frappe.db.exists(
         "Leave Allocation",
         {
             "employee": employee,
             "leave_type": LEAVE_TYPE,
-            "description": description,
+            "from_date": ["<=", cf_to],
+            "to_date": [">=", cf_from],
             "docstatus": 1
         }
-    ):
-        print("Skipped - Carry Forward Already Exists")
-        return
+    )
 
-    print("Creating Leave Allocation")
+    if overlap:
+        add_to_existing_allocation(overlap, carry_forward, description)
+        return
 
     allocation = frappe.new_doc(
         "Leave Allocation"
@@ -380,17 +477,8 @@ def create_carry_forward(
 
     allocation.employee = employee
     allocation.leave_type = LEAVE_TYPE
-
-    allocation.from_date = add_months(
-        doj,
-        completed_months
-    )
-
-    allocation.to_date = add_days(
-        add_months(doj, completed_months + 12),
-        -1
-    )
-
+    allocation.from_date = cf_from
+    allocation.to_date = cf_to
     allocation.new_leaves_allocated = carry_forward
     allocation.description = description
 
@@ -402,18 +490,26 @@ def create_carry_forward(
 
     allocation.submit()
 
-    print(
-        "Carry Forward Allocation Created:",
-        allocation.name
+    expire_previous_allocation(employee, cf_from)
+
+
+def expire_previous_allocation(employee, new_year_start):
+    prev_allocations = frappe.get_all(
+        "Leave Allocation",
+        filters={
+            "employee": employee,
+            "leave_type": LEAVE_TYPE,
+            "to_date": ["<", new_year_start],
+            "docstatus": 1,
+            "expired": 0,
+        },
+        fields=["name", "to_date"],
+        order_by="to_date desc"
     )
 
-def get_completed_months(from_date, to_date):
-    months = (
-        (to_date.year - from_date.year) * 12
-        + (to_date.month - from_date.month)
-    )
+    for alloc in prev_allocations:
+        doc = frappe.get_doc("Leave Allocation", alloc.name)
+        remaining = get_remaining_leaves(doc)
 
-    if to_date.day < from_date.day:
-        months -= 1
-
-    return max(months, 0)
+        if remaining and remaining > 0:
+            expire_allocation(doc)

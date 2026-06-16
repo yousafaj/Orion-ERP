@@ -14,13 +14,22 @@ frappe.listview_settings["Leave Application"] = {
                 "Pending": "orange",
             }[value] || "blue";
             return `<span class="indicator-pill ${color}">${value}</span>`;
+        },
+        custom_approval_status(value, df, doc) {
+            var color = {
+                "Approved": "green",
+                "Rejected": "red",
+                "Cancelled": "red",
+                "Open": "orange",
+            }[value] || "blue";
+            return `<span class="indicator-pill ${color}">${value}</span>`;
         }
     },
 
     get_indicator(doc) {
 
         let status =
-            doc.custom_approval_status || "Pending Approval from Approver 1";
+            doc.custom_approval_status || "Open";
 
         return [
             __(status),
@@ -42,7 +51,11 @@ function get_indicator_color(status) {
     }
 
     if (status === "Cancelled") {
-        return "darkgrey";
+        return "red";
+    }
+
+    if (status === "Open") {
+        return "orange";
     }
 
     return "blue";

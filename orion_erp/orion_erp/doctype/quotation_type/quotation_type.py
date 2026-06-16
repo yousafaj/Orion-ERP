@@ -1,11 +1,11 @@
-# Copyright (c) 2026, osama.ahmed@deliverydevs.com and contributors
+# Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 # For license information, please see license.txt
 
 # import frappe
 from frappe.model.document import Document
 
 
-class LeavePay(Document):
+class QuotationType(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
 
@@ -14,13 +14,6 @@ class LeavePay(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
-		amount: DF.Currency
-		from_date: DF.Date | None
-		leave_type: DF.Link | None
-		parent: DF.Data
-		parentfield: DF.Data
-		parenttype: DF.Data
-		tenure: DF.Float
-		to: DF.Date | None
+
 	# end: auto-generated types
 	pass

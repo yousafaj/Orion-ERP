@@ -1,6 +1,52 @@
 // Copyright (c) 2026, osama.ahmed@deliverydevs.com and contributors
 // For license information, please see license.txt
 
+function populate_leave_pay(frm) {
+    if (!frm.doc.employee || !frm.doc.date_of_settlement) {
+        frm.clear_table("leave_pay");
+        frm.refresh_field("leave_pay");
+        return;
+    }
+
+    if (frm.doc.type_of_settlement !== "Final Settlement") {
+        frm.clear_table("leave_pay");
+        frm.refresh_field("leave_pay");
+        return;
+    }
+
+    frappe.call({
+        method: "orion_erp.orion_erp.doctype.leave_settlement.leave_settlement.get_leave_pay_data",
+        args: {
+            employee: frm.doc.employee,
+            date_of_settlement: frm.doc.date_of_settlement,
+            doj: frm.doc.doj__re_joining_date
+        },
+        callback: function(r) {
+
+            frm.clear_table("leave_pay");
+
+            if (!r.message || !r.message.length) {
+                frm.refresh_field("leave_pay");
+                return;
+            }
+
+            r.message.forEach(row => {
+
+                let d = frm.add_child("leave_pay");
+
+                d.leave_type = row.leave_type;
+                d.from = row.from;
+                d.to = row.to;
+                d.tenure = row.tenure;
+                d.amount = row.amount;
+
+            });
+
+            frm.refresh_field("leave_pay");
+        }
+    });
+}
+
 frappe.ui.form.on('Leave Settlement', {
     refresh(frm) {
 
@@ -15,8 +61,15 @@ frappe.ui.form.on('Leave Settlement', {
         leave_deduction_grid.cannot_add_rows = true;
         leave_deduction_grid.cannot_delete_rows = true;
 
+        let leave_pay_grid = frm.fields_dict
+            .leave_pay.grid;
+
+        leave_pay_grid.cannot_add_rows = true;
+        leave_pay_grid.cannot_delete_rows = true;
+
         frm.refresh_field("ticket_allowance");
         frm.refresh_field("leave_settlement_deductions");
+        frm.refresh_field("leave_pay");
 
 
         setTimeout(() => {
@@ -37,10 +90,19 @@ frappe.ui.form.on('Leave Settlement', {
             ta_grid.wrapper
                 .find('.grid-checkbox').hide();
 
+            let lp_grid = frm.fields_dict
+                .leave_pay.grid;
+
+            lp_grid.wrapper
+                .find('.grid-remove-rows').hide();
+            lp_grid.wrapper
+                .find('.grid-checkbox').hide();
+
         }, 200);
     },
     date_of_settlement:function(frm) {
         fetch_ticket_allowance(frm);
+        populate_leave_pay(frm);
     },
     type_of_settlement: function(frm) {
 
@@ -64,6 +126,7 @@ frappe.ui.form.on('Leave Settlement', {
             frm.refresh_field("leave_settlement_deductions");
         }
         fetch_ticket_allowance(frm);
+        populate_leave_pay(frm);
     },
     employee: function(frm) {
         const deduction_allowed_types = [
@@ -74,8 +137,15 @@ frappe.ui.form.on('Leave Settlement', {
         if (!frm.doc.employee) {
             frm.clear_table("leave_settlement_deductions");
             frm.refresh_field("leave_settlement_deductions");
+            frm.clear_table("leave_pay");
+            frm.refresh_field("leave_pay");
             return;
         }
+
+        let after_deductions = function() {
+            fetch_ticket_allowance(frm);
+            populate_leave_pay(frm);
+        };
 
         if (
             deduction_allowed_types.includes(
@@ -86,12 +156,12 @@ frappe.ui.form.on('Leave Settlement', {
                 "populate_leave_settlement_deductions"
             ).then(() => {
                 frm.refresh_field("leave_settlement_deductions");
-                fetch_ticket_allowance(frm);
+                after_deductions();
             });
         } else {
             frm.clear_table("leave_settlement_deductions");
             frm.refresh_field("leave_settlement_deductions");
-            fetch_ticket_allowance(frm);
+            after_deductions();
         }
 
         frappe.db.get_doc('Employee', frm.doc.employee).then(emp => {
@@ -230,6 +300,18 @@ frappe.ui.form.on('Leave Pay', {
     },
     to: function(frm, cdt, cdn) {
         calculate_row(frm, cdt, cdn);
+    },
+    tenure: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        if (row.leave_type && row.tenure) {
+            frappe.db.get_value('Employee', frm.doc.employee, 'custom_total_salary_as_per_offer_letter', (r) => {
+                let offer_salary = flt(r.custom_total_salary_as_per_offer_letter) || 0;
+                if (offer_salary > 0) {
+                    let amount = (offer_salary / 30) * flt(row.tenure);
+                    frappe.model.set_value(cdt, cdn, "amount", amount);
+                }
+            });
+        }
     }
 });
 
@@ -263,7 +345,7 @@ function calculate_row(frm, cdt, cdn){
         if("days" in row){
             frappe.model.set_value(cdt, cdn, "days", duration);
         }
-        if("tenure" in row){
+        if("tenure" in row && !row.leave_type){
             frappe.model.set_value(cdt, cdn, "tenure", duration);
         }
 
@@ -271,10 +353,11 @@ function calculate_row(frm, cdt, cdn){
         let d = new Date(row.from);
         let month_days = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
 
-        // calculate amount
-        let amount = (flt(frm.doc.monthly_salary) / month_days) * duration;
-
-        frappe.model.set_value(cdt, cdn, "amount", amount);
+        // calculate amount (skip for auto-populated leave pay rows)
+        if (!row.leave_type) {
+            let amount = (flt(frm.doc.monthly_salary) / month_days) * duration;
+            frappe.model.set_value(cdt, cdn, "amount", amount);
+        }
     }
 }
 
@@ -363,6 +446,21 @@ frappe.ui.form.on("Ticket Allowance", {
             // hide insert below/above
             $('.grid-insert-row-below').hide();
             $('.grid-insert-row').hide();
+
+        }, 100);
+    }
+});
+
+frappe.ui.form.on("Leave Pay", {
+    form_render(frm, cdt, cdn) {
+
+        setTimeout(() => {
+
+            $('.grid-delete-row').hide();
+
+            $('.grid-insert-row').hide();
+
+            $('.grid-insert-row-below').hide();
 
         }, 100);
     }

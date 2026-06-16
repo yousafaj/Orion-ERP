@@ -49,7 +49,8 @@ doctype_js = {
     "Leave Application": "public/js/leave_application.js",
     "Salary Slip": "public/js/salary_slip.js",
     "Job Offer":"public/js/job_offer.js",
-    "Driver": "public/js/driver.js"
+    "Driver": "public/js/driver.js",
+    "Quotation": "public/js/quotation.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
@@ -195,8 +196,10 @@ doc_events = {
               "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
               "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
               "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
-              "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
-              "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.auto_delegate_leave_application"
+               "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
+               "orion_erp.orion_erp.validations.leave_application.validate_paternity_leave",
+               "orion_erp.orion_erp.validations.leave_application.reset_status_on_amend",
+               "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.auto_delegate_leave_application"
          ],
 
         "on_update":[
@@ -205,6 +208,9 @@ doc_events = {
         ],
         "on_submit":[
             "orion_erp.orion_erp.validations.leave_application.on_submit_leave_application"
+        ],
+        "on_cancel":[
+            "orion_erp.orion_erp.validations.leave_application.on_cancel_leave_application"
         ]
     },
     "Salary Structure Assignment":{
@@ -242,6 +248,9 @@ doc_events = {
     },
     "Leave Type": {
         "validate": "orion_erp.orion_erp.validations.leave_type.validate_no_casual_leave"
+    },
+    "Leave Encashment": {
+        "validate": "orion_erp.orion_erp.validations.leave_encashment.validate_leave_encashment"
     }
 }
 
@@ -260,12 +269,15 @@ scheduler_events = {
         # Accounts never miss invoicing a customer-month.
         "0 2 1 * *": [
             "orion_erp.orion_erp.doctype.monthly_billing.monthly_billing.create_monthly_billing_sheets"
+        ],
+        # Run every minute to check leave application escalation status
+        "* * * * *": [
+            "orion_erp.orion_erp.scripts.leave_escalation.process_leave_escalations"
         ]
     },
 	"daily": [
         # "orion_erp.orion_erp.doctype.employee_deduction.employee_deduction.run_deduction_cron"
 		"orion_erp.tasks.daily.daily",
-        "orion_erp.orion_erp.scripts.leave_escalation.process_leave_escalations",
         "orion_erp.orion_erp.scripts.certificate_notification.certificate_expiry_notification",
         "orion_erp.orion_erp.doctype.employee.create_ticket_allowance",
         "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.restore_delegations",
