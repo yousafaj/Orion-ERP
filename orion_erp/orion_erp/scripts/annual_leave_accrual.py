@@ -390,6 +390,7 @@ def execute_carry_forward():
         )
 
         if allocation_name and excess > 0:
+            # print(f"Notifying excess leave for {emp.name}: {excess} days excess, allocation={allocation_name}")
             notify_excess_leaves(
                 emp.name,
                 allocation_name,
@@ -407,7 +408,15 @@ def test1():
         max_carry=15
     )
     if name:
-        print(f"Created CF allocation: {name}, excess={excess}")
+        # print(f"Created CF allocation: {name}, excess={excess}")
+        if excess > 0:
+            # print(f"Excess found: {excess} days. Sending notification...")
+            notify_excess_leaves(
+                employee="HR-EMP-00379",
+                allocation_name=name,
+                excess_days=excess,
+                max_carry=15
+            )
 
 def create_carry_forward(
     employee,

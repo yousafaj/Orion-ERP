@@ -26,6 +26,7 @@ class OrionSettings(Document):
 		cron_schedule_date_oe: DF.Date | None
 		default_bank_name_for_c3_pay: DF.Data | None
 		default_escalation_roles: DF.TableMultiSelect[RoleDetails]
+		excess_leave_notification_roles: DF.TableMultiSelect[RoleDetails]
 		last_month_for_which_payment_processed_noe: DF.Date | None
 		last_month_for_which_payment_processed_oe: DF.Date | None
 		leave_escalation_rules: DF.Table[LeaveEscalationRule]
