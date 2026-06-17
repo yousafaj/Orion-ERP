@@ -147,16 +147,16 @@ def process_employee(employee, doj, month_num, rules):
     if already_done:
         return
 
-    # if not has_attendance_in_period(employee, service_start, service_end):
-    #     return
+    if not has_attendance_in_period(employee, service_start, service_end):
+        return
 
     if month_num == 6:
         months_with_attendance = 0
         for m in range(1, 7):
             m_start = add_months(doj, m - 1)
             m_end = add_days(add_months(doj, m), -1)
-            # if has_attendance_in_period(employee, m_start, m_end):
-            #     months_with_attendance += 1
+            if has_attendance_in_period(employee, m_start, m_end):
+                months_with_attendance += 1
 
         catch_up = flt(months_with_attendance * 0.5, 2)
 
