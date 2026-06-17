@@ -13,7 +13,14 @@ APPROVAL_FLOW = [
 
 def process_leave_escalations():
     settings = frappe.get_single("Orion Settings")
-    default_escalation_user = settings.get("default_escalation_user")
+    escalation_roles = _get_escalation_roles(settings)
+    if not escalation_roles:
+        return
+
+    escalation_users = _get_users_for_roles(escalation_roles)
+    if not escalation_users:
+        return
+
     escalation_rules = _build_escalation_rules_map(settings)
 
     leave_apps = frappe.get_all(
@@ -45,7 +52,30 @@ def process_leave_escalations():
     )
 
     for la in leave_apps:
-        _process_single_leave(la, escalation_rules, default_escalation_user)
+        _process_single_leave(la, escalation_rules, escalation_users)
+
+
+def _get_escalation_roles(settings):
+    roles = []
+    for row in settings.get("default_escalation_roles") or []:
+        if row.get("role"):
+            roles.append(row.get("role"))
+    return roles
+
+
+def _get_users_for_roles(roles):
+    if not roles:
+        return []
+    users = frappe.get_all(
+        "Has Role",
+        filters={
+            "role": ["in", roles],
+            "parenttype": "User",
+        },
+        fields=["parent"],
+        pluck="parent",
+    )
+    return list(set(users))
 
 
 def _build_escalation_rules_map(settings):
@@ -53,14 +83,14 @@ def _build_escalation_rules_map(settings):
     for row in settings.get("leave_escalation_rules") or []:
         if row.get("enabled") and row.get("leave_type"):
             rules[row.get("leave_type")] = {
-                "reminder_minutes": flt(row.get("reminder_minutes")) or 48,
-                "escalation_minutes": flt(row.get("escalation_minutes")) or 72,
+                "reminder_hours": flt(row.get("reminder_hours")) or 48,
+                "escalation_hours": flt(row.get("escalation_hours")) or 72,
             }
     return rules
 
 
-def _process_single_leave(la, escalation_rules, default_escalation_user):
-    if not default_escalation_user:
+def _process_single_leave(la, escalation_rules, escalation_users):
+    if not escalation_users:
         return
 
     leave_type = la.leave_type
@@ -78,16 +108,16 @@ def _process_single_leave(la, escalation_rules, default_escalation_user):
     if not approver:
         return
 
-    minutes_waiting = _get_minutes_waiting(la)
-    if minutes_waiting is None:
+    hours_waiting = _get_hours_waiting(la)
+    if hours_waiting is None:
         return
 
-    reminder_minutes = rule["reminder_minutes"]
-    escalation_minutes = rule["escalation_minutes"]
+    reminder_hours = rule["reminder_hours"]
+    escalation_hours = rule["escalation_hours"]
 
-    if minutes_waiting >= escalation_minutes and not la.get("custom_escalation_sent"):
-        _escalate(la.name, approver_field, approver, default_escalation_user, leave_type)
-    elif minutes_waiting >= reminder_minutes and not la.custom_reminder_sent:
+    if hours_waiting >= escalation_hours and not la.get("custom_escalation_sent"):
+        _escalate(la.name, approver_field, approver, escalation_users, leave_type)
+    elif hours_waiting >= reminder_hours and not la.custom_reminder_sent:
         _send_reminder(la.name, approver, approver_field, leave_type)
 
 
@@ -102,14 +132,14 @@ def _get_pending_level(la):
     return None
 
 
-def _get_minutes_waiting(la):
+def _get_hours_waiting(la):
     status_change = la.custom_last_status_change
     if not status_change:
         status_change = la.creation
     if not status_change:
         return None
     delta = now_datetime() - status_change
-    return delta.total_seconds() / 60
+    return delta.total_seconds() / 3600
 
 
 def _send_reminder(leave_name, approver, approver_field, leave_type):
@@ -137,21 +167,22 @@ def _send_reminder(leave_name, approver, approver_field, leave_type):
         Review Now
     </a>
     <br><br>
-    <p><i>If no action is taken, this application will be auto-escalated to HR Manager.</i></p>
+    <p><i>If no action is taken, this application will be auto-escalated to the configured escalation roles.</i></p>
     """
 
     frappe.sendmail(recipients=[approver], subject=subject, message=message, now=False)
     frappe.db.set_value("Leave Application", leave_name, "custom_reminder_sent", 1)
 
 
-def _escalate(leave_name, approver_field, current_approver, escalation_user, leave_type):
+def _escalate(leave_name, approver_field, current_approver, escalation_users, leave_type):
     leave_link = frappe.utils.get_url() + f"/app/leave-application/{leave_name}"
 
+    users_str = ", ".join(escalation_users)
     leave_app = frappe.get_doc("Leave Application", leave_name)
     leave_app.add_comment(
         "Info",
-        _("Escalation notification sent to HR Manager {0} - no action by {1} within configured time").format(
-            escalation_user, current_approver
+        _("Escalation notification sent to {0} - no action by {1} within configured time").format(
+            users_str, current_approver
         )
     )
 
@@ -183,5 +214,5 @@ def _escalate(leave_name, approver_field, current_approver, escalation_user, lea
     </a>
     """
 
-    frappe.sendmail(recipients=[escalation_user], subject=subject, message=message, now=False)
+    frappe.sendmail(recipients=escalation_users, subject=subject, message=message, now=False)
     frappe.db.set_value("Leave Application", leave_name, "custom_escalation_sent", 1)

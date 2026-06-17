@@ -27,6 +27,7 @@ const APPROVAL_FLOW = [
 ];
 
 
+
 frappe.ui.form.on("Leave Application", {
     before_save(frm) {
         if (!frm.doc.custom_medical_certificate && frm.doc.leave_type) {
@@ -211,35 +212,29 @@ frappe.ui.form.on("Leave Application", {
 
         validate_all_approvals(frm);
     },
+    leave_balance(frm) {
+        set_leave_balance_after(frm);
+    },
+    total_leave_days(frm) {
+        set_leave_balance_after(frm);
+    },
     refresh(frm) {
         handle_cancel_button(frm);
 
-        let status_to_show = frm.doc.custom_approval_status;
+        let status_to_show =
+            frm.doc.custom_approval_status;
 
-        if (frm.is_new() && !status_to_show) {
-            status_to_show = "Open";
-            frm.set_value("custom_approval_status", "Open");
-        }
-
-        if (status_to_show) {
-            frm.page.set_indicator(
-                status_to_show,
-                get_indicator_color(status_to_show)
+        if (
+            frm.is_new() &&
+            !status_to_show
+        ) {
+            frm.set_value(
+                "custom_approval_status",
+                "Open"
             );
         }
 
-        frappe.dom.set_style(
-            '.frappe-control[data-fieldname="custom_approval_status"] .control-value, \
-             .frappe-control[data-fieldname="custom_approval_status"] .like-disabled-input, \
-             .page-head .indicator-pill { \
-                max-width: none !important; \
-                min-width: 140px !important; \
-                white-space: nowrap !important; \
-                overflow: visible !important; \
-                text-overflow: clip !important; \
-                width: auto !important; \
-            }'
-        );
+        apply_custom_status_indicator(frm);
 
         handle_submit_button(frm);
         handle_medical_certificate_flag(frm);
@@ -377,6 +372,7 @@ frappe.ui.form.on("Leave Application", {
 
         });
 
+        set_leave_balance_after(frm);
         frm.refresh_fields();
     }
 });
@@ -660,11 +656,43 @@ function get_indicator_color(status) {
     }
 
     if (
-        status === "Open"
+        status === "Open" ||
+        status.startsWith("Pending Approval") ||
+        status === "Submit Pending"
     ) {
 
         return "orange";
     }
 
     return "blue";
+}
+
+function apply_custom_status_indicator(frm) {
+
+    let status =
+        frm.doc.custom_approval_status || "Open";
+
+    frm.page.set_indicator(
+        status,
+        get_indicator_color(status)
+    );
+
+    let field = frm.get_field("custom_approval_status");
+    if (field && field.$wrapper) {
+        field.$wrapper.find(".control-value, .like-disabled-input")
+            .removeClass("green red orange blue")
+            .addClass("indicator-pill " + get_indicator_color(status));
+    }
+}
+
+function set_leave_balance_after(frm) {
+    let balance = flt(frm.doc.leave_balance);
+    let days = flt(frm.doc.total_leave_days);
+    if (balance && days) {
+        frm.set_value("custom_leave_balance_after", balance - days);
+    } else if (balance) {
+        frm.set_value("custom_leave_balance_after", balance);
+    } else {
+        frm.set_value("custom_leave_balance_after", 0);
+    }
 }

@@ -8,20 +8,27 @@ frappe.listview_settings["Leave Application"] = {
     has_indicator_for_draft: false,
 
     formatters: {
-        custom_medical_certificate_status(value, df, doc) {
+
+        custom_medical_certificate_status(value) {
+
+            if (!value) return "";
+
             var color = {
                 "Submitted": "green",
                 "Pending": "orange",
             }[value] || "blue";
+
             return `<span class="indicator-pill ${color}">${value}</span>`;
         },
-        custom_approval_status(value, df, doc) {
-            var color = {
-                "Approved": "green",
-                "Rejected": "red",
-                "Cancelled": "red",
-                "Open": "orange",
-            }[value] || "blue";
+
+        custom_approval_status(value) {
+
+            if (!value) {
+                value = "Open";
+            }
+
+            let color = get_indicator_color(value);
+
             return `<span class="indicator-pill ${color}">${value}</span>`;
         }
     },
@@ -46,15 +53,18 @@ function get_indicator_color(status) {
         return "green";
     }
 
-    if (status === "Rejected") {
+    if (
+        status === "Rejected" ||
+        status === "Cancelled"
+    ) {
         return "red";
     }
 
-    if (status === "Cancelled") {
-        return "red";
-    }
-
-    if (status === "Open") {
+    if (
+        status === "Open" ||
+        status === "Submit Pending" ||
+        status.startsWith("Pending Approval")
+    ) {
         return "orange";
     }
 
@@ -62,7 +72,7 @@ function get_indicator_color(status) {
 }
 
 
-// Reorder list view columns to: ID, Employee Name, From Date, Medical Certificate Status, Approval Status, Total Leave
+// Reorder list view columns
 (function () {
 
     const original_setup_columns =
@@ -72,23 +82,31 @@ function get_indicator_color(status) {
 
         original_setup_columns.apply(this, arguments);
 
-        if (this.doctype !== "Leave Application") return;
+        if (this.doctype !== "Leave Application") {
+            return;
+        }
 
         // Remove native status column
         this.columns = this.columns.filter(function (col) {
-            return col.df && col.df.fieldname !== "status";
+            return !(
+                col.type === "Status" ||
+                (col.df && col.df.fieldname === "status")
+            );
         });
 
-        // Ensure custom_approval_status column exists
-        var hasApprovalStatus = this.columns.some(function (col) {
-            return col.df && col.df.fieldname === "custom_approval_status";
+        // Ensure custom approval status exists
+        const hasApprovalStatus = this.columns.some(function (col) {
+            return col.df &&
+                col.df.fieldname === "custom_approval_status";
         });
 
         if (!hasApprovalStatus) {
-            var df = frappe.meta.get_docfield(
+
+            const df = frappe.meta.get_docfield(
                 "Leave Application",
                 "custom_approval_status"
             );
+
             if (df) {
                 this.columns.push({
                     type: "Field",
@@ -97,8 +115,7 @@ function get_indicator_color(status) {
             }
         }
 
-        // Desired column order (Subject/ID is always first at index 0)
-        var order = [
+        const order = [
             "employee_name",
             "from_date",
             "custom_medical_certificate_status",
@@ -106,33 +123,59 @@ function get_indicator_color(status) {
             "total_leave_days"
         ];
 
-        // Build ordered columns, put any unmatched columns at the end
-        var used = {};
-        var remaining = [];
+        const used = {};
+        const remaining = [];
 
-        for (var i = 0; i < this.columns.length; i++) {
-            var col = this.columns[i];
-            var fieldname = col.df ? col.df.fieldname : null;
-            if (fieldname && order.indexOf(fieldname) !== -1 && !used[fieldname]) {
+        this.columns.forEach(function (col) {
+
+            const fieldname =
+                col.df ? col.df.fieldname : null;
+
+            if (
+                fieldname &&
+                order.includes(fieldname) &&
+                !used[fieldname]
+            ) {
+
                 used[fieldname] = col;
+
             } else {
+
                 remaining.push(col);
             }
-        }
+        });
 
-        var ordered = [];
-        for (var j = 0; j < order.length; j++) {
-            if (used[order[j]]) {
-                ordered.push(used[order[j]]);
+        const ordered = [];
+
+        order.forEach(function (fieldname) {
+
+            if (used[fieldname]) {
+                ordered.push(used[fieldname]);
             }
-        }
+        });
 
-        // Subject column stays first, then ordered fields, then remaining (Tag, Status)
-        var subjectCol = remaining.length > 0 ? remaining.shift() : null;
-        if (subjectCol && subjectCol.type === "Subject") {
-            this.columns = [subjectCol].concat(ordered).concat(remaining);
+        const subjectCol =
+            remaining.length > 0
+                ? remaining.shift()
+                : null;
+
+        if (
+            subjectCol &&
+            subjectCol.type === "Subject"
+        ) {
+
+            this.columns = [
+                subjectCol,
+                ...ordered,
+                ...remaining
+            ];
+
         } else {
-            this.columns = ordered.concat(remaining);
+
+            this.columns = [
+                ...ordered,
+                ...remaining
+            ];
         }
     };
 

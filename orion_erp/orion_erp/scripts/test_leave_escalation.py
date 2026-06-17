@@ -15,11 +15,13 @@ class TestLeaveEscalation(FrappeTestCase):
         frappe.db.rollback()
 
     def setup_escalation_config(self):
-        self.hr_manager = "test_hr_manager_esc3@example.com"
-        self.approver1 = "test_approver1_esc3@example.com"
-        self.approver2 = "test_approver2_esc3@example.com"
+        self.hr_manager = "test_hr_manager_esc4@example.com"
+        self.approver1 = "test_approver1_esc4@example.com"
+        self.approver2 = "test_approver2_esc4@example.com"
+        self.escalation_role = "Leave Approver"
+
         for email, first_name, roles in [
-            (self.hr_manager, "Test HR Manager Esc", ["HR Manager"]),
+            (self.hr_manager, "Test HR Manager Esc", ["HR Manager", "Leave Approver"]),
             (self.approver1, "Test Approver 1 Esc", ["Leave Approver"]),
             (self.approver2, "Test Approver 2 Esc", ["Leave Approver"]),
         ]:
@@ -40,13 +42,14 @@ class TestLeaveEscalation(FrappeTestCase):
         self.leave_type = lt_result[0].name if lt_result else "Annual Leave"
 
         settings = frappe.get_single("Orion Settings")
-        settings.default_escalation_user = self.hr_manager
+        settings.default_escalation_roles = []
+        settings.append("default_escalation_roles", {"role": self.escalation_role})
         settings.leave_escalation_rules = []
         settings.append("leave_escalation_rules", {
             "leave_type": self.leave_type,
             "enabled": 1,
-            "reminder_minutes": 1,
-            "escalation_minutes": 2
+            "reminder_hours": 1,
+            "escalation_hours": 2
         })
         settings.save()
         frappe.db.commit()
@@ -59,11 +62,11 @@ class TestLeaveEscalation(FrappeTestCase):
         self.employee_name = emp[0].name if emp else None
         self.employee_name_val = emp[0].employee_name if emp else "Test"
 
-    def _minutes_ago(self, minutes):
-        return now_datetime() - datetime.timedelta(minutes=minutes)
+    def _hours_ago(self, hours):
+        return now_datetime() - datetime.timedelta(hours=hours)
 
-    def _minutes_from_now(self, minutes):
-        return now_datetime() + datetime.timedelta(minutes=minutes)
+    def _hours_from_now(self, hours):
+        return now_datetime() + datetime.timedelta(hours=hours)
 
     def create_test_leave_application(self):
         if not self.employee_name:
@@ -91,8 +94,8 @@ class TestLeaveEscalation(FrappeTestCase):
                 self.employee_name,
                 self.employee_name_val,
                 self.leave_type,
-                self._minutes_from_now(24),
-                self._minutes_from_now(48),
+                self._hours_from_now(24),
+                self._hours_from_now(48),
                 "Open",
                 self.approver1,
                 self.approver2,
@@ -126,18 +129,18 @@ class TestLeaveEscalation(FrappeTestCase):
         settings = frappe.get_single("Orion Settings")
         rules = _build_escalation_rules_map(settings)
         self.assertIn(self.leave_type, rules)
-        self.assertEqual(rules[self.leave_type]["reminder_minutes"], 1)
-        self.assertEqual(rules[self.leave_type]["escalation_minutes"], 2)
+        self.assertEqual(rules[self.leave_type]["reminder_hours"], 1)
+        self.assertEqual(rules[self.leave_type]["escalation_hours"], 2)
         print("PASS: test_01_escalation_rules_configuration")
 
-    def test_02_get_minutes_waiting(self):
-        from orion_erp.orion_erp.scripts.leave_escalation import _get_minutes_waiting
+    def test_02_get_hours_waiting(self):
+        from orion_erp.orion_erp.scripts.leave_escalation import _get_hours_waiting
         leave_name = self.create_test_leave_application()
         la = self._get_la_dict(leave_name)
-        minutes = _get_minutes_waiting(la)
-        self.assertIsNotNone(minutes)
-        self.assertGreaterEqual(minutes, 0)
-        print("PASS: test_02_get_minutes_waiting")
+        hours = _get_hours_waiting(la)
+        self.assertIsNotNone(hours)
+        self.assertGreaterEqual(hours, 0)
+        print("PASS: test_02_get_hours_waiting")
 
     def test_03_get_pending_level(self):
         from orion_erp.orion_erp.scripts.leave_escalation import _get_pending_level
@@ -152,7 +155,7 @@ class TestLeaveEscalation(FrappeTestCase):
         from orion_erp.orion_erp.scripts.leave_escalation import _send_reminder
         leave_name = self.create_test_leave_application()
         frappe.db.set_value("Leave Application", leave_name,
-            "custom_last_status_change", self._minutes_ago(1.5))
+            "custom_last_status_change", self._hours_ago(1.5))
         frappe.db.commit()
         with patch("frappe.sendmail") as mock_sendmail:
             _send_reminder(leave_name, self.approver1, "leave_approver", self.leave_type)
@@ -164,15 +167,16 @@ class TestLeaveEscalation(FrappeTestCase):
             self.assertEqual(reminder_sent, 1)
         print("PASS: test_04_reminder_email")
 
-    def test_05_escalation_to_hr(self):
+    def test_05_escalation_to_roles(self):
         from orion_erp.orion_erp.scripts.leave_escalation import _escalate
         leave_name = self.create_test_leave_application()
+        escalation_users = [self.hr_manager]
         with patch("frappe.sendmail") as mock_sendmail, \
              patch("frappe.get_doc") as mock_get_doc:
             mock_doc = MagicMock()
             mock_get_doc.return_value = mock_doc
             _escalate(leave_name, "leave_approver", self.approver1,
-                      self.hr_manager, self.leave_type)
+                      escalation_users, self.leave_type)
             approver_after = frappe.db.get_value("Leave Application", leave_name, "leave_approver")
             self.assertEqual(approver_after, self.approver1,
                 "Escalation should NOT change the approver")
@@ -182,12 +186,12 @@ class TestLeaveEscalation(FrappeTestCase):
             self.assertEqual(escalation_sent, 1,
                 "Escalation should mark custom_escalation_sent=1")
             self.assertEqual(mock_sendmail.call_count, 1,
-                "Only HR Manager should be notified, not the approver")
-        print("PASS: test_05_escalation_to_hr")
+                "Only escalation users should be notified, not the approver")
+        print("PASS: test_05_escalation_to_roles")
 
     def test_06_timer_reset(self):
         leave_name = self.create_test_leave_application()
-        past_time = self._minutes_ago(5)
+        past_time = self._hours_ago(5)
         frappe.db.set_value("Leave Application", leave_name, "custom_last_status_change", past_time)
         frappe.db.commit()
 
@@ -202,27 +206,28 @@ class TestLeaveEscalation(FrappeTestCase):
         self.assertEqual(reminder_sent, 0)
         print("PASS: test_06_timer_reset")
 
-    def test_07_escalation_notifies_hr_manager(self):
-        from orion_erp.orion_erp.scripts.leave_escalation import _process_single_leave, _build_escalation_rules_map
+    def test_07_escalation_notifies_escalation_users(self):
+        from orion_erp.orion_erp.scripts.leave_escalation import _process_single_leave, _build_escalation_rules_map, _get_users_for_roles
         leave_name = self.create_test_leave_application()
-        frappe.db.set_value("Leave Application", leave_name, "custom_last_status_change", self._minutes_ago(3))
+        frappe.db.set_value("Leave Application", leave_name, "custom_last_status_change", self._hours_ago(3))
         frappe.db.commit()
         settings = frappe.get_single("Orion Settings")
         escalation_rules = _build_escalation_rules_map(settings)
+        escalation_users = _get_users_for_roles([self.escalation_role])
         la = self._get_la_dict(leave_name)
 
         with patch("orion_erp.orion_erp.scripts.leave_escalation._escalate") as mock_escalate, \
              patch("orion_erp.orion_erp.scripts.leave_escalation._send_reminder") as mock_reminder:
-            _process_single_leave(la, escalation_rules, self.hr_manager)
+            _process_single_leave(la, escalation_rules, escalation_users)
             mock_escalate.assert_called_once()
             mock_reminder.assert_not_called()
-        print("PASS: test_07_escalation_notifies_hr_manager")
+        print("PASS: test_07_escalation_notifies_escalation_users")
 
     def test_08_full_flow(self):
         from orion_erp.orion_erp.scripts.leave_escalation import process_leave_escalations
         leave_name = self.create_test_leave_application()
         frappe.db.set_value("Leave Application", leave_name,
-            "custom_last_status_change", self._minutes_ago(1.5))
+            "custom_last_status_change", self._hours_ago(1.5))
         frappe.db.commit()
         with patch("frappe.sendmail") as mock_sendmail:
             process_leave_escalations()
@@ -245,29 +250,30 @@ class TestLeaveEscalation(FrappeTestCase):
         self.assertNotIn(self.leave_type, rules)
         print("PASS: test_09_disabled_rule")
 
-    def test_10_no_escalation_user(self):
+    def test_10_no_escalation_roles(self):
         from orion_erp.orion_erp.scripts.leave_escalation import _process_single_leave, _build_escalation_rules_map
         leave_name = self.create_test_leave_application()
         settings = frappe.get_single("Orion Settings")
-        settings.default_escalation_user = ""
+        settings.default_escalation_roles = []
         settings.save()
         frappe.db.commit()
         escalation_rules = _build_escalation_rules_map(settings)
         la = self._get_la_dict(leave_name)
-        _process_single_leave(la, escalation_rules, "")
-        print("PASS: test_10_no_escalation_user")
+        _process_single_leave(la, escalation_rules, [])
+        print("PASS: test_10_no_escalation_roles")
 
     def test_11_escalation_fires_once(self):
-        from orion_erp.orion_erp.scripts.leave_escalation import _process_single_leave, _build_escalation_rules_map
+        from orion_erp.orion_erp.scripts.leave_escalation import _process_single_leave, _build_escalation_rules_map, _get_users_for_roles
         leave_name = self.create_test_leave_application()
-        frappe.db.set_value("Leave Application", leave_name, "custom_last_status_change", self._minutes_ago(3))
+        frappe.db.set_value("Leave Application", leave_name, "custom_last_status_change", self._hours_ago(3))
         frappe.db.commit()
         settings = frappe.get_single("Orion Settings")
         escalation_rules = _build_escalation_rules_map(settings)
+        escalation_users = _get_users_for_roles([self.escalation_role])
 
         la = self._get_la_dict(leave_name)
         with patch("orion_erp.orion_erp.scripts.leave_escalation._escalate") as mock_escalate:
-            _process_single_leave(la, escalation_rules, self.hr_manager)
+            _process_single_leave(la, escalation_rules, escalation_users)
             self.assertEqual(mock_escalate.call_count, 1, "Escalation should fire once")
 
         frappe.db.set_value("Leave Application", leave_name, "custom_escalation_sent", 1)
@@ -275,7 +281,7 @@ class TestLeaveEscalation(FrappeTestCase):
 
         la2 = self._get_la_dict(leave_name)
         with patch("orion_erp.orion_erp.scripts.leave_escalation._escalate") as mock_escalate2:
-            _process_single_leave(la2, escalation_rules, self.hr_manager)
+            _process_single_leave(la2, escalation_rules, escalation_users)
             mock_escalate2.assert_not_called()
         print("PASS: test_11_escalation_fires_once")
 
@@ -300,3 +306,12 @@ class TestLeaveEscalation(FrappeTestCase):
         self.assertEqual(reminder, 0, "custom_reminder_sent should reset to 0 on status change")
         self.assertEqual(escalation, 0, "custom_escalation_sent should reset to 0 on status change")
         print("PASS: test_12_flags_reset_on_status_change")
+
+    def test_13_role_based_user_resolution(self):
+        from orion_erp.orion_erp.scripts.leave_escalation import _get_users_for_roles, _get_escalation_roles
+        settings = frappe.get_single("Orion Settings")
+        roles = _get_escalation_roles(settings)
+        self.assertTrue(len(roles) > 0, "Should have at least one escalation role configured")
+        users = _get_users_for_roles(roles)
+        self.assertTrue(len(users) > 0, "Should resolve at least one user for the configured roles")
+        print("PASS: test_13_role_based_user_resolution")
