@@ -713,9 +713,11 @@ def _notify_cancelled(doc, old_doc):
         if approver:
             recipients.add(approver)
 
-    hr_user = frappe.db.get_single_value("Orion Settings", "default_escalation_user")
-    if hr_user:
-        recipients.add(hr_user)
+    hr_roles = frappe.get_all("Role Details", filters={"parent": "Orion Settings", "parentfield": "default_escalation_roles"}, pluck="role")
+    if hr_roles:
+        hr_users = frappe.get_all("Has Role", filters={"role": ["in", hr_roles], "parenttype": "User"}, pluck="parent")
+        for u in hr_users:
+            recipients.add(u)
 
     if not recipients:
         return
@@ -746,12 +748,23 @@ def on_submit_leave_application(doc, method=None):
         "Approved"
     )
 
+    leave_balance_after = flt(doc.leave_balance) - flt(doc.total_leave_days)
+    doc.db_set(
+        "custom_leave_balance_after",
+        leave_balance_after
+    )
+
 
 def on_cancel_leave_application(doc, method=None):
 
     doc.db_set(
         "custom_approval_status",
         "Cancelled"
+    )
+
+    doc.db_set(
+        "custom_leave_balance_after",
+        0
     )
 
 

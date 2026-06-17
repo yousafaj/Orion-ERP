@@ -50,7 +50,8 @@ doctype_js = {
     "Salary Slip": "public/js/salary_slip.js",
     "Job Offer":"public/js/job_offer.js",
     "Driver": "public/js/driver.js",
-    "Quotation": "public/js/quotation.js"
+    "Quotation": "public/js/quotation.js",
+    "Leave Allocation": "public/js/leave_allocation.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
@@ -251,6 +252,9 @@ doc_events = {
     },
     "Leave Encashment": {
         "validate": "orion_erp.orion_erp.validations.leave_encashment.validate_leave_encashment"
+    },
+    "Leave Allocation": {
+        "before_submit": "orion_erp.orion_erp.scripts.leave_allocation_validation.before_submit"
     }
 }
 
