@@ -238,6 +238,7 @@ frappe.ui.form.on("Leave Application", {
 
         handle_submit_button(frm);
         handle_medical_certificate_flag(frm);
+        handle_eligibility_warnings_badge(frm);
 
         frm.set_query("leave_type", function() {
             return {
@@ -376,6 +377,48 @@ frappe.ui.form.on("Leave Application", {
         frm.refresh_fields();
     }
 });
+
+
+function handle_eligibility_warnings_badge(frm) {
+    $(".eligibility-warning-flag").remove();
+
+    if (frm.doc.custom_eligibility_warnings) {
+        let badge = `
+        <span
+            class="eligibility-warning-flag indicator-pill orange"
+            style="
+                margin-left:8px;
+                white-space:nowrap;
+                display:inline-flex;
+                align-items:center;
+                cursor: pointer;
+            "
+            title="${__(frm.doc.custom_eligibility_warnings)}"
+        >
+            ${__("Eligibility Warning")}
+        </span>
+    `;
+        function tryInsertBadge() {
+            if ($(".eligibility-warning-flag").length) return;
+            let indicator = $(frm.page.wrapper)
+                .find(".indicator-pill")
+                .not(".medical-cert-flag")
+                .not(".eligibility-warning-flag")
+                .first();
+            if (indicator.length) {
+                indicator.after(badge);
+                $(".eligibility-warning-flag").on("click", function() {
+                    frappe.msgprint({
+                        title: __("Eligibility Warnings"),
+                        indicator: "orange",
+                        message: frm.doc.custom_eligibility_warnings
+                    });
+                });
+            }
+        }
+        tryInsertBadge();
+    }
+}
 
 
 function handle_medical_certificate_flag(frm) {

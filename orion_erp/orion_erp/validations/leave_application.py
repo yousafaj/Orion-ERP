@@ -360,8 +360,18 @@ def get_employee_details(employee):
     return {}
 
 
+def add_eligibility_warning(doc, title, message):
+    separator = "\n" if doc.custom_eligibility_warnings else ""
+    doc.custom_eligibility_warnings = (doc.custom_eligibility_warnings or "") + separator + message
+    frappe.msgprint(
+        title=_(title),
+        indicator="orange",
+        msg=_(message)
+    )
+
+
 def validate_annual_leave_avail(doc, method=None):
-    if doc.leave_type != "Annual Leave" or doc.docstatus == 1:
+    if doc.leave_type != "ANNUAL LEAVE" or doc.docstatus == 1:
         return
 
     employee_doj = frappe.db.get_value("Employee", doc.employee, "date_of_joining")
@@ -372,7 +382,12 @@ def validate_annual_leave_avail(doc, method=None):
     today = getdate()
 
     if doj > today:
-        frappe.throw(_("Employee has not yet joined."))
+        add_eligibility_warning(
+            doc,
+            "Annual Leave Eligibility",
+            "Employee has not yet joined. Recruitment date is {0}.".format(employee_doj)
+        )
+        return
 
     completed_months = get_completed_months(doj, today)
 
@@ -380,19 +395,19 @@ def validate_annual_leave_avail(doc, method=None):
         SELECT COALESCE(SUM(leaves), 0)
         FROM `tabLeave Ledger Entry`
         WHERE employee = %s
-          AND leave_type = 'Annual Leave'
+          AND leave_type = 'ANNUAL LEAVE'
           AND docstatus = 1
           AND is_expired = 0
     """, doc.employee)[0][0] or 0
 
     balance = flt(balance)
 
-    if completed_months < 12 and doc.total_leave_days > balance:
-        frappe.throw(
-            _(
-                "You have not completed 1 year of service yet. "
-                "Annual Leave avail is restricted to your accrued balance of {0} days."
-            ).format(balance)
+    if completed_months < 12:
+        add_eligibility_warning(
+            doc,
+            "Annual Leave Eligibility",
+            "You must complete 1 year of service to apply for {0} days Annual Leave. "
+            "Your current accrued balance is {1} days.".format(doc.total_leave_days, balance)
         )
 
 
@@ -447,26 +462,33 @@ def validate_paternity_leave(doc, method=None):
         return
 
     if not doc.custom_child_date_of_birth:
-        frappe.throw(
-            _("Child's Date of Birth is required for Paid Paternity Leave.")
+        add_eligibility_warning(
+            doc,
+            "Paternity Leave Eligibility",
+            "Child's Date of Birth is required for Paid Paternity Leave."
         )
+        return
 
     child_dob = getdate(doc.custom_child_date_of_birth)
     six_months_later = add_days(child_dob, 183)
 
     if doc.from_date and getdate(doc.from_date) > six_months_later:
-        frappe.throw(
-            _("Paid Paternity Leave must be taken within 6 months of the child's date of birth. From Date ({0}) exceeds the 6-month period from child's date of birth ({1}).").format(
-                frappe.bold(str(doc.from_date)),
-                frappe.bold(str(doc.custom_child_date_of_birth))
+        add_eligibility_warning(
+            doc,
+            "Paternity Leave Eligibility",
+            "Paid Paternity Leave must be taken within 6 months of the child's date of birth. From Date ({0}) exceeds the 6-month period from child's date of birth ({1}).".format(
+                str(doc.from_date),
+                str(doc.custom_child_date_of_birth)
             )
         )
 
     if doc.to_date and getdate(doc.to_date) > six_months_later:
-        frappe.throw(
-            _("Paid Paternity Leave must be taken within 6 months of the child's date of birth. To Date ({0}) exceeds the 6-month period from child's date of birth ({1}).").format(
-                frappe.bold(str(doc.to_date)),
-                frappe.bold(str(doc.custom_child_date_of_birth))
+        add_eligibility_warning(
+            doc,
+            "Paternity Leave Eligibility",
+            "Paid Paternity Leave must be taken within 6 months of the child's date of birth. To Date ({0}) exceeds the 6-month period from child's date of birth ({1}).".format(
+                str(doc.to_date),
+                str(doc.custom_child_date_of_birth)
             )
         )
 
@@ -477,19 +499,22 @@ def validate_hajj_umrah_leave(doc, method=None):
 
     religion = frappe.db.get_value("Employee", doc.employee, "custom_religion")
     if religion != "Muslim":
-        frappe.throw(
-            _("Hajj/Umrah Leave is only applicable to Muslim employees."),
-            title=_("Ineligible")
+        add_eligibility_warning(
+            doc,
+            "Ineligible",
+            "Hajj/Umrah Leave is only applicable to Muslim employees."
         )
+        return
 
     max_days = frappe.db.get_value("Leave Type", doc.leave_type, "max_leaves_allowed") or 0
     if max_days and doc.total_leave_days > max_days:
-        frappe.throw(
-            _("Hajj/Umrah Leave cannot exceed {0} days as per the Leave Type configuration. You have requested {1} days.").format(
-                frappe.bold(str(max_days)),
-                frappe.bold(str(doc.total_leave_days))
-            ),
-            title=_("Exceeds Maximum Leave Days")
+        add_eligibility_warning(
+            doc,
+            "Exceeds Maximum Leave Days",
+            "Hajj/Umrah Leave cannot exceed {0} days as per the Leave Type configuration. You have requested {1} days.".format(
+                str(max_days),
+                str(doc.total_leave_days)
+            )
         )
 
     existing = frappe.db.exists("Leave Application", {
@@ -501,9 +526,10 @@ def validate_hajj_umrah_leave(doc, method=None):
     })
 
     if existing:
-        frappe.throw(
-            _("Employee has already availed Hajj/Umrah Leave. This leave type can only be availed once during the entire employment period."),
-            title=_("Already Availed")
+        add_eligibility_warning(
+            doc,
+            "Already Availed",
+            "Employee has already availed Hajj/Umrah Leave. This leave type can only be availed once during the entire employment period."
         )
 
 
