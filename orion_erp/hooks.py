@@ -26,7 +26,6 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/orion_erp/css/orion_erp.css"
-# app_include_js = "/assets/orion_erp/js/orion_erp.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/orion_erp/css/orion_erp.css"
@@ -199,6 +198,7 @@ doc_events = {
               "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
                "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
                "orion_erp.orion_erp.validations.leave_application.validate_paternity_leave",
+            #    "orion_erp.orion_erp.validations.leave_application.validate_sandwich_leave",
                "orion_erp.orion_erp.validations.leave_application.reset_status_on_amend",
                "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.auto_delegate_leave_application"
          ],
