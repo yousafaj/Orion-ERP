@@ -363,9 +363,8 @@ def get_employee_details(employee):
 def add_eligibility_warning(doc, title, message):
     separator = "\n" if doc.custom_eligibility_warnings else ""
     doc.custom_eligibility_warnings = (doc.custom_eligibility_warnings or "") + separator + message
-    frappe.msgprint(
+    frappe.throw(
         title=_(title),
-        indicator="orange",
         msg=_(message)
     )
 
