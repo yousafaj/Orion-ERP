@@ -19,6 +19,17 @@ def on_submit(self,method):
             create_additional_deduction(self)
 
 def on_cancel(self,method):
+        # Block direct cancellation if linked to an active Leave Settlement
+        cancel_details = get_leave_settlement_cancel_details(self)
+        if cancel_details:
+            frappe.throw(
+                f"Cannot cancel this Additional Salary directly. "
+                f"Please cancel the linked Leave Settlement "
+                f"<a href='/app/leave-settlement/{cancel_details}'>"
+                f"{cancel_details}</a> instead, "
+                f"which will automatically cancel this Additional Salary."
+            )
+
         if (self.salary_component == "Ticket Allowance"
                 and self.custom_auto_generated
                 and self.custom_reference_
@@ -34,6 +45,36 @@ def on_cancel(self,method):
         # Reverse deduction when salary is cancelled
         if self.salary_component == "Total Deduction":
             reverse_deductions(self)
+
+
+def get_leave_settlement_cancel_details(self):
+    """Check if this Additional Salary is linked to an active Leave Encashment or Leave Settlement.
+    Returns the parent document name to show in error message, or None to allow cancellation."""
+    # Indirect link via Leave Encashment
+    if self.ref_doctype == "Leave Encashment" and self.ref_docname:
+        leave_settlement_ref = frappe.db.get_value(
+            "Leave Encashment", self.ref_docname, "custom_leave_settlement_ref"
+        )
+        if leave_settlement_ref:
+            # Linked to a Leave Settlement → check the Leave Settlement status first.
+            # During Leave Settlement cancellation, docstatus is already 2 in DB,
+            # so this allows the cascade cancel to proceed.
+            ls_docstatus = frappe.db.get_value("Leave Settlement", leave_settlement_ref, "docstatus")
+            if ls_docstatus == 1:
+                return leave_settlement_ref
+        else:
+            # No Leave Settlement ref → check Leave Encashment directly
+            enc_docstatus = frappe.db.get_value("Leave Encashment", self.ref_docname, "docstatus")
+            if enc_docstatus == 1:
+                return self.ref_docname
+
+    # Direct link via custom_reference_ field
+    if self.custom_reference_:
+        docstatus = frappe.db.get_value("Leave Settlement", self.custom_reference_, "docstatus")
+        if docstatus == 1:
+            return self.custom_reference_
+
+    return None
 
 
 
