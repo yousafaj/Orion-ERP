@@ -257,6 +257,15 @@ frappe.ui.form.on("Leave Application", {
         let is_employee =
             frm.doc.custom_employee_user_id === current_user;
 
+        function get_previous_active_status(idx) {
+            for (let i = idx - 1; i >= 0; i--) {
+                if (frm.doc[APPROVAL_FLOW[i].approver_field]) {
+                    return frm.doc[APPROVAL_FLOW[i].status_field];
+                }
+            }
+            return null;
+        }
+
         APPROVAL_FLOW.forEach((row, index) => {
 
             let approver =
@@ -289,10 +298,7 @@ frappe.ui.form.on("Leave Application", {
                 } else {
 
                     let previous_status =
-                        frm.doc[
-                            APPROVAL_FLOW[index - 1]
-                            .status_field
-                        ];
+                        get_previous_active_status(index);
 
                     if (
                         previous_status === "Approved"
@@ -331,10 +337,7 @@ frappe.ui.form.on("Leave Application", {
                 } else {
 
                     let previous_status =
-                        frm.doc[
-                            APPROVAL_FLOW[index - 1]
-                            .status_field
-                        ];
+                        get_previous_active_status(index);
 
                     if (
                         previous_status === "Approved"
@@ -614,14 +617,18 @@ function handle_submit_button(frm) {
     // Always allow save
     frm.enable_save();
 
-    // Hide only submit button
-    if (
-        !can_submit &&
-        !frm.is_new() &&
-        frm.doc.docstatus === 0
-    ) {
+    if (frm.is_new() || frm.doc.docstatus !== 0) return;
 
-        frm.page.clear_primary_action();
+    frm.page.clear_primary_action();
+
+    if (can_submit) {
+
+        frm.page.set_primary_action(
+            __("Submit"),
+            () => frm.save("Submit")
+        );
+
+    } else {
 
         frm.page.set_primary_action(
             __("Save"),
@@ -643,6 +650,8 @@ function handle_cancel_button(frm) {
 
     let today = frappe.datetime.nowdate();
     if (today >= frm.doc.from_date) return;
+
+    if (frm.doc.custom_employee_user_id !== frappe.session.user && frm.doc.owner !== frappe.session.user && frappe.session.user !== "Administrator") return;
 
     frappe.db.get_value("Leave Application", frm.doc.name, "name", function(r) {
         if (!r) return;

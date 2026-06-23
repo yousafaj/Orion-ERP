@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, now_datetime, add_days
+from frappe.utils import flt, getdate, now_datetime, add_days, add_months
 
 
 APPROVAL_FLOW = [
@@ -126,6 +126,7 @@ def handle_leave_approval(doc, method=None):
                 0
             )
 
+        update_leave_application_status(doc)
         _notify_rejected(doc, old_doc)
         return
 
@@ -201,14 +202,13 @@ def send_next_approval_email(doc):
 
             next_index = index + 1
 
-            if next_index >= len(APPROVAL_FLOW):
-                return
-
-            next_row = APPROVAL_FLOW[next_index]
-
-            next_approver = doc.get(
-                next_row["approver_field"]
-            )
+            next_approver = None
+            while next_index < len(APPROVAL_FLOW):
+                next_row = APPROVAL_FLOW[next_index]
+                next_approver = doc.get(next_row["approver_field"])
+                if next_approver:
+                    break
+                next_index += 1
 
             if not next_approver:
                 return
@@ -469,7 +469,7 @@ def validate_paternity_leave(doc, method=None):
         return
 
     child_dob = getdate(doc.custom_child_date_of_birth)
-    six_months_later = add_days(child_dob, 183)
+    six_months_later = add_months(child_dob, 6)
 
     if doc.from_date and getdate(doc.from_date) > six_months_later:
         add_eligibility_warning(
@@ -596,24 +596,6 @@ def update_leave_application_status(doc):
 
             return
 
-    approval_labels = {
-
-        "leave_approver":
-        "Pending Approval from Approver 2",
-
-        "custom_leave_approver_1":
-        "Pending Approval from Approver 3",
-
-        "custom_leave_approver_2":
-        "Pending Approval from Approver 4",
-
-        "custom_leave_approver_4":
-        "Pending Approval from Approver 5",
-
-        "custom_leave_approver_5":
-        "Pending Approval from Approver 6"
-    }
-
     last_approved = None
 
     for row in active_flow:
@@ -649,12 +631,13 @@ def update_leave_application_status(doc):
 
     if last_approved:
 
-        doc.db_set(
-            "custom_approval_status",
-            approval_labels.get(last_approved)
-        )
-
-        return
+        for idx, row in enumerate(active_flow):
+            if row["status"] != "Approved":
+                doc.db_set(
+                    "custom_approval_status",
+                    f"Pending Approval from Approver {idx + 1}"
+                )
+                return
 
     # =====================================================
     # DEFAULT
@@ -743,6 +726,11 @@ def _notify_cancelled(doc, old_doc):
         hr_users = frappe.get_all("Has Role", filters={"role": ["in", hr_roles], "parenttype": "User"}, pluck="parent")
         for u in hr_users:
             recipients.add(u)
+
+    if not recipients:
+        return
+
+    recipients = {r for r in recipients if frappe.utils.validate_email_address(r, throw=False)}
 
     if not recipients:
         return
