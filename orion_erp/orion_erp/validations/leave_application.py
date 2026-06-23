@@ -167,9 +167,9 @@ def handle_leave_approval(doc, method=None):
         update_leave_application_status(doc)
 
         if doc.docstatus != 1:
-            frappe.msgprint(
-                _("All approvers have approved. Please submit the document.")
-            )
+            doc.flags.ignore_permissions = True
+            frappe.flags.ignore_permissions = True
+            doc.submit()
 
         return
 
