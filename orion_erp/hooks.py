@@ -251,7 +251,8 @@ doc_events = {
         "validate": "orion_erp.orion_erp.validations.leave_type.validate_no_casual_leave"
     },
     "Leave Encashment": {
-        "validate": "orion_erp.orion_erp.validations.leave_encashment.validate_leave_encashment"
+        "validate": "orion_erp.orion_erp.validations.leave_encashment.validate_leave_encashment",
+        "on_cancel": "orion_erp.orion_erp.validations.leave_encashment.on_cancel_leave_encashment"
     },
     "Leave Allocation": {
         "before_submit": "orion_erp.orion_erp.scripts.leave_allocation_validation.before_submit"
