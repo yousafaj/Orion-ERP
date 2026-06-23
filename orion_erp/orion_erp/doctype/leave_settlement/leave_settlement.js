@@ -47,58 +47,43 @@ function populate_leave_pay(frm) {
     });
 }
 
+function set_delete_buttons_visibility(frm) {
+    let is_final = frm.doc.type_of_settlement === "Final Settlement";
+
+    let grid = frm.fields_dict.ticket_allowance.grid;
+    grid.cannot_add_rows = true;
+    grid.cannot_delete_rows = is_final;
+
+    let leave_deduction_grid = frm.fields_dict.leave_settlement_deductions.grid;
+    leave_deduction_grid.cannot_add_rows = true;
+    leave_deduction_grid.cannot_delete_rows = is_final;
+
+    let leave_pay_grid = frm.fields_dict.leave_pay.grid;
+    leave_pay_grid.cannot_add_rows = true;
+    leave_pay_grid.cannot_delete_rows = is_final;
+
+    setTimeout(() => {
+        let ta_grid = frm.fields_dict.ticket_allowance.grid;
+        ta_grid.wrapper.find('.grid-remove-rows').toggle(!is_final);
+        ta_grid.wrapper.find('.grid-checkbox').toggle(!is_final);
+
+        let ls_grid = frm.fields_dict.leave_settlement_deductions.grid;
+        ls_grid.wrapper.find('.grid-remove-rows').toggle(!is_final);
+        ls_grid.wrapper.find('.grid-checkbox').toggle(!is_final);
+
+        let lp_grid = frm.fields_dict.leave_pay.grid;
+        lp_grid.wrapper.find('.grid-remove-rows').toggle(!is_final);
+        lp_grid.wrapper.find('.grid-checkbox').toggle(!is_final);
+    }, 200);
+}
+
 frappe.ui.form.on('Leave Settlement', {
     refresh(frm) {
-
-        let grid = frm.fields_dict.ticket_allowance.grid;
-
-        grid.cannot_add_rows = true;
-        grid.cannot_delete_rows = true;
-
-        let leave_deduction_grid = frm.fields_dict
-            .leave_settlement_deductions.grid;
-
-        leave_deduction_grid.cannot_add_rows = true;
-        leave_deduction_grid.cannot_delete_rows = true;
-
-        let leave_pay_grid = frm.fields_dict
-            .leave_pay.grid;
-
-        leave_pay_grid.cannot_add_rows = true;
-        leave_pay_grid.cannot_delete_rows = true;
+        set_delete_buttons_visibility(frm);
 
         frm.refresh_field("ticket_allowance");
         frm.refresh_field("leave_settlement_deductions");
         frm.refresh_field("leave_pay");
-
-
-        setTimeout(() => {
-
-            let ls_grid = frm.fields_dict
-                .leave_settlement_deductions.grid;
-
-            ls_grid.wrapper
-                .find('.grid-remove-rows').hide();
-            ls_grid.wrapper
-                .find('.grid-checkbox').hide();
-
-            let ta_grid = frm.fields_dict
-                .ticket_allowance.grid;
-
-            ta_grid.wrapper
-                .find('.grid-remove-rows').hide();
-            ta_grid.wrapper
-                .find('.grid-checkbox').hide();
-
-            let lp_grid = frm.fields_dict
-                .leave_pay.grid;
-
-            lp_grid.wrapper
-                .find('.grid-remove-rows').hide();
-            lp_grid.wrapper
-                .find('.grid-checkbox').hide();
-
-        }, 200);
     },
     date_of_settlement:function(frm) {
         fetch_ticket_allowance(frm);
@@ -127,6 +112,7 @@ frappe.ui.form.on('Leave Settlement', {
         }
         fetch_ticket_allowance(frm);
         populate_leave_pay(frm);
+        set_delete_buttons_visibility(frm);
     },
     employee: function(frm) {
         const deduction_allowed_types = [
@@ -439,14 +425,10 @@ frappe.ui.form.on("Ticket Allowance", {
     form_render(frm, cdt, cdn) {
 
         setTimeout(() => {
-
-            // hide delete button inside row form
-            $('.grid-delete-row').hide();
-
-            // hide insert below/above
-            $('.grid-insert-row-below').hide();
-            $('.grid-insert-row').hide();
-
+            let is_final = frm.doc.type_of_settlement === "Final Settlement";
+            $('.grid-delete-row').toggle(!is_final);
+            $('.grid-insert-row-below').toggle(!is_final);
+            $('.grid-insert-row').toggle(!is_final);
         }, 100);
     }
 });
@@ -455,13 +437,10 @@ frappe.ui.form.on("Leave Pay", {
     form_render(frm, cdt, cdn) {
 
         setTimeout(() => {
-
-            $('.grid-delete-row').hide();
-
-            $('.grid-insert-row').hide();
-
-            $('.grid-insert-row-below').hide();
-
+            let is_final = frm.doc.type_of_settlement === "Final Settlement";
+            $('.grid-delete-row').toggle(!is_final);
+            $('.grid-insert-row').toggle(!is_final);
+            $('.grid-insert-row-below').toggle(!is_final);
         }, 100);
     }
 });
@@ -469,16 +448,13 @@ frappe.ui.form.on("Leave Pay", {
 frappe.ui.form.on("Leave Settlement Deductions", {
     form_render(frm, cdt, cdn) {
 
-			setTimeout(() => {
-
-				$('.grid-delete-row').hide();
-
-				$('.grid-insert-row').hide();
-
-				$('.grid-insert-row-below').hide();
-
-			}, 100);
-		},
+		setTimeout(() => {
+            let is_final = frm.doc.type_of_settlement === "Final Settlement";
+			$('.grid-delete-row').toggle(!is_final);
+			$('.grid-insert-row').toggle(!is_final);
+			$('.grid-insert-row-below').toggle(!is_final);
+		}, 100);
+	},
 	amount_to_be_deducted_this_month(frm, cdt, cdn) {
 
 		let row = locals[cdt][cdn];
