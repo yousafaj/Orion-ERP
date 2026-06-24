@@ -198,7 +198,6 @@ doc_events = {
               "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
                "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
                "orion_erp.orion_erp.validations.leave_application.validate_paternity_leave",
-            #    "orion_erp.orion_erp.validations.leave_application.validate_sandwich_leave",
                "orion_erp.orion_erp.validations.leave_application.reset_status_on_amend",
                "orion_erp.orion_erp.doctype.leave_delegation.leave_delegation.auto_delegate_leave_application"
          ],

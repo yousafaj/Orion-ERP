@@ -5,3 +5,25 @@ from frappe.core.doctype.file.file import File
 from orion_erp.orion_erp.override.files import is_remote_file,get_full_path
 File.is_remote_file = property(is_remote_file)
 File.get_full_path = get_full_path
+
+# Patch get_number_of_leave_days to include sandwich leave days
+import hrms.hr.doctype.leave_application.leave_application as _la_module
+from orion_erp.orion_erp.validations.leave_application import (
+    patched_get_number_of_leave_days,
+    patched_update_attendance,
+    patched_cancel_attendance,
+    _save_original_get_number_of_leave_days,
+    _save_original_update_attendance,
+    _save_original_cancel_attendance,
+    _original_get_number_of_leave_days,
+    _original_update_attendance,
+    _original_cancel_attendance,
+)
+_save_original_get_number_of_leave_days(_la_module.get_number_of_leave_days)
+_la_module.get_number_of_leave_days = patched_get_number_of_leave_days
+
+_save_original_update_attendance(_la_module.LeaveApplication.update_attendance)
+_la_module.LeaveApplication.update_attendance = patched_update_attendance
+
+_save_original_cancel_attendance(_la_module.LeaveApplication.cancel_attendance)
+_la_module.LeaveApplication.cancel_attendance = patched_cancel_attendance
