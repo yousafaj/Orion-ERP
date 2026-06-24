@@ -113,7 +113,7 @@ def test():
     process_employee(
         employee="HR-EMP-00379",
         doj=getdate("2026-05-05"),
-        month_num=8,
+        month_num=1,
         rules=rules
     )
 
@@ -405,7 +405,7 @@ def test1():
         employee="HR-EMP-00379",
         doj=getdate("2026-05-05"),
         completed_months=12,
-        max_carry=15
+        max_carry=10
     )
     if name:
         # print(f"Created CF allocation: {name}, excess={excess}")

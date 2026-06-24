@@ -363,7 +363,7 @@ def get_employee_details(employee):
 def add_eligibility_warning(doc, title, message):
     separator = "\n" if doc.custom_eligibility_warnings else ""
     doc.custom_eligibility_warnings = (doc.custom_eligibility_warnings or "") + separator + message
-    frappe.throw(
+    frappe.msgprint(
         title=_(title),
         msg=_(message)
     )
@@ -767,6 +767,30 @@ def on_submit_leave_application(doc, method=None):
         leave_balance_after
     )
 
+    additional = get_sandwich_additional_days(doc.leave_type, doc.from_date, doc.to_date)
+    if additional:
+        day_names = []
+        orion_settings = frappe.get_single("Orion Settings")
+        if orion_settings.get("enable_sandwich_leave"):
+            lt = frappe.get_cached_doc("Leave Type", doc.leave_type)
+            sandwich_days_config = (lt.get("custom_sandwich_days") or "").strip()
+            configured_days = [d.strip() for d in sandwich_days_config.split("\n")] if sandwich_days_config else []
+            from_date = getdate(doc.from_date)
+            to_date = getdate(doc.to_date)
+            range_days = (to_date - from_date).days
+            if "Saturday" in configured_days and (4 - from_date.weekday()) % 7 <= range_days:
+                day_names.append("Saturday")
+            if "Sunday" in configured_days and (0 - from_date.weekday()) % 7 <= range_days:
+                day_names.append("Sunday")
+        if day_names:
+            frappe.msgprint(
+                _("Sandwich Leave: {0} will also be deducted as per sandwich leave policy.").format(
+                    " and ".join(day_names)
+                ),
+                indicator="orange",
+                alert=True
+            )
+
 
 def on_cancel_leave_application(doc, method=None):
 
@@ -885,3 +909,152 @@ def get_leave_types_for_employee(doctype, txt, searchfield, start, page_len, fil
           AND name LIKE %(txt)s
         LIMIT %(start)s, %(page_len)s
     """, {"allocated_types": allocated_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
+
+
+def get_sandwich_additional_days(leave_type, from_date, to_date):
+    """Calculate additional sandwich days for the given leave type and date range."""
+    if not leave_type or not from_date or not to_date:
+        return 0
+
+    orion_settings = frappe.get_single("Orion Settings")
+    if not orion_settings.get("enable_sandwich_leave"):
+        return 0
+
+    lt = frappe.get_cached_doc("Leave Type", leave_type) if frappe.db.exists("Leave Type", leave_type) else None
+    if not lt or not lt.get("custom_enable_sandwich_rule"):
+        return 0
+
+    sandwich_days_config = (lt.get("custom_sandwich_days") or "").strip()
+    if not sandwich_days_config:
+        return 0
+
+    configured_days = [d.strip() for d in sandwich_days_config.split("\n")]
+
+    frm = getdate(from_date)
+    to = getdate(to_date)
+    range_days = (to - frm).days
+    additional = 0
+
+    if "Saturday" in configured_days and (4 - frm.weekday()) % 7 == range_days:
+        additional += 1
+    if "Sunday" in configured_days and frm.weekday() == 0:
+        additional += 1
+
+    return additional
+
+
+def _get_sandwich_dates(leave_type, from_date, to_date):
+    """Return list of date strings for sandwich days, or empty list.
+
+    Replicates the sandwich logic from get_sandwich_additional_days
+    but returns actual date strings instead of a count.
+    """
+    if not leave_type or not from_date or not to_date:
+        return []
+
+    orion_settings = frappe.get_single("Orion Settings")
+    if not orion_settings.get("enable_sandwich_leave"):
+        return []
+
+    lt = frappe.get_cached_doc("Leave Type", leave_type) if frappe.db.exists("Leave Type", leave_type) else None
+    if not lt or not lt.get("custom_enable_sandwich_rule"):
+        return []
+
+    config = (lt.get("custom_sandwich_days") or "").strip()
+    if not config:
+        return []
+
+    configured = [d.strip() for d in config.split("\n")]
+    frm = getdate(from_date)
+    to = getdate(to_date)
+    range_days = (to - frm).days
+
+    result = []
+    if "Saturday" in configured and (4 - frm.weekday()) % 7 == range_days:
+        result.append(add_days(frm, (5 - frm.weekday()) % 7).strftime("%Y-%m-%d"))
+    if "Sunday" in configured and frm.weekday() == 0:
+        result.append(add_days(frm, -1).strftime("%Y-%m-%d"))
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Monkey-patch storage for LeaveApplication methods
+# ---------------------------------------------------------------------------
+_original_get_number_of_leave_days = None
+_original_update_attendance = None
+_original_cancel_attendance = None
+
+
+def _save_original_get_number_of_leave_days(func):
+    global _original_get_number_of_leave_days
+    _original_get_number_of_leave_days = func
+
+
+def _save_original_update_attendance(func):
+    global _original_update_attendance
+    _original_update_attendance = func
+
+
+def _save_original_cancel_attendance(func):
+    global _original_cancel_attendance
+    _original_cancel_attendance = func
+
+
+# ---------------------------------------------------------------------------
+# Patched methods
+# ---------------------------------------------------------------------------
+def patched_get_number_of_leave_days(
+    employee, leave_type, from_date, to_date,
+    half_day=None, half_day_date=None, holiday_list=None,
+):
+    result = _original_get_number_of_leave_days(employee, leave_type, from_date, to_date, half_day, half_day_date, holiday_list)
+    additional = get_sandwich_additional_days(leave_type, from_date, to_date)
+    return flt(result) + additional
+
+
+def patched_update_attendance(self):
+    """Create Attendance records for date range AND sandwich days."""
+    _original_update_attendance(self)
+
+    sandwich_dates = _get_sandwich_dates(self.leave_type, self.from_date, self.to_date)
+    for date_str in sandwich_dates:
+        attendance_name = frappe.db.exists(
+            "Attendance",
+            dict(
+                employee=self.employee,
+                attendance_date=date_str,
+                docstatus=("!=", 2),
+            ),
+        )
+        if not attendance_name:
+            doc = frappe.new_doc("Attendance")
+            doc.employee = self.employee
+            doc.employee_name = self.employee_name
+            doc.attendance_date = date_str
+            doc.company = self.company
+            doc.leave_type = self.leave_type
+            doc.leave_application = self.name
+            doc.status = "On Leave"
+            doc.flags.ignore_validate = True
+            doc.insert(ignore_permissions=True)
+            doc.submit()
+
+
+def patched_cancel_attendance(self):
+    """Cancel Attendance records for date range AND sandwich days."""
+    _original_cancel_attendance(self)
+
+    sandwich_dates = _get_sandwich_dates(self.leave_type, self.from_date, self.to_date)
+    for date_str in sandwich_dates:
+        attendance_name = frappe.db.exists(
+            "Attendance",
+            dict(
+                employee=self.employee,
+                attendance_date=date_str,
+                docstatus=1,
+                leave_application=self.name,
+            ),
+        )
+        if attendance_name:
+            frappe.db.set_value("Attendance", attendance_name, "docstatus", 2)
