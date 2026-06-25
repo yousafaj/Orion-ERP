@@ -2,6 +2,7 @@
 import frappe
 import base64
 import boto3
+import json
 
 @frappe.whitelist()
 def get_enrichment_data(company=None, customer=None):
@@ -116,3 +117,18 @@ def get_enrichment_data(company=None, customer=None):
         })
 
     return result
+
+
+
+@frappe.whitelist()
+def get_customer_po_map(vouchers):
+    if isinstance(vouchers, str):
+        vouchers = json.loads(vouchers)
+
+    invoices = frappe.get_all(
+        "Sales Invoice",
+        filters={"name": ["in", vouchers]},
+        fields=["name", "custom_po_number"]
+    )
+
+    return {d.name: d.custom_po_number for d in invoices}
