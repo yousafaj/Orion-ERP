@@ -773,8 +773,7 @@ def on_submit_leave_application(doc, method=None):
         orion_settings = frappe.get_single("Orion Settings")
         if orion_settings.get("enable_sandwich_leave"):
             lt = frappe.get_cached_doc("Leave Type", doc.leave_type)
-            sandwich_days_config = (lt.get("custom_sandwich_days") or "").strip()
-            configured_days = [d.strip() for d in sandwich_days_config.split("\n")] if sandwich_days_config else []
+            configured_days = [d.weekday for d in (lt.get("custom_sandwich_days") or []) if d.weekday]
             from_date = getdate(doc.from_date)
             to_date = getdate(doc.to_date)
             range_days = (to_date - from_date).days
@@ -924,11 +923,9 @@ def get_sandwich_additional_days(leave_type, from_date, to_date):
     if not lt or not lt.get("custom_enable_sandwich_rule"):
         return 0
 
-    sandwich_days_config = (lt.get("custom_sandwich_days") or "").strip()
-    if not sandwich_days_config:
+    configured_days = [d.weekday for d in (lt.get("custom_sandwich_days") or []) if d.weekday]
+    if not configured_days:
         return 0
-
-    configured_days = [d.strip() for d in sandwich_days_config.split("\n")]
 
     frm = getdate(from_date)
     to = getdate(to_date)
@@ -960,11 +957,10 @@ def _get_sandwich_dates(leave_type, from_date, to_date):
     if not lt or not lt.get("custom_enable_sandwich_rule"):
         return []
 
-    config = (lt.get("custom_sandwich_days") or "").strip()
-    if not config:
+    configured = [d.weekday for d in (lt.get("custom_sandwich_days") or []) if d.weekday]
+    if not configured:
         return []
 
-    configured = [d.strip() for d in config.split("\n")]
     frm = getdate(from_date)
     to = getdate(to_date)
     range_days = (to - frm).days
@@ -1004,6 +1000,7 @@ def _save_original_cancel_attendance(func):
 # ---------------------------------------------------------------------------
 # Patched methods
 # ---------------------------------------------------------------------------
+@frappe.whitelist()
 def patched_get_number_of_leave_days(
     employee, leave_type, from_date, to_date,
     half_day=None, half_day_date=None, holiday_list=None,

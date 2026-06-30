@@ -1,8 +1,10 @@
 # Copyright (c) 2026, osama.ahmed@deliverydevs.com and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
+from frappe import _
 from frappe.model.document import Document
+from frappe.utils import add_days, getdate
 
 
 class LEAVEDECLARATION(Document):
@@ -16,32 +18,122 @@ class LEAVEDECLARATION(Document):
 
 		amended_from: DF.Link | None
 		company: DF.Link
+		created_leave_application: DF.Data | None
 		data: DF.Data
 		designation: DF.Link | None
 		employee: DF.Link
 		employee_name: DF.Data | None
+		extended_leave_application: DF.Data | None
 		leave_days: DF.Float
 		leave_end_date: DF.Date | None
 		leave_start_date: DF.Date
+		leave_type: DF.Link
 		leaving_date: DF.Date
 		passport_number: DF.Data
+		rejoining_date: DF.Date | None
 	# end: auto-generated types
-	pass
 
-import frappe
+	def on_submit(self):
+		existing_leave = self._get_existing_leave_application()
+
+		if not existing_leave:
+			self._create_leave_application(self.leave_start_date, self.leave_end_date)
+			self.db_set("created_leave_application", self._created_la_name)
+			frappe.msgprint(
+				_("Leave application {0} created for employee {1}. Kindly approve to impact the leaves.").format(
+					frappe.bold(self._created_la_name), frappe.bold(self.employee_name)
+				),
+				title=_("Leave Application Created"),
+				indicator="green",
+				alert=True
+			)
+			return
+
+		if self.rejoining_date:
+			self._handle_rejoining(existing_leave)
+
+	def _get_existing_leave_application(self):
+		applications = frappe.get_all(
+			"Leave Application",
+			filters={
+				"employee": self.employee,
+				"from_date": ["<=", self.leave_end_date],
+				"to_date": [">=", self.leave_start_date],
+				"docstatus": ["!=", 2],
+				"leave_type": self.leave_type
+			},
+			fields=["name", "from_date", "to_date"],
+			limit=1
+		)
+		return applications[0] if applications else None
+
+	def _create_leave_application(self, from_date, to_date):
+		la = frappe.new_doc("Leave Application")
+		la.employee = self.employee
+		la.employee_name = self.employee_name
+		la.leave_type = self.leave_type
+		la.from_date = from_date
+		la.to_date = to_date
+		la.company = self.company
+		la.description = _("Auto-created from Leave Declaration {0}").format(self.name)
+		la.status = "Open"
+		la.custom_approval_status = "Open"
+
+		emp = frappe.get_cached_doc("Employee", self.employee)
+		la.leave_approver = emp.leave_approver
+		la.custom_leave_approver_1 = emp.get("custom_leave_approver_1")
+		la.custom_leave_approver_2 = emp.get("custom_leave_approver_2")
+		la.custom_leave_approver_4 = emp.get("custom_leave_approver_3")
+		la.custom_leave_approver_5 = emp.get("custom_leave_approver_4")
+		la.custom_employee_user_id = emp.user_id
+
+		la.flags.ignore_permissions = True
+		la.insert()
+		self._created_la_name = la.name
+
+	def _handle_rejoining(self, existing_leave):
+		ld_end = getdate(self.leave_end_date)
+		rj_date = getdate(self.rejoining_date)
+
+		if rj_date == ld_end:
+			return
+
+		if rj_date < ld_end:
+			self._cancel_leave_application(existing_leave["name"])
+			self._create_leave_application(self.leave_start_date, self.rejoining_date)
+			self.db_set("created_leave_application", self._created_la_name)
+			frappe.msgprint(
+				_("Employee returned early. Previous leave application {0} cancelled and new application {1} created with correct dates.").format(
+					frappe.bold(existing_leave["name"]), frappe.bold(self._created_la_name)
+				),
+				title=_("Leave Application Adjusted"),
+				indicator="orange",
+				alert=True
+			)
+			return
+
+		ext_from = add_days(getdate(existing_leave["to_date"]), 1)
+		ext_to = rj_date
+		self._create_leave_application(ext_from, ext_to)
+		self.db_set("extended_leave_application", self._created_la_name)
+		frappe.msgprint(
+			_("Leave application {0} created for extended leave. Kindly approve the same.").format(
+				frappe.bold(self._created_la_name)
+			),
+			title=_("Extended Leave Application Created"),
+			indicator="orange",
+			alert=True
+		)
+
+	@staticmethod
+	def _cancel_leave_application(la_name):
+		la = frappe.get_doc("Leave Application", la_name)
+		la.flags.ignore_permissions = True
+		la.cancel()
+
 
 @frappe.whitelist()
 def get_passport_number(employee):
-    """
-    Fetch the Passport Number of an employee from the Custom Certificates child table.
-    Args:
-        employee (str): Employee ID selected in the LEAVE DECLARATION form.
-
-    Returns:
-        str | None: Passport number (reference_no) if found, otherwise None.
-    """
-
-    # Fetch reference_no from Custom Certificates child table
     passport = frappe.db.get_value(
         "Employee cdt",
         {
@@ -50,6 +142,4 @@ def get_passport_number(employee):
         },
         "reference_no"
     )
-
-    # Return the fetched passport number
     return passport
