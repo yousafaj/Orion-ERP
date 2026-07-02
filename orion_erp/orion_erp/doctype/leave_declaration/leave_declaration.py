@@ -36,6 +36,39 @@ class LEAVEDECLARATION(Document):
 	def on_submit(self):
 		existing_leave = self._get_existing_leave_application()
 
+		if self.rejoining_date:
+			rj_date = getdate(self.rejoining_date)
+			# rejoining_date is first day back at work, last leave day is rj_date - 1
+			last_leave_day = add_days(rj_date, -1)
+
+			if rj_date <= getdate(self.leave_end_date):
+				# Early return or same-day return: adjust leave end
+				if not existing_leave:
+					if getdate(self.leave_start_date) <= last_leave_day:
+						self._create_leave_application(self.leave_start_date, last_leave_day)
+						self.db_set("created_leave_application", self._created_la_name)
+						frappe.msgprint(
+							_("Leave application {0} created for employee {1}.").format(
+								frappe.bold(self._created_la_name), frappe.bold(self.employee_name)
+							),
+							title=_("Leave Application Created")
+						)
+				else:
+					self._handle_early_rejoining(existing_leave)
+			else:
+				# Late return: create base LA for original period; extension handled by Rejoining Form
+				if not existing_leave:
+					self._create_leave_application(self.leave_start_date, self.leave_end_date)
+					self.db_set("created_leave_application", self._created_la_name)
+					frappe.msgprint(
+						_("Leave application {0} created for employee {1}. Extended leave will be created on rejoining.").format(
+							frappe.bold(self._created_la_name), frappe.bold(self.employee_name)
+						),
+						title=_("Leave Application Created"),
+						indicator="green"
+					)
+			return
+
 		if not existing_leave:
 			self._create_leave_application(self.leave_start_date, self.leave_end_date)
 			self.db_set("created_leave_application", self._created_la_name)
@@ -44,13 +77,14 @@ class LEAVEDECLARATION(Document):
 					frappe.bold(self._created_la_name), frappe.bold(self.employee_name)
 				),
 				title=_("Leave Application Created"),
-				indicator="green",
-				alert=True
+				indicator="green"
 			)
-			return
 
-		if self.rejoining_date:
-			self._handle_rejoining(existing_leave)
+	def on_cancel(self):
+		if self.created_leave_application:
+			self._cancel_leave_application(self.created_leave_application)
+		if self.extended_leave_application:
+			self._cancel_leave_application(self.extended_leave_application)
 
 	def _get_existing_leave_application(self):
 		applications = frappe.get_all(
@@ -91,45 +125,38 @@ class LEAVEDECLARATION(Document):
 		la.insert()
 		self._created_la_name = la.name
 
-	def _handle_rejoining(self, existing_leave):
-		ld_end = getdate(self.leave_end_date)
+	def _handle_early_rejoining(self, existing_leave):
 		rj_date = getdate(self.rejoining_date)
-
-		if rj_date == ld_end:
-			return
-
-		if rj_date < ld_end:
-			self._cancel_leave_application(existing_leave["name"])
-			self._create_leave_application(self.leave_start_date, self.rejoining_date)
+		self._cancel_leave_application(existing_leave["name"])
+		last_leave_day = add_days(rj_date, -1)
+		if getdate(self.leave_start_date) <= last_leave_day:
+			self._create_leave_application(self.leave_start_date, last_leave_day)
 			self.db_set("created_leave_application", self._created_la_name)
 			frappe.msgprint(
 				_("Employee returned early. Previous leave application {0} cancelled and new application {1} created with correct dates.").format(
 					frappe.bold(existing_leave["name"]), frappe.bold(self._created_la_name)
 				),
 				title=_("Leave Application Adjusted"),
-				indicator="orange",
-				alert=True
+				indicator="orange"
 			)
-			return
-
-		ext_from = add_days(getdate(existing_leave["to_date"]), 1)
-		ext_to = rj_date
-		self._create_leave_application(ext_from, ext_to)
-		self.db_set("extended_leave_application", self._created_la_name)
-		frappe.msgprint(
-			_("Leave application {0} created for extended leave. Kindly approve the same.").format(
-				frappe.bold(self._created_la_name)
-			),
-			title=_("Extended Leave Application Created"),
-			indicator="orange",
-			alert=True
-		)
+		else:
+			frappe.msgprint(
+				_("Employee returned early. Previous leave application {0} cancelled.").format(
+					frappe.bold(existing_leave["name"])
+				),
+				title=_("Leave Application Cancelled"),
+				indicator="orange"
+			)
 
 	@staticmethod
 	def _cancel_leave_application(la_name):
 		la = frappe.get_doc("Leave Application", la_name)
-		la.flags.ignore_permissions = True
-		la.cancel()
+		if la.docstatus == 0:
+			la.flags.ignore_permissions = True
+			la.db_set("docstatus", 2)
+		elif la.docstatus == 1:
+			la.flags.ignore_permissions = True
+			la.cancel()
 
 
 @frappe.whitelist()

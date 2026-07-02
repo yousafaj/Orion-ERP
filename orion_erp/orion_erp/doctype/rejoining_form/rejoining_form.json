@@ -52,9 +52,11 @@
    "custom_rejoining_approver_4",
    "custom_status_rejoining_approver5",
    "custom_rejoining_approver_5",
-   "custom_rejoining_approval_status",
-    "custom_last_status_change"
-   ],
+    "custom_rejoining_approval_status",
+     "custom_last_status_change",
+     "custom_created_leave_application",
+     "custom_cancelled_leave_application"
+    ],
  "fields": [
   {
    "fieldname": "section_break_pwxr",
@@ -373,15 +375,27 @@
     "read_only": 1,
     "in_list_view": 1
    },
-   {
-    "fieldname": "custom_last_status_change",
-    "fieldtype": "Datetime",
-    "label": "Last Status Change",
-    "read_only": 1,
-    "no_copy": 1,
-    "hidden": 1
-   }
-  ],
+    {
+     "fieldname": "custom_last_status_change",
+     "fieldtype": "Datetime",
+     "label": "Last Status Change",
+     "read_only": 1,
+     "no_copy": 1,
+     "hidden": 1
+    },
+    {
+     "fieldname": "custom_created_leave_application",
+     "fieldtype": "Data",
+     "label": "Created Leave Application",
+     "read_only": 1
+    },
+    {
+     "fieldname": "custom_cancelled_leave_application",
+     "fieldtype": "Data",
+     "label": "Cancelled Leave Application",
+     "read_only": 1
+    }
+   ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,

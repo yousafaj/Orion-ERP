@@ -23,6 +23,8 @@ class RejoiningForm(Document):
 		custom_employee_user_id: DF.Link | None
 		custom_last_status_change: DF.Datetime | None
 		custom_rejoining_approval_status: DF.Literal[None]
+		custom_created_leave_application: DF.Data | None
+		custom_cancelled_leave_application: DF.Data | None
 		custom_rejoining_approver_1: DF.Link | None
 		custom_rejoining_approver_2: DF.Link | None
 		custom_rejoining_approver_3: DF.Link | None

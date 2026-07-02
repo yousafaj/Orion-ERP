@@ -42,6 +42,10 @@ def validate_leave_approval(doc, method=None):
     if current_user == "Administrator":
         return
 
+    # Allow the send_for_approval flow
+    if frappe.flags.get("in_send_for_approval"):
+        return
+
     old_doc = doc.get_doc_before_save()
 
     if not old_doc:
@@ -50,6 +54,12 @@ def validate_leave_approval(doc, method=None):
         if not doc.custom_approval_status:
             doc.custom_approval_status = "Open"
         return
+
+    # If sent for approval, employee cannot edit
+    if doc.custom_sent_for_approval and doc.custom_employee_user_id == current_user:
+        frappe.throw(
+            _("You cannot modify this Leave Application as it has been sent for approval.")
+        )
 
     for row in APPROVAL_FLOW:
 
@@ -80,6 +90,9 @@ def validate_leave_approval(doc, method=None):
 # HANDLE APPROVAL
 # =========================================================
 def handle_leave_approval(doc, method=None):
+
+    if not doc.custom_sent_for_approval:
+        return
 
     old_doc = doc.get_doc_before_save()
     status_changed = False
@@ -838,6 +851,144 @@ def cancel_draft_leave(docname):
     )
 
     return True
+
+
+# =========================================================
+# SEND FOR APPROVAL
+# =========================================================
+
+@frappe.whitelist()
+def send_for_approval(docname):
+    doc = frappe.get_doc("Leave Application", docname)
+
+    if doc.docstatus != 0:
+        frappe.throw(_("Only draft Leave Applications can be sent for approval."))
+
+    if doc.custom_approval_status != "Open":
+        frappe.throw(_("Leave Application has already been sent for approval."))
+
+    if not doc.leave_approver:
+        frappe.throw(_("No leave approver is set for this leave application."))
+
+    doc.custom_sent_for_approval = 1
+    doc.custom_approval_status = "Pending Approval from Approver 1"
+    doc.custom_last_status_change = now_datetime()
+    doc.custom_reminder_sent = 0
+    doc.custom_escalation_sent = 0
+
+    frappe.flags.in_send_for_approval = True
+    doc.save(ignore_permissions=True)
+    frappe.flags.in_send_for_approval = False
+
+    send_first_approval_email(doc)
+
+    return True
+
+
+def send_first_approval_email(doc):
+    first_approver = None
+    for row in APPROVAL_FLOW:
+        approver = doc.get(row["approver_field"])
+        if approver:
+            first_approver = approver
+            break
+
+    if not first_approver:
+        return
+
+    subject = "Leave Approval Notification"
+    leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
+
+    message = f"""
+    <h1>Leave Application Notification</h1>
+    <h3>A new leave application requires your approval.</h3>
+
+    <table class="table table-bordered small"
+        style="
+            width:100%;
+            border-collapse:collapse;
+            border:1px solid #f3f3f3;
+            max-width:500px
+        ">
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Employee
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.employee_name}
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Leave Type
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.leave_type}
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                From Date
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.from_date}
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                To Date
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.to_date}
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Status
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Pending Approval
+            </td>
+        </tr>
+
+    </table>
+
+    <br><br>
+
+    <a
+        href="{leave_link}"
+        target="_blank"
+        style="
+            color:#fff;
+            text-decoration:none;
+            padding:4px 20px;
+            font-size:13px;
+            border-radius:6px;
+            background-color:#171717;
+            display:inline-block;
+            line-height:20px;
+        "
+    >
+        Open Now
+    </a>
+    """
+
+    frappe.sendmail(
+        recipients=[first_approver],
+        subject=subject,
+        message=message,
+        now=False
+    )
 
 
 # =========================================================

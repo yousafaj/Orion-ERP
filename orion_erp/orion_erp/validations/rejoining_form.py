@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import add_days, getdate, now_datetime
 
 
 APPROVAL_FLOW = [
@@ -357,9 +357,188 @@ def _notify_cancelled(doc, old_doc):
 def on_submit_rejoining_form(doc, method=None):
     doc.db_set("custom_rejoining_approval_status", "Approved")
 
+    existing_la = _get_existing_leave_application(doc)
+
+    ld_end = getdate(_get_leave_declaration_end_date(doc))
+    rj_date = getdate(doc.approved_rejoining_date)
+
+    if rj_date == ld_end:
+        return
+
+    if rj_date < ld_end:
+        # Early return — cancel old LA, create new one ending on rj_date
+        cancelled_la_name = existing_la["name"] if existing_la else None
+        if existing_la:
+            _cancel_leave_application(existing_la["name"])
+            doc.db_set("custom_cancelled_leave_application", existing_la["name"])
+        if getdate(doc.leave_start_date) <= rj_date:
+            new_la = _create_leave_application(doc, doc.leave_start_date, rj_date)
+            doc.db_set("custom_created_leave_application", new_la.name)
+            frappe.msgprint(
+                _("Leave application {0} created from {1} to {2} due to early rejoining.").format(
+                    frappe.bold(new_la.name), doc.leave_start_date, rj_date
+                ),
+                title=_("Leave Application Adjusted"),
+                indicator="orange"
+            )
+        else:
+            frappe.msgprint(
+                _("Employee returned before leave started. Previous leave application {0} cancelled.").format(
+                    frappe.bold(cancelled_la_name or "N/A")
+                ),
+                title=_("Leave Cancelled"),
+                indicator="orange"
+            )
+        return
+
+    if rj_date > ld_end:
+        # Extended leave — create additional leave application for extra days
+        ext_from = add_days(ld_end, 1)
+        last_leave_day = add_days(rj_date, -1)
+        if ext_from <= last_leave_day:
+            ext_la = _create_leave_application(doc, ext_from, last_leave_day)
+            doc.db_set("custom_created_leave_application", ext_la.name)
+            frappe.msgprint(
+                _("Leave application {0} created for extended leave from {1} to {2}. Kindly approve the same.").format(
+                    frappe.bold(ext_la.name), ext_from, last_leave_day
+                ),
+                title=_("Extended Leave Application Created"),
+                indicator="orange"
+            )
+        return
+
 
 def on_cancel_rejoining_form(doc, method=None):
     doc.db_set("custom_rejoining_approval_status", "Cancelled")
+
+    # Restore the cancelled original LA if this was an early-return case
+    cancelled_la_name = doc.get("custom_cancelled_leave_application")
+    if cancelled_la_name:
+        try:
+            restored_name = _restore_cancelled_leave_application(cancelled_la_name)
+            if restored_name:
+                _update_leave_declaration_reference(cancelled_la_name, restored_name)
+        except Exception:
+            frappe.log_error(
+                title=_("Rejoining Form Cancel Error"),
+                message=_("Failed to restore cancelled leave application {0} linked to Rejoining Form {1}").format(cancelled_la_name, doc.name)
+            )
+
+    # Cancel any linked leave application created from this form
+    la_name = doc.get("custom_created_leave_application")
+    if la_name:
+        try:
+            _cancel_leave_application(la_name)
+        except Exception:
+            frappe.log_error(
+                title=_("Rejoining Form Cancel Error"),
+                message=_("Failed to cancel leave application {0} linked to Rejoining Form {1}").format(la_name, doc.name)
+            )
+
+
+def _get_leave_declaration_end_date(doc):
+    """Fetch leave_end_date from the source Leave Declaration for this employee."""
+    ld = frappe.get_all(
+        "LEAVE DECLARATION",
+        filters={
+            "employee": doc.employee,
+            "leave_start_date": doc.leave_start_date,
+            "docstatus": 1,
+        },
+        fields=["leave_end_date"],
+        order_by="creation desc",
+        limit=1,
+    )
+    if ld:
+        return ld[0]["leave_end_date"]
+    return doc.leave_end_date
+
+
+def _get_existing_leave_application(doc):
+    ld_end = _get_leave_declaration_end_date(doc)
+    applications = frappe.get_all(
+        "Leave Application",
+        filters={
+            "employee": doc.employee,
+            "from_date": ["<=", ld_end],
+            "to_date": [">=", doc.leave_start_date],
+            "docstatus": ["!=", 2],
+            "leave_type": doc.leave_type,
+        },
+        fields=["name", "from_date", "to_date"],
+        limit=1,
+    )
+    return applications[0] if applications else None
+
+
+def _create_leave_application(doc, from_date, to_date):
+    la = frappe.new_doc("Leave Application")
+    la.employee = doc.employee
+    la.employee_name = doc.employee_name
+    la.leave_type = doc.leave_type
+    la.from_date = from_date
+    la.to_date = to_date
+    la.company = doc.company
+    la.description = _("Auto-created from Rejoining Form {0}").format(doc.name)
+    la.status = "Open"
+    la.custom_approval_status = "Open"
+
+    emp = frappe.get_cached_doc("Employee", doc.employee)
+    la.leave_approver = emp.leave_approver
+    la.custom_leave_approver_1 = emp.get("custom_leave_approver_1")
+    la.custom_leave_approver_2 = emp.get("custom_leave_approver_2")
+    la.custom_leave_approver_4 = emp.get("custom_leave_approver_3")
+    la.custom_leave_approver_5 = emp.get("custom_leave_approver_4")
+    la.custom_employee_user_id = emp.user_id
+
+    la.flags.ignore_permissions = True
+    la.insert()
+    return la
+
+
+def _cancel_leave_application(la_name):
+    la = frappe.get_doc("Leave Application", la_name)
+    if la.docstatus == 0:
+        la.flags.ignore_permissions = True
+        la.db_set("docstatus", 2)
+    elif la.docstatus == 1:
+        la.flags.ignore_permissions = True
+        la.cancel()
+
+
+def _restore_cancelled_leave_application(la_name):
+    """Restore a cancelled Leave Application by creating an amended copy.
+    Returns the name of the restored LA, or None if no restore was needed."""
+    if not frappe.db.exists("Leave Application", la_name):
+        return None
+    cancelled_la = frappe.get_doc("Leave Application", la_name)
+    if cancelled_la.docstatus != 2:
+        return None
+
+    amended = frappe.copy_doc(cancelled_la)
+    amended.amended_from = cancelled_la.name
+    amended.docstatus = 0
+    amended.status = "Open"
+    amended.custom_approval_status = "Open"
+    amended.custom_status_approver1 = "Open"
+    amended.custom_status_approver2 = "Open"
+    amended.custom_status_approver4 = "Open"
+    amended.custom_status_approver5 = "Open"
+    amended.flags.ignore_permissions = True
+    amended.insert()
+    return amended.name
+
+
+def _update_leave_declaration_reference(old_la_name, new_la_name):
+    """Update the Leave Declaration's created_leave_application to point to the restored LA."""
+    ld = frappe.get_all(
+        "LEAVE DECLARATION",
+        filters={"created_leave_application": old_la_name, "docstatus": 1},
+        fields=["name"],
+        limit=1,
+    )
+    if ld:
+        frappe.db.set_value("LEAVE DECLARATION", ld[0]["name"], "created_leave_application", new_la_name)
 
 
 def reset_status_on_amend(doc, method=None):

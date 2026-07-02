@@ -236,7 +236,6 @@ frappe.ui.form.on("Leave Application", {
 
         apply_custom_status_indicator(frm);
 
-        handle_submit_button(frm);
         handle_medical_certificate_flag(frm);
         handle_eligibility_warnings_badge(frm);
 
@@ -256,6 +255,18 @@ frappe.ui.form.on("Leave Application", {
 
         let is_employee =
             frm.doc.custom_employee_user_id === current_user;
+
+        handle_submit_button(frm);
+
+        if (frm.doc.custom_sent_for_approval && is_employee && !frm.is_new()) {
+            frm.disable_save();
+            frm.page.clear_primary_action();
+            frm.fields.forEach(function(field) {
+                if (field.df.fieldname && !field.df.read_only) {
+                    frm.set_df_property(field.df.fieldname, "read_only", 1);
+                }
+            });
+        }
 
         function get_previous_active_status(idx) {
             for (let i = idx - 1; i >= 0; i--) {
@@ -541,6 +552,12 @@ function handle_submit_button(frm) {
 
     let current_user = frappe.session.user;
 
+    let is_employee =
+        frm.doc.custom_employee_user_id === current_user;
+
+    let is_sent =
+        frm.doc.custom_sent_for_approval || frm.doc.custom_approval_status !== "Open";
+
     let can_submit = false;
 
     if (current_user === "Administrator") {
@@ -614,27 +631,80 @@ function handle_submit_button(frm) {
         });
     }
 
-    // Always allow save
-    frm.enable_save();
-
-    if (frm.is_new() || frm.doc.docstatus !== 0) return;
-
     frm.page.clear_primary_action();
 
-    if (can_submit) {
-
-        frm.page.set_primary_action(
-            __("Submit"),
-            () => frm.save("Submit")
-        );
-
-    } else {
-
+    if (frm.is_new()) {
+        frm.enable_save();
         frm.page.set_primary_action(
             __("Save"),
             () => frm.save()
         );
+        return;
     }
+
+    if (frm.doc.docstatus !== 0) {
+        frm.disable_save();
+        return;
+    }
+
+    // Admin / approver with submit permission
+    if (can_submit) {
+        frm.enable_save();
+        frm.page.set_primary_action(
+            __("Submit"),
+            () => frm.save("Submit")
+        );
+        return;
+    }
+
+    // Employee with sent doc: disable save and hide actions
+    if (is_employee && is_sent) {
+        frm.disable_save();
+        return;
+    }
+
+    // Employee with draft (not sent): Send for Approval as primary + Save enabled
+    if (is_employee && !is_sent) {
+        frm.enable_save();
+        frm.page.set_primary_action(
+            __("Send for Approval"),
+            () => {
+                frappe.confirm(
+                    __("Are you sure you want to send this Leave Application for approval?"),
+                    () => {
+                        var after_save = function() {
+                            frappe.call({
+                                method: "orion_erp.orion_erp.validations.leave_application.send_for_approval",
+                                args: { docname: frm.doc.name },
+                                callback: (r) => {
+                                    if (r.message) {
+                                        frappe.show_alert({
+                                            message: __("Leave Application has been sent for approval."),
+                                            indicator: "green"
+                                        });
+                                        frm.reload_doc();
+                                    }
+                                }
+                            });
+                        };
+                        if (frm.is_dirty()) {
+                            frm.save(null, after_save);
+                        } else {
+                            after_save();
+                        }
+                    }
+                );
+            }
+        );
+        return;
+    }
+
+    // Other users (approvers): show Save
+    frm.enable_save();
+    frm.page.set_primary_action(
+        __("Save"),
+        () => frm.save()
+    );
 }
 
 function handle_cancel_button(frm) {
