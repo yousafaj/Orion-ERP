@@ -96,6 +96,34 @@ frappe.ui.form.on("Leave Application", {
                 let hrs =
                     r.message.custom_medical_certificate_required_by;
 
+                // Create a minimal draft server-side (bypasses mandatory checks)
+                // so the doc has a real name before the user uploads a certificate
+                if (required && frm.is_new() && frm.doc.employee) {
+                    frappe.call({
+                        method: "orion_erp.orion_erp.validations.leave_application.create_leave_application_draft",
+                        args: {
+                            employee: frm.doc.employee,
+                            leave_type: frm.doc.leave_type,
+                            company: frm.doc.company,
+                            employee_name: frm.doc.employee_name
+                        },
+                        callback: function(r) {
+                            if (r.message) {
+                                let real_name = r.message;
+                                let old_name = frm.doc.name;
+
+                                // Move local data to the real name key
+                                locals[frm.doctype][real_name] = frm.doc;
+                                delete locals[frm.doctype][old_name];
+
+                                frm.doc.name = real_name;
+                                frm.docname = real_name;
+                                delete frm.doc.__islocal;
+                            }
+                        }
+                    });
+                }
+
                 update_medical_certificate_badge(
                     frm,
                     required,

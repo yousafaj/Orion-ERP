@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import add_days, getdate, now_datetime
+from frappe.utils import add_days, flt, getdate, now_datetime
 
 
 APPROVAL_FLOW = [
@@ -29,6 +29,23 @@ APPROVAL_FLOW = [
 
 def validate_rejoining_approval(doc, method=None):
     current_user = frappe.session.user
+
+    # Prevent direct submission if in approval flow but not fully approved
+    old_doc = doc.get_doc_before_save()
+    if old_doc and old_doc.docstatus == 0 and doc.docstatus == 1:
+        if doc.custom_rejoining_approval_status and doc.custom_rejoining_approval_status != "Approved":
+            statuses = []
+            for row in APPROVAL_FLOW:
+                approver = doc.get(row["approver_field"])
+                status = doc.get(row["status_field"])
+                if approver:
+                    statuses.append(status)
+            all_approved = all(s == "Approved" for s in statuses)
+            if not all_approved:
+                frappe.throw(
+                    _("Rejoining Form cannot be submitted directly. All approvals must be completed first.")
+                )
+
     if current_user == "Administrator":
         return
 
@@ -366,17 +383,18 @@ def on_submit_rejoining_form(doc, method=None):
         return
 
     if rj_date < ld_end:
-        # Early return — cancel old LA, create new one ending on rj_date
+        # Early return — cancel old LA, create new one ending on day before rejoining
         cancelled_la_name = existing_la["name"] if existing_la else None
         if existing_la:
             _cancel_leave_application(existing_la["name"])
             doc.db_set("custom_cancelled_leave_application", existing_la["name"])
-        if getdate(doc.leave_start_date) <= rj_date:
-            new_la = _create_leave_application(doc, doc.leave_start_date, rj_date)
+        last_leave_day = add_days(rj_date, -1)
+        if getdate(doc.leave_start_date) <= last_leave_day:
+            new_la = _create_leave_application(doc, doc.leave_start_date, last_leave_day)
             doc.db_set("custom_created_leave_application", new_la.name)
             frappe.msgprint(
                 _("Leave application {0} created from {1} to {2} due to early rejoining.").format(
-                    frappe.bold(new_la.name), doc.leave_start_date, rj_date
+                    frappe.bold(new_la.name), doc.leave_start_date, last_leave_day
                 ),
                 title=_("Leave Application Adjusted"),
                 indicator="orange"
@@ -483,6 +501,9 @@ def _create_leave_application(doc, from_date, to_date):
     la.status = "Open"
     la.custom_approval_status = "Open"
 
+    from hrms.hr.doctype.leave_application.leave_application import get_leave_balance_on
+    la.leave_balance = get_leave_balance_on(doc.employee, doc.leave_type, getdate(from_date))
+
     emp = frappe.get_cached_doc("Employee", doc.employee)
     la.leave_approver = emp.leave_approver
     la.custom_leave_approver_1 = emp.get("custom_leave_approver_1")
@@ -493,17 +514,31 @@ def _create_leave_application(doc, from_date, to_date):
 
     la.flags.ignore_permissions = True
     la.insert()
+
+    # Set balance after (total_leave_days is computed during insert by standard validate)
+    la.db_set("custom_leave_balance_after", flt(la.leave_balance) - flt(la.total_leave_days))
+
+    # Send the created leave application for approval
+    from orion_erp.orion_erp.validations.leave_application import send_for_approval
+    try:
+        send_for_approval(la.name)
+    except Exception:
+        frappe.log_error(
+            title=_("Leave Approval Error"),
+            message=_("Failed to send leave application {0} for approval").format(la.name)
+        )
+
     return la
 
 
 def _cancel_leave_application(la_name):
     la = frappe.get_doc("Leave Application", la_name)
-    if la.docstatus == 0:
+    if la.docstatus in (0, 1):
         la.flags.ignore_permissions = True
         la.db_set("docstatus", 2)
-    elif la.docstatus == 1:
-        la.flags.ignore_permissions = True
-        la.cancel()
+        la.db_set("custom_approval_status", "Cancelled")
+        la.db_set("custom_leave_balance_after", 0)
+        la.db_set("status", "Cancelled")
 
 
 def _restore_cancelled_leave_application(la_name):

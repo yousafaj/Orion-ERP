@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import add_days, getdate
+from frappe.utils import add_days, flt, getdate
 
 
 class LEAVEDECLARATION(Document):
@@ -32,6 +32,16 @@ class LEAVEDECLARATION(Document):
 		passport_number: DF.Data
 		rejoining_date: DF.Date | None
 	# end: auto-generated types
+
+	def validate(self):
+		if self.leave_start_date and self.leave_end_date:
+			from hrms.hr.doctype.leave_application.leave_application import get_number_of_leave_days
+			employee_holiday_list = frappe.db.get_value("Employee", self.employee, "holiday_list")
+			self.leave_days = get_number_of_leave_days(
+				self.employee, self.leave_type,
+				self.leave_start_date, self.leave_end_date,
+				holiday_list=employee_holiday_list
+			)
 
 	def on_submit(self):
 		existing_leave = self._get_existing_leave_application()
@@ -81,10 +91,14 @@ class LEAVEDECLARATION(Document):
 			)
 
 	def on_cancel(self):
-		if self.created_leave_application:
-			self._cancel_leave_application(self.created_leave_application)
-		if self.extended_leave_application:
-			self._cancel_leave_application(self.extended_leave_application)
+		frappe.flags.cancelling_from_leave_declaration = True
+		try:
+			if self.created_leave_application:
+				self._cancel_leave_application(self.created_leave_application)
+			if self.extended_leave_application:
+				self._cancel_leave_application(self.extended_leave_application)
+		finally:
+			frappe.flags.cancelling_from_leave_declaration = False
 
 	def _get_existing_leave_application(self):
 		applications = frappe.get_all(
@@ -113,6 +127,9 @@ class LEAVEDECLARATION(Document):
 		la.status = "Open"
 		la.custom_approval_status = "Open"
 
+		from hrms.hr.doctype.leave_application.leave_application import get_leave_balance_on
+		la.leave_balance = get_leave_balance_on(self.employee, self.leave_type, getdate(from_date))
+
 		emp = frappe.get_cached_doc("Employee", self.employee)
 		la.leave_approver = emp.leave_approver
 		la.custom_leave_approver_1 = emp.get("custom_leave_approver_1")
@@ -124,6 +141,19 @@ class LEAVEDECLARATION(Document):
 		la.flags.ignore_permissions = True
 		la.insert()
 		self._created_la_name = la.name
+
+		# Set balance after (total_leave_days is computed during insert by standard validate)
+		la.db_set("custom_leave_balance_after", flt(la.leave_balance) - flt(la.total_leave_days))
+
+		# Send the created leave application for approval
+		from orion_erp.orion_erp.validations.leave_application import send_for_approval
+		try:
+			send_for_approval(la.name)
+		except Exception:
+			frappe.log_error(
+				title=_("Leave Approval Error"),
+				message=_("Failed to send leave application {0} for approval").format(la.name)
+			)
 
 	def _handle_early_rejoining(self, existing_leave):
 		rj_date = getdate(self.rejoining_date)
@@ -151,12 +181,18 @@ class LEAVEDECLARATION(Document):
 	@staticmethod
 	def _cancel_leave_application(la_name):
 		la = frappe.get_doc("Leave Application", la_name)
-		if la.docstatus == 0:
+		if la.docstatus in (0, 1):
 			la.flags.ignore_permissions = True
 			la.db_set("docstatus", 2)
-		elif la.docstatus == 1:
-			la.flags.ignore_permissions = True
-			la.cancel()
+			la.db_set("custom_approval_status", "Cancelled")
+			la.db_set("custom_leave_balance_after", 0)
+			la.db_set("status", "Cancelled")
+
+
+@frappe.whitelist()
+def get_leave_balance(employee, leave_type, date):
+    from hrms.hr.doctype.leave_application.leave_application import get_leave_balance_on
+    return get_leave_balance_on(employee, leave_type, getdate(date))
 
 
 @frappe.whitelist()

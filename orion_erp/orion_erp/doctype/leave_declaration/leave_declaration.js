@@ -31,8 +31,37 @@ frappe.ui.form.on("LEAVE DECLARATION", {
         });
     },
 
+    leave_type: function(frm) {
+        if (frm.doc.employee && frm.doc.leave_type) {
+            frappe.call({
+                method: "orion_erp.orion_erp.doctype.leave_declaration.leave_declaration.get_leave_balance",
+                args: {
+                    employee: frm.doc.employee,
+                    leave_type: frm.doc.leave_type,
+                    date: frm.doc.leave_start_date || frappe.datetime.nowdate()
+                },
+                callback: function(r) {
+                    frm.set_value("leave_balance_before", r.message || 0);
+                }
+            });
+        }
+    },
+
     leave_start_date: function(frm) {
         calculate_leave_days(frm);
+        if (frm.doc.employee && frm.doc.leave_type && frm.doc.leave_start_date) {
+            frappe.call({
+                method: "orion_erp.orion_erp.doctype.leave_declaration.leave_declaration.get_leave_balance",
+                args: {
+                    employee: frm.doc.employee,
+                    leave_type: frm.doc.leave_type,
+                    date: frm.doc.leave_start_date
+                },
+                callback: function(r) {
+                    frm.set_value("leave_balance_before", r.message || 0);
+                }
+            });
+        }
     },
 
     leave_end_date: function(frm) {

@@ -37,7 +37,27 @@ APPROVAL_FLOW = [
 
 def validate_leave_approval(doc, method=None):
 
+    # Allow draft creation for medical cert upload without validation
+    if frappe.flags.get("creating_leave_draft"):
+        return
+
     current_user = frappe.session.user
+
+    # Prevent direct submission if in approval flow but not fully approved
+    old_doc = doc.get_doc_before_save()
+    if old_doc and old_doc.docstatus == 0 and doc.docstatus == 1:
+        if doc.custom_sent_for_approval:
+            statuses = []
+            for row in APPROVAL_FLOW:
+                approver = doc.get(row["approver_field"])
+                status = doc.get(row["status_field"])
+                if approver:
+                    statuses.append(status)
+            all_approved = all(s == "Approved" for s in statuses)
+            if not all_approved:
+                frappe.throw(
+                    _("Leave Application cannot be submitted directly. All approvals must be completed first.")
+                )
 
     if current_user == "Administrator":
         return
@@ -166,6 +186,10 @@ def handle_leave_approval(doc, method=None):
         doc.db_set("custom_approval_status", "Cancelled")
 
         _notify_cancelled(doc, old_doc)
+
+        # Cancel linked Leave Declaration if not already being cancelled from LD
+        if not frappe.flags.get("cancelling_from_leave_declaration"):
+            _cancel_linked_leave_declaration(doc.name)
         return
 
     # ALL APPROVED
@@ -816,6 +840,29 @@ def on_cancel_leave_application(doc, method=None):
         0
     )
 
+    # Cancel linked Leave Declaration if not already being cancelled from LD
+    if not frappe.flags.get("cancelling_from_leave_declaration"):
+        _cancel_linked_leave_declaration(doc.name)
+
+
+def _cancel_linked_leave_declaration(la_name):
+    """Cancel the Leave Declaration linked to this Leave Application."""
+    for field in ("created_leave_application", "extended_leave_application"):
+        ld_name = frappe.db.get_value(
+            "LEAVE DECLARATION",
+            {field: la_name, "docstatus": 1},
+            "name"
+        )
+        if ld_name:
+            frappe.flags.cancelling_from_leave_declaration = True
+            try:
+                ld_doc = frappe.get_doc("LEAVE DECLARATION", ld_name)
+                ld_doc.flags.ignore_permissions = True
+                ld_doc.cancel()
+            finally:
+                frappe.flags.cancelling_from_leave_declaration = False
+            break
+
 
 # =========================================================
 # CANCEL DRAFT LEAVE APPLICATION
@@ -842,6 +889,10 @@ def cancel_draft_leave(docname):
     doc.db_set("custom_status_approver5", "Cancelled")
     doc.db_set("docstatus", 2)
     doc.db_set("custom_approval_status", "Cancelled")
+
+    # Cancel linked Leave Declaration if not already being cancelled from LD
+    if not frappe.flags.get("cancelling_from_leave_declaration"):
+        _cancel_linked_leave_declaration(doc.name)
 
     doc.add_comment(
         "Info",
@@ -1187,6 +1238,28 @@ def patched_update_attendance(self):
             doc.flags.ignore_validate = True
             doc.insert(ignore_permissions=True)
             doc.submit()
+
+
+@frappe.whitelist()
+def create_leave_application_draft(employee, leave_type, company=None, employee_name=None):
+    """Save a minimal Leave Application draft to get a real doc name
+    before uploading medical certificate or other attachments.
+
+    Bypasses mandatory field validation since the user may not have
+    filled in dates/reason yet."""
+    doc = frappe.new_doc("Leave Application")
+    doc.employee = employee
+    doc.leave_type = leave_type
+    doc.company = company
+    doc.employee_name = employee_name
+    doc.status = "Open"
+    doc.custom_approval_status = "Open"
+
+    frappe.flags.creating_leave_draft = True
+    doc.insert(ignore_permissions=True, ignore_mandatory=True)
+    frappe.flags.creating_leave_draft = False
+
+    return doc.name
 
 
 def patched_cancel_attendance(self):
