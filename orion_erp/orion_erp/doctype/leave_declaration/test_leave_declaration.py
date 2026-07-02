@@ -94,7 +94,7 @@ class TestLEAVEDECLARATION(FrappeTestCase):
 
         self.assertFalse(ld.created_leave_application)
 
-    def test_rejoining_same_date_no_impact(self):
+    def test_rejoining_same_date_adjusts_leave_end(self):
         emp = self._get_employee()
         start = date.today() + timedelta(days=30)
         end = start + timedelta(days=10)
@@ -105,9 +105,15 @@ class TestLEAVEDECLARATION(FrappeTestCase):
         ld.insert()
         ld.submit()
 
-        self.assertFalse(ld.created_leave_application)
-        self.assertFalse(ld.extended_leave_application)
-        self.assertTrue(frappe.db.exists("Leave Application", existing_la.name))
+        self.assertTrue(ld.created_leave_application)
+        self.assertNotEqual(ld.created_leave_application, existing_la.name)
+        self.assertEqual(
+            frappe.db.get_value("Leave Application", existing_la.name, "docstatus"),
+            2
+        )
+        new_la = frappe.get_doc("Leave Application", ld.created_leave_application)
+        last_leave_day = end - timedelta(days=1)
+        self.assertEqual(str(new_la.to_date), str(last_leave_day))
 
     def test_early_return_cancels_and_creates_new(self):
         emp = self._get_employee()
@@ -130,4 +136,21 @@ class TestLEAVEDECLARATION(FrappeTestCase):
 
         new_la = frappe.get_doc("Leave Application", ld.created_leave_application)
         self.assertEqual(str(new_la.from_date), str(start))
-        self.assertEqual(str(new_la.to_date), str(rejoining))
+        last_leave_day = rejoining - timedelta(days=1)
+        self.assertEqual(str(new_la.to_date), str(last_leave_day))
+
+    def test_late_return_creates_base_la_only(self):
+        emp = self._get_employee()
+        start = date.today() + timedelta(days=50)
+        end = start + timedelta(days=5)
+
+        ld = self._create_leave_declaration(emp, start, end, rejoining_date=end + timedelta(days=10))
+        ld.insert()
+        ld.submit()
+
+        self.assertTrue(ld.created_leave_application)
+        self.assertFalse(ld.extended_leave_application)
+
+        la = frappe.get_doc("Leave Application", ld.created_leave_application)
+        self.assertEqual(str(la.from_date), str(start))
+        self.assertEqual(str(la.to_date), str(end))

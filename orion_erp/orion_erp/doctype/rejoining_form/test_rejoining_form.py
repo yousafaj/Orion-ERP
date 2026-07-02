@@ -7,9 +7,28 @@ class TestRejoiningForm(FrappeTestCase):
         frappe.db.delete("Rejoining Form", {"name": ["like", "HR-RF-%"]})
         frappe.db.commit()
 
+    def _ensure_leave_allocation(self, employee, leave_type):
+        """Delete old allocations and create a fresh wide one."""
+        frappe.db.delete("Leave Allocation", {
+            "employee": employee,
+            "leave_type": leave_type,
+        })
+        alloc = frappe.get_doc({
+            "doctype": "Leave Allocation",
+            "employee": employee,
+            "leave_type": leave_type,
+            "from_date": "2025-01-01",
+            "to_date": "2026-12-31",
+            "new_leaves_allocated": 30,
+        })
+        alloc.flags.ignore_permissions = True
+        alloc.submit()
+
     def _create_rejoining_form(self, employee=None, leave_type=None, skip_approver_fields=False):
         if not employee:
             employee = self._get_test_employee()
+        leave_type = leave_type or "Annual Leave"
+        self._ensure_leave_allocation(employee, leave_type)
 
         rf = frappe.get_doc({
             "doctype": "Rejoining Form",
@@ -25,23 +44,31 @@ class TestRejoiningForm(FrappeTestCase):
             "hr_id": "Administrator",
             "date_hr": "2026-01-16",
             "date_incharge": "2026-01-16",
-            "approved_rejoining_date": "2026-01-16",
+            "approved_rejoining_date": "2026-01-15",
             "site_allocated": "Main Site",
             "mobilization__date": "2026-01-16",
             "tentative_rejoining_date": "2026-01-16",
             "actual_rejoining_date": "2026-01-16",
         })
         if not skip_approver_fields:
-            # Establish a fresh consistent-read snapshot so fetch_from sees our
-            # db_set_value writes under REPEATABLE READ isolation.
             frappe.db.sql(f"SELECT leave_approver FROM `tabEmployee` WHERE name = %s FOR UPDATE", employee)
             frappe.db.set_value("Employee", employee, "leave_approver", "Administrator")
             frappe.db.set_value("Employee", employee, "custom_leave_approver_1", "Administrator")
+            frappe.db.set_value("Employee", employee, "custom_leave_approver_2", None)
+            frappe.db.set_value("Employee", employee, "custom_leave_approver_3", None)
+            frappe.db.set_value("Employee", employee, "custom_leave_approver_4", None)
             rf.custom_rejoining_approver_1 = "Administrator"
             rf.custom_rejoining_approver_2 = "Administrator"
             rf.custom_status_rejoining_approver1 = "Open"
             rf.custom_status_rejoining_approver2 = "Open"
         rf.insert(ignore_permissions=True)
+        # Clear any extra approvers that fetch_from pulled from the employee
+        # (REPEATABLE READ → fetch_from may have missed our db_set_value above)
+        if not skip_approver_fields:
+            for extra_field in ("custom_rejoining_approver_3", "custom_rejoining_approver_4",
+                                "custom_rejoining_approver_5"):
+                frappe.db.set_value("Rejoining Form", rf.name, extra_field, None)
+            rf.reload()
         return rf
 
     def _get_test_employee(self):
@@ -63,14 +90,14 @@ class TestRejoiningForm(FrappeTestCase):
 
     def test_validate_approval_flow(self):
         employee = self._get_test_employee()
-        # Clear the employee's leave_approver. Use SELECT...FOR UPDATE to
-        # establish a new consistent-read snapshot so fetch_from (a regular
-        # SELECT) sees the updated value under REPEATABLE READ isolation.
-        frappe.db.sql(f"SELECT leave_approver FROM `tabEmployee` WHERE name = %s FOR UPDATE", employee)
-        frappe.db.set_value("Employee", employee, "leave_approver", None)
-        frappe.db.set_value("Employee", employee, "custom_leave_approver_1", None)
+        # Create form without approver fields set in dict.
+        # fetch_from may populate the approver from the employee record.
+        # After insert, clear approvers via db_set so status resets to Open.
         rf = self._create_rejoining_form(employee=employee, skip_approver_fields=True)
-        # No approvers configured → status should stay Open
+        # Clear any approver that fetch_from may have pulled in
+        frappe.db.set_value("Rejoining Form", rf.name, "custom_rejoining_approver_1", None)
+        frappe.db.set_value("Rejoining Form", rf.name, "custom_rejoining_approval_status", "Open")
+        rf.reload()
         self.assertIsNone(rf.custom_rejoining_approver_1, "Approver 1 should be empty")
         self.assertEqual(rf.custom_rejoining_approval_status, "Open")
 

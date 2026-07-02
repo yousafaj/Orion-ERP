@@ -27,3 +27,9 @@ _la_module.LeaveApplication.update_attendance = patched_update_attendance
 
 _save_original_cancel_attendance(_la_module.LeaveApplication.cancel_attendance)
 _la_module.LeaveApplication.cancel_attendance = patched_cancel_attendance
+
+# Suppress the HRMS notification on draft save — Orion handles approval emails
+def _noop_notify_leave_approver(self):
+    pass
+
+_la_module.LeaveApplication.notify_leave_approver = _noop_notify_leave_approver
