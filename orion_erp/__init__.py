@@ -33,3 +33,27 @@ def _noop_notify_leave_approver(self):
     pass
 
 _la_module.LeaveApplication.notify_leave_approver = _noop_notify_leave_approver
+
+# Patch S3 plugin's _assert_write_permission to handle
+# unsaved documents (temporary names like "new-leave-application-xxx")
+import frappe_s3_attachment.controller as _s3_ctrl
+import frappe
+
+_original_assert_write_permission = _s3_ctrl._assert_write_permission
+
+def _patched_assert_write_permission(doctype, docname):
+    if not doctype or doctype == "File" or not docname:
+        return
+    try:
+        has_perm = frappe.has_permission(doctype, "write", docname)
+    except frappe.DoesNotExistError:
+        return
+    if not has_perm:
+        frappe.throw(
+            frappe._("You do not have permission to attach files to {0} {1}.").format(
+                doctype, docname
+            ),
+            frappe.PermissionError,
+        )
+
+_s3_ctrl._assert_write_permission = _patched_assert_write_permission
