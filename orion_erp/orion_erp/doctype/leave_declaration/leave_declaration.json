@@ -20,6 +20,7 @@
    "leave_start_date",
    "leave_end_date",
    "leave_days",
+   "leave_balance_before",
    "rejoining_date",
    "created_leave_application",
    "extended_leave_application"
@@ -109,6 +110,12 @@
     "label": "Leave Type",
     "options": "Leave Type",
     "reqd": 1
+   },
+   {
+    "fieldname": "leave_balance_before",
+    "fieldtype": "Float",
+    "label": "Leave Balance Before Application",
+    "read_only": 1
    },
    {
     "fieldname": "rejoining_date",
