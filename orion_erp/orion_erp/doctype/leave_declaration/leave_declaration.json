@@ -5,21 +5,26 @@
  "creation": "2026-04-07 16:40:54.129307",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": [
-  "section_break_bqau",
-  "employee",
-  "employee_name",
-  "designation",
-  "leaving_date",
-  "data",
-  "amended_from",
-  "column_break_zhxg",
-  "company",
-  "passport_number",
-  "leave_start_date",
-  "leave_end_date",
-  "leave_days"
- ],
+  "field_order": [
+   "section_break_bqau",
+   "employee",
+   "employee_name",
+   "designation",
+   "leaving_date",
+   "data",
+   "amended_from",
+   "column_break_zhxg",
+   "company",
+   "passport_number",
+   "leave_type",
+   "leave_start_date",
+   "leave_end_date",
+   "leave_days",
+   "leave_balance_before",
+   "rejoining_date",
+   "created_leave_application",
+   "extended_leave_application"
+  ],
  "fields": [
   {
    "fieldname": "section_break_bqau",
@@ -94,18 +99,48 @@
    "read_only": 1
   },
   {
-   "fieldname": "passport_number",
-   "fieldtype": "Data",
-   "label": "Passport Number",
-   "reqd": 1
-  },
-  {
-   "fieldname": "data",
-   "fieldtype": "Data",
-   "label": "Data",
-   "reqd": 1
-  }
- ],
+    "fieldname": "passport_number",
+    "fieldtype": "Data",
+    "label": "Passport Number",
+    "reqd": 1
+   },
+   {
+    "fieldname": "leave_type",
+    "fieldtype": "Link",
+    "label": "Leave Type",
+    "options": "Leave Type",
+    "reqd": 1
+   },
+   {
+    "fieldname": "leave_balance_before",
+    "fieldtype": "Float",
+    "label": "Leave Balance Before Application",
+    "read_only": 1
+   },
+   {
+    "fieldname": "rejoining_date",
+    "fieldtype": "Date",
+    "label": "Rejoining Date"
+   },
+   {
+    "fieldname": "created_leave_application",
+    "fieldtype": "Data",
+    "label": "Created Leave Application",
+    "read_only": 1
+   },
+   {
+    "fieldname": "extended_leave_application",
+    "fieldtype": "Data",
+    "label": "Extended Leave Application",
+    "read_only": 1
+   },
+   {
+    "fieldname": "data",
+    "fieldtype": "Data",
+    "label": "Data",
+    "reqd": 1
+   }
+  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,

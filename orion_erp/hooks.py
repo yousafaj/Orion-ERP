@@ -26,7 +26,6 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/orion_erp/css/orion_erp.css"
-# app_include_js = "/assets/orion_erp/js/orion_erp.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/orion_erp/css/orion_erp.css"
@@ -50,12 +49,15 @@ doctype_js = {
     "Salary Slip": "public/js/salary_slip.js",
     "Job Offer":"public/js/job_offer.js",
     "Driver": "public/js/driver.js",
-    "Quotation": "public/js/quotation.js"
+    "Quotation": "public/js/quotation.js",
+    "Leave Allocation": "public/js/leave_allocation.js",
+    "Rejoining Form": "public/js/rejoining_form.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
 doctype_list_js = {"Employee": "public/js/employee_list.js",
-                   "Leave Application": "public/js/leave_application_list.js"}
+                   "Leave Application": "public/js/leave_application_list.js",
+                   "Rejoining Form": "public/js/rejoining_form_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -107,6 +109,12 @@ fixtures = [
     {
         "doctype": "Role",
         "filters": [["name", "in", ["PRO"]]]
+    },
+    {
+        "doctype": "Weekday",
+        "filters": [
+            ["name", "in", ["Saturday", "Sunday"]]
+        ]
     }
 ]
 
@@ -164,7 +172,9 @@ permission_query_conditions = {
     "Additional Salary": "orion_erp.orion_erp.permission_query.additonal_salary.get_additional_salary_permission_query",
 	"Salary Structure Assignment": "orion_erp.orion_erp.permission_query.salary_structure_assignment.get_ssa_permission_query",
     "Leave Application":
-    "orion_erp.orion_erp.permission_query.leave_application.leave_application_query"
+    "orion_erp.orion_erp.permission_query.leave_application.leave_application_query",
+    "Rejoining Form":
+    "orion_erp.orion_erp.permission_query.rejoining_form.rejoining_form_query"
 }
 #
 # has_permission = {
@@ -213,6 +223,21 @@ doc_events = {
             "orion_erp.orion_erp.validations.leave_application.on_cancel_leave_application"
         ]
     },
+    "Rejoining Form":{
+        "validate":[
+            "orion_erp.orion_erp.validations.rejoining_form.validate_rejoining_approval",
+            "orion_erp.orion_erp.validations.rejoining_form.reset_status_on_amend"
+        ],
+        "on_update":[
+            "orion_erp.orion_erp.validations.rejoining_form.handle_rejoining_approval"
+        ],
+        "on_submit":[
+            "orion_erp.orion_erp.validations.rejoining_form.on_submit_rejoining_form"
+        ],
+        "on_cancel":[
+            "orion_erp.orion_erp.validations.rejoining_form.on_cancel_rejoining_form"
+        ]
+    },
     "Salary Structure Assignment":{
         "validate":"orion_erp.orion_erp.validations.salary_structure_assignment.validate_ssa_employee_category"
     },
@@ -250,7 +275,11 @@ doc_events = {
         "validate": "orion_erp.orion_erp.validations.leave_type.validate_no_casual_leave"
     },
     "Leave Encashment": {
-        "validate": "orion_erp.orion_erp.validations.leave_encashment.validate_leave_encashment"
+        "validate": "orion_erp.orion_erp.validations.leave_encashment.validate_leave_encashment",
+        "on_cancel": "orion_erp.orion_erp.validations.leave_encashment.on_cancel_leave_encashment"
+    },
+    "Leave Allocation": {
+        "before_submit": "orion_erp.orion_erp.scripts.leave_allocation_validation.before_submit"
     }
 }
 

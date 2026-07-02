@@ -740,18 +740,22 @@ def cancel_linked_leave_encashments(self):
 			"docstatus": 1,
 			"custom_leave_settlement_ref": self.name
 		},
-		fields=["name", "additional_salary"]
+		fields=["name"]
 	)
 
 	for d in leave_encashments:
-		if d.additional_salary:
-			frappe.db.set_value(
-				"Additional Salary",
-				d.additional_salary,
-				"leave_encashment",
-				"",
-			)
-			add_doc = frappe.get_doc("Additional Salary", d.additional_salary)
+		additional_salary_name = frappe.db.get_value(
+			"Additional Salary",
+			{
+				"ref_doctype": "Leave Encashment",
+				"ref_docname": d.name,
+				"docstatus": 1
+			},
+			"name"
+		)
+
+		if additional_salary_name:
+			add_doc = frappe.get_doc("Additional Salary", additional_salary_name)
 			if add_doc.docstatus == 1:
 				add_doc.cancel()
 

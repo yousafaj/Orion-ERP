@@ -17,6 +17,10 @@ def leave_application_query(user):
 
             OR
 
+            `tabLeave Application`.owner = '{user}'
+
+            OR
+
             `tabLeave Application`.leave_approver = '{user}'
 
             OR

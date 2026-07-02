@@ -5,6 +5,9 @@ from hrms.hr.doctype.leave_ledger_entry.leave_ledger_entry import (
     expire_allocation,
     get_remaining_leaves,
 )
+from orion_erp.orion_erp.scripts.excess_leave_notification import (
+    notify_excess_leaves,
+)
 
 LEAVE_TYPE = "ANNUAL LEAVE"
 
@@ -104,15 +107,15 @@ def execute_monthly_accrual():
             )
 
 
-# def test():
-#     rules = get_rules_from_leave_type()
+def test():
+    rules = get_rules_from_leave_type()
 
-#     process_employee(
-#         employee="HR-EMP-00379",
-#         doj=getdate("2026-05-05"),
-#         month_num=1,
-#         rules=rules
-#     )
+    process_employee(
+        employee="HR-EMP-00379",
+        doj=getdate("2026-05-05"),
+        month_num=1,
+        rules=rules
+    )
 
 
 def process_employee(employee, doj, month_num, rules):
@@ -379,35 +382,41 @@ def execute_carry_forward():
             f"(Balance: {balance}, Max: {max_carry})"
         )
 
-        existing = frappe.db.exists(
-            "Leave Allocation",
-            {
-                "employee": emp.name,
-                "leave_type": LEAVE_TYPE,
-                "description": description,
-                "docstatus": 1
-            }
-        )
-
-        if existing:
-            continue
-
-        create_carry_forward(
+        allocation_name, excess = create_carry_forward(
             emp.name,
             doj,
             completed_months,
             max_carry
         )
 
+        if allocation_name and excess > 0:
+            # print(f"Notifying excess leave for {emp.name}: {excess} days excess, allocation={allocation_name}")
+            notify_excess_leaves(
+                emp.name,
+                allocation_name,
+                excess,
+                max_carry
+            )
+
 def test1():
     rules = get_rules_from_leave_type()
 
-    create_carry_forward(
+    name, excess = create_carry_forward(
         employee="HR-EMP-00379",
         doj=getdate("2026-05-05"),
         completed_months=12,
-        max_carry=45
+        max_carry=10
     )
+    if name:
+        # print(f"Created CF allocation: {name}, excess={excess}")
+        if excess > 0:
+            # print(f"Excess found: {excess} days. Sending notification...")
+            notify_excess_leaves(
+                employee="HR-EMP-00379",
+                allocation_name=name,
+                excess_days=excess,
+                max_carry=15
+            )
 
 def create_carry_forward(
     employee,
@@ -433,8 +442,10 @@ def create_carry_forward(
         max_carry
     )
 
+    excess = max(0, balance - max_carry)
+
     if carry_forward <= 0:
-        return
+        return None, 0
 
     description = (
         f"Carry Forward Year {completed_months // 12} "
@@ -442,16 +453,56 @@ def create_carry_forward(
         f"(Balance: {balance}, Max: {max_carry})"
     )
 
-    already_done = frappe.db.sql(
-        """SELECT name FROM `tabLeave Allocation`
-        WHERE employee = %s AND leave_type = %s AND docstatus = 1
-        AND description LIKE %s""",
+    existing = frappe.db.sql(
+        """SELECT name, docstatus, custom_excess_leave_days
+        FROM `tabLeave Allocation`
+        WHERE employee = %s AND leave_type = %s
+        AND description LIKE %s
+        ORDER BY docstatus ASC, creation DESC""",
         (employee, LEAVE_TYPE, f"%{description}%"),
-        pluck=True
+        as_dict=True
     )
 
-    if already_done:
-        return
+    # If a draft amendment already exists, return it
+    for row in existing:
+        if row.docstatus == 0:
+            needs_save = False
+            if flt(row.custom_excess_leave_days) != excess:
+                frappe.db.set_value("Leave Allocation", row.name, "custom_excess_leave_days", excess)
+            current_nla = frappe.db.get_value("Leave Allocation", row.name, "new_leaves_allocated")
+            current_status = frappe.db.get_value("Leave Allocation", row.name, "custom_excess_leave_status")
+            current_cf = flt(frappe.db.get_value("Leave Allocation", row.name, "custom_carry_forward_days"))
+            current_lapsed = flt(frappe.db.get_value("Leave Allocation", row.name, "custom_lapsed_leave_days"))
+
+            if current_status == "Extend" and flt(current_cf + current_lapsed) != excess:
+                frappe.db.set_value("Leave Allocation", row.name, "custom_excess_leave_status", "Pending")
+                frappe.db.set_value("Leave Allocation", row.name, "custom_carry_forward_days", 0)
+                frappe.db.set_value("Leave Allocation", row.name, "custom_lapsed_leave_days", 0)
+                frappe.db.set_value("Leave Allocation", row.name, "new_leaves_allocated", carry_forward)
+                frappe.db.set_value("Leave Allocation", row.name, "total_leaves_allocated", carry_forward)
+            elif flt(current_nla) != carry_forward and current_status == "Pending":
+                frappe.db.set_value("Leave Allocation", row.name, "new_leaves_allocated", carry_forward)
+                frappe.db.set_value("Leave Allocation", row.name, "total_leaves_allocated", carry_forward)
+            return row.name, excess
+
+    # If a submitted allocation exists, update it and create an amended draft if excess > 0
+    for row in existing:
+        if row.docstatus == 1:
+            if flt(row.custom_excess_leave_days) != excess:
+                frappe.db.set_value("Leave Allocation", row.name, "custom_excess_leave_days", excess)
+                frappe.db.set_value("Leave Allocation", row.name, "custom_excess_leave_status", "Pending")
+            if excess > 0:
+                from frappe.model import copy_doc
+                amend_allocation = copy_doc(frappe.get_doc("Leave Allocation", row.name))
+                amend_allocation.docstatus = 0
+                amend_allocation.new_leaves_allocated = carry_forward
+                amend_allocation.total_leaves_allocated = carry_forward
+                amend_allocation.custom_excess_leave_days = excess
+                amend_allocation.custom_excess_leave_status = "Pending"
+                amend_allocation.flags.ignore_permissions = True
+                amend_allocation.insert(ignore_permissions=True)
+                return amend_allocation.name, excess
+            return row.name, excess
 
     cf_from = add_months(doj, completed_months)
     cf_to = add_days(add_months(doj, completed_months + 12), -1)
@@ -469,7 +520,10 @@ def create_carry_forward(
 
     if overlap:
         add_to_existing_allocation(overlap, carry_forward, description)
-        return
+        if excess > 0:
+            frappe.db.set_value("Leave Allocation", overlap, "custom_excess_leave_days", excess)
+            frappe.db.set_value("Leave Allocation", overlap, "custom_excess_leave_status", "Pending")
+        return overlap, excess
 
     allocation = frappe.new_doc(
         "Leave Allocation"
@@ -481,6 +535,8 @@ def create_carry_forward(
     allocation.to_date = cf_to
     allocation.new_leaves_allocated = carry_forward
     allocation.description = description
+    allocation.custom_excess_leave_days = excess
+    allocation.custom_excess_leave_status = "Pending"
 
     allocation.flags.ignore_permissions = True
 
@@ -488,9 +544,13 @@ def create_carry_forward(
         ignore_permissions=True
     )
 
-    allocation.submit()
+    if excess > 0:
+        expire_previous_allocation(employee, cf_from)
+    else:
+        allocation.submit()
+        expire_previous_allocation(employee, cf_from)
 
-    expire_previous_allocation(employee, cf_from)
+    return allocation.name, excess
 
 
 def expire_previous_allocation(employee, new_year_start):

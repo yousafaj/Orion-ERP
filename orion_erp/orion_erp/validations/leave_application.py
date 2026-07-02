@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, now_datetime, add_days
+from frappe.utils import flt, getdate, now_datetime, add_days, add_months
 
 
 APPROVAL_FLOW = [
@@ -37,9 +37,33 @@ APPROVAL_FLOW = [
 
 def validate_leave_approval(doc, method=None):
 
+    # Allow draft creation for medical cert upload without validation
+    if frappe.flags.get("creating_leave_draft"):
+        return
+
     current_user = frappe.session.user
 
+    # Prevent direct submission if in approval flow but not fully approved
+    old_doc = doc.get_doc_before_save()
+    if old_doc and old_doc.docstatus == 0 and doc.docstatus == 1:
+        if doc.custom_sent_for_approval:
+            statuses = []
+            for row in APPROVAL_FLOW:
+                approver = doc.get(row["approver_field"])
+                status = doc.get(row["status_field"])
+                if approver:
+                    statuses.append(status)
+            all_approved = all(s == "Approved" for s in statuses)
+            if not all_approved:
+                frappe.throw(
+                    _("Leave Application cannot be submitted directly. All approvals must be completed first.")
+                )
+
     if current_user == "Administrator":
+        return
+
+    # Allow the send_for_approval flow
+    if frappe.flags.get("in_send_for_approval"):
         return
 
     old_doc = doc.get_doc_before_save()
@@ -50,6 +74,12 @@ def validate_leave_approval(doc, method=None):
         if not doc.custom_approval_status:
             doc.custom_approval_status = "Open"
         return
+
+    # If sent for approval, employee cannot edit
+    if doc.custom_sent_for_approval and doc.custom_employee_user_id == current_user:
+        frappe.throw(
+            _("You cannot modify this Leave Application as it has been sent for approval.")
+        )
 
     for row in APPROVAL_FLOW:
 
@@ -80,6 +110,9 @@ def validate_leave_approval(doc, method=None):
 # HANDLE APPROVAL
 # =========================================================
 def handle_leave_approval(doc, method=None):
+
+    if not doc.custom_sent_for_approval:
+        return
 
     old_doc = doc.get_doc_before_save()
     status_changed = False
@@ -126,6 +159,7 @@ def handle_leave_approval(doc, method=None):
                 0
             )
 
+        update_leave_application_status(doc)
         _notify_rejected(doc, old_doc)
         return
 
@@ -152,6 +186,10 @@ def handle_leave_approval(doc, method=None):
         doc.db_set("custom_approval_status", "Cancelled")
 
         _notify_cancelled(doc, old_doc)
+
+        # Cancel linked Leave Declaration if not already being cancelled from LD
+        if not frappe.flags.get("cancelling_from_leave_declaration"):
+            _cancel_linked_leave_declaration(doc.name)
         return
 
     # ALL APPROVED
@@ -166,9 +204,9 @@ def handle_leave_approval(doc, method=None):
         update_leave_application_status(doc)
 
         if doc.docstatus != 1:
-            frappe.msgprint(
-                _("All approvers have approved. Please submit the document.")
-            )
+            doc.flags.ignore_permissions = True
+            frappe.flags.ignore_permissions = True
+            doc.submit()
 
         return
 
@@ -201,14 +239,13 @@ def send_next_approval_email(doc):
 
             next_index = index + 1
 
-            if next_index >= len(APPROVAL_FLOW):
-                return
-
-            next_row = APPROVAL_FLOW[next_index]
-
-            next_approver = doc.get(
-                next_row["approver_field"]
-            )
+            next_approver = None
+            while next_index < len(APPROVAL_FLOW):
+                next_row = APPROVAL_FLOW[next_index]
+                next_approver = doc.get(next_row["approver_field"])
+                if next_approver:
+                    break
+                next_index += 1
 
             if not next_approver:
                 return
@@ -360,8 +397,17 @@ def get_employee_details(employee):
     return {}
 
 
+def add_eligibility_warning(doc, title, message):
+    separator = "\n" if doc.custom_eligibility_warnings else ""
+    doc.custom_eligibility_warnings = (doc.custom_eligibility_warnings or "") + separator + message
+    frappe.msgprint(
+        title=_(title),
+        msg=_(message)
+    )
+
+
 def validate_annual_leave_avail(doc, method=None):
-    if doc.leave_type != "Annual Leave" or doc.docstatus == 1:
+    if doc.leave_type != "ANNUAL LEAVE" or doc.docstatus == 1:
         return
 
     employee_doj = frappe.db.get_value("Employee", doc.employee, "date_of_joining")
@@ -372,7 +418,12 @@ def validate_annual_leave_avail(doc, method=None):
     today = getdate()
 
     if doj > today:
-        frappe.throw(_("Employee has not yet joined."))
+        add_eligibility_warning(
+            doc,
+            "Annual Leave Eligibility",
+            "Employee has not yet joined. Recruitment date is {0}.".format(employee_doj)
+        )
+        return
 
     completed_months = get_completed_months(doj, today)
 
@@ -380,19 +431,19 @@ def validate_annual_leave_avail(doc, method=None):
         SELECT COALESCE(SUM(leaves), 0)
         FROM `tabLeave Ledger Entry`
         WHERE employee = %s
-          AND leave_type = 'Annual Leave'
+          AND leave_type = 'ANNUAL LEAVE'
           AND docstatus = 1
           AND is_expired = 0
     """, doc.employee)[0][0] or 0
 
     balance = flt(balance)
 
-    if completed_months < 12 and doc.total_leave_days > balance:
-        frappe.throw(
-            _(
-                "You have not completed 1 year of service yet. "
-                "Annual Leave avail is restricted to your accrued balance of {0} days."
-            ).format(balance)
+    if completed_months < 12:
+        add_eligibility_warning(
+            doc,
+            "Annual Leave Eligibility",
+            "You must complete 1 year of service to apply for {0} days Annual Leave. "
+            "Your current accrued balance is {1} days.".format(doc.total_leave_days, balance)
         )
 
 
@@ -447,26 +498,33 @@ def validate_paternity_leave(doc, method=None):
         return
 
     if not doc.custom_child_date_of_birth:
-        frappe.throw(
-            _("Child's Date of Birth is required for Paid Paternity Leave.")
+        add_eligibility_warning(
+            doc,
+            "Paternity Leave Eligibility",
+            "Child's Date of Birth is required for Paid Paternity Leave."
         )
+        return
 
     child_dob = getdate(doc.custom_child_date_of_birth)
-    six_months_later = add_days(child_dob, 183)
+    six_months_later = add_months(child_dob, 6)
 
     if doc.from_date and getdate(doc.from_date) > six_months_later:
-        frappe.throw(
-            _("Paid Paternity Leave must be taken within 6 months of the child's date of birth. From Date ({0}) exceeds the 6-month period from child's date of birth ({1}).").format(
-                frappe.bold(str(doc.from_date)),
-                frappe.bold(str(doc.custom_child_date_of_birth))
+        add_eligibility_warning(
+            doc,
+            "Paternity Leave Eligibility",
+            "Paid Paternity Leave must be taken within 6 months of the child's date of birth. From Date ({0}) exceeds the 6-month period from child's date of birth ({1}).".format(
+                str(doc.from_date),
+                str(doc.custom_child_date_of_birth)
             )
         )
 
     if doc.to_date and getdate(doc.to_date) > six_months_later:
-        frappe.throw(
-            _("Paid Paternity Leave must be taken within 6 months of the child's date of birth. To Date ({0}) exceeds the 6-month period from child's date of birth ({1}).").format(
-                frappe.bold(str(doc.to_date)),
-                frappe.bold(str(doc.custom_child_date_of_birth))
+        add_eligibility_warning(
+            doc,
+            "Paternity Leave Eligibility",
+            "Paid Paternity Leave must be taken within 6 months of the child's date of birth. To Date ({0}) exceeds the 6-month period from child's date of birth ({1}).".format(
+                str(doc.to_date),
+                str(doc.custom_child_date_of_birth)
             )
         )
 
@@ -477,19 +535,22 @@ def validate_hajj_umrah_leave(doc, method=None):
 
     religion = frappe.db.get_value("Employee", doc.employee, "custom_religion")
     if religion != "Muslim":
-        frappe.throw(
-            _("Hajj/Umrah Leave is only applicable to Muslim employees."),
-            title=_("Ineligible")
+        add_eligibility_warning(
+            doc,
+            "Ineligible",
+            "Hajj/Umrah Leave is only applicable to Muslim employees."
         )
+        return
 
     max_days = frappe.db.get_value("Leave Type", doc.leave_type, "max_leaves_allowed") or 0
     if max_days and doc.total_leave_days > max_days:
-        frappe.throw(
-            _("Hajj/Umrah Leave cannot exceed {0} days as per the Leave Type configuration. You have requested {1} days.").format(
-                frappe.bold(str(max_days)),
-                frappe.bold(str(doc.total_leave_days))
-            ),
-            title=_("Exceeds Maximum Leave Days")
+        add_eligibility_warning(
+            doc,
+            "Exceeds Maximum Leave Days",
+            "Hajj/Umrah Leave cannot exceed {0} days as per the Leave Type configuration. You have requested {1} days.".format(
+                str(max_days),
+                str(doc.total_leave_days)
+            )
         )
 
     existing = frappe.db.exists("Leave Application", {
@@ -501,9 +562,10 @@ def validate_hajj_umrah_leave(doc, method=None):
     })
 
     if existing:
-        frappe.throw(
-            _("Employee has already availed Hajj/Umrah Leave. This leave type can only be availed once during the entire employment period."),
-            title=_("Already Availed")
+        add_eligibility_warning(
+            doc,
+            "Already Availed",
+            "Employee has already availed Hajj/Umrah Leave. This leave type can only be availed once during the entire employment period."
         )
 
 
@@ -571,24 +633,6 @@ def update_leave_application_status(doc):
 
             return
 
-    approval_labels = {
-
-        "leave_approver":
-        "Pending Approval from Approver 2",
-
-        "custom_leave_approver_1":
-        "Pending Approval from Approver 3",
-
-        "custom_leave_approver_2":
-        "Pending Approval from Approver 4",
-
-        "custom_leave_approver_4":
-        "Pending Approval from Approver 5",
-
-        "custom_leave_approver_5":
-        "Pending Approval from Approver 6"
-    }
-
     last_approved = None
 
     for row in active_flow:
@@ -624,12 +668,13 @@ def update_leave_application_status(doc):
 
     if last_approved:
 
-        doc.db_set(
-            "custom_approval_status",
-            approval_labels.get(last_approved)
-        )
-
-        return
+        for idx, row in enumerate(active_flow):
+            if row["status"] != "Approved":
+                doc.db_set(
+                    "custom_approval_status",
+                    f"Pending Approval from Approver {idx + 1}"
+                )
+                return
 
     # =====================================================
     # DEFAULT
@@ -713,9 +758,16 @@ def _notify_cancelled(doc, old_doc):
         if approver:
             recipients.add(approver)
 
-    hr_user = frappe.db.get_single_value("Orion Settings", "default_escalation_user")
-    if hr_user:
-        recipients.add(hr_user)
+    hr_roles = frappe.get_all("Role Details", filters={"parent": "Orion Settings", "parentfield": "default_escalation_roles"}, pluck="role")
+    if hr_roles:
+        hr_users = frappe.get_all("Has Role", filters={"role": ["in", hr_roles], "parenttype": "User"}, pluck="parent")
+        for u in hr_users:
+            recipients.add(u)
+
+    if not recipients:
+        return
+
+    recipients = {r for r in recipients if frappe.utils.validate_email_address(r, throw=False)}
 
     if not recipients:
         return
@@ -746,6 +798,35 @@ def on_submit_leave_application(doc, method=None):
         "Approved"
     )
 
+    leave_balance_after = flt(doc.leave_balance) - flt(doc.total_leave_days)
+    doc.db_set(
+        "custom_leave_balance_after",
+        leave_balance_after
+    )
+
+    additional = get_sandwich_additional_days(doc.leave_type, doc.from_date, doc.to_date)
+    if additional:
+        day_names = []
+        orion_settings = frappe.get_single("Orion Settings")
+        if orion_settings.get("enable_sandwich_leave"):
+            lt = frappe.get_cached_doc("Leave Type", doc.leave_type)
+            configured_days = [d.weekday for d in (lt.get("custom_sandwich_days") or []) if d.weekday]
+            from_date = getdate(doc.from_date)
+            to_date = getdate(doc.to_date)
+            range_days = (to_date - from_date).days
+            if "Saturday" in configured_days and (4 - from_date.weekday()) % 7 <= range_days:
+                day_names.append("Saturday")
+            if "Sunday" in configured_days and (0 - from_date.weekday()) % 7 <= range_days:
+                day_names.append("Sunday")
+        if day_names:
+            frappe.msgprint(
+                _("Sandwich Leave: {0} will also be deducted as per sandwich leave policy.").format(
+                    " and ".join(day_names)
+                ),
+                indicator="orange",
+                alert=True
+            )
+
 
 def on_cancel_leave_application(doc, method=None):
 
@@ -753,6 +834,34 @@ def on_cancel_leave_application(doc, method=None):
         "custom_approval_status",
         "Cancelled"
     )
+
+    doc.db_set(
+        "custom_leave_balance_after",
+        0
+    )
+
+    # Cancel linked Leave Declaration if not already being cancelled from LD
+    if not frappe.flags.get("cancelling_from_leave_declaration"):
+        _cancel_linked_leave_declaration(doc.name)
+
+
+def _cancel_linked_leave_declaration(la_name):
+    """Cancel the Leave Declaration linked to this Leave Application."""
+    for field in ("created_leave_application", "extended_leave_application"):
+        ld_name = frappe.db.get_value(
+            "LEAVE DECLARATION",
+            {field: la_name, "docstatus": 1},
+            "name"
+        )
+        if ld_name:
+            frappe.flags.cancelling_from_leave_declaration = True
+            try:
+                ld_doc = frappe.get_doc("LEAVE DECLARATION", ld_name)
+                ld_doc.flags.ignore_permissions = True
+                ld_doc.cancel()
+            finally:
+                frappe.flags.cancelling_from_leave_declaration = False
+            break
 
 
 # =========================================================
@@ -781,6 +890,10 @@ def cancel_draft_leave(docname):
     doc.db_set("docstatus", 2)
     doc.db_set("custom_approval_status", "Cancelled")
 
+    # Cancel linked Leave Declaration if not already being cancelled from LD
+    if not frappe.flags.get("cancelling_from_leave_declaration"):
+        _cancel_linked_leave_declaration(doc.name)
+
     doc.add_comment(
         "Info",
         _("Leave application cancelled by {0} before start date.").format(
@@ -789,6 +902,144 @@ def cancel_draft_leave(docname):
     )
 
     return True
+
+
+# =========================================================
+# SEND FOR APPROVAL
+# =========================================================
+
+@frappe.whitelist()
+def send_for_approval(docname):
+    doc = frappe.get_doc("Leave Application", docname)
+
+    if doc.docstatus != 0:
+        frappe.throw(_("Only draft Leave Applications can be sent for approval."))
+
+    if doc.custom_approval_status != "Open":
+        frappe.throw(_("Leave Application has already been sent for approval."))
+
+    if not doc.leave_approver:
+        frappe.throw(_("No leave approver is set for this leave application."))
+
+    doc.custom_sent_for_approval = 1
+    doc.custom_approval_status = "Pending Approval from Approver 1"
+    doc.custom_last_status_change = now_datetime()
+    doc.custom_reminder_sent = 0
+    doc.custom_escalation_sent = 0
+
+    frappe.flags.in_send_for_approval = True
+    doc.save(ignore_permissions=True)
+    frappe.flags.in_send_for_approval = False
+
+    send_first_approval_email(doc)
+
+    return True
+
+
+def send_first_approval_email(doc):
+    first_approver = None
+    for row in APPROVAL_FLOW:
+        approver = doc.get(row["approver_field"])
+        if approver:
+            first_approver = approver
+            break
+
+    if not first_approver:
+        return
+
+    subject = "Leave Approval Notification"
+    leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
+
+    message = f"""
+    <h1>Leave Application Notification</h1>
+    <h3>A new leave application requires your approval.</h3>
+
+    <table class="table table-bordered small"
+        style="
+            width:100%;
+            border-collapse:collapse;
+            border:1px solid #f3f3f3;
+            max-width:500px
+        ">
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Employee
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.employee_name}
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Leave Type
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.leave_type}
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                From Date
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.from_date}
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                To Date
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.to_date}
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Status
+            </td>
+
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Pending Approval
+            </td>
+        </tr>
+
+    </table>
+
+    <br><br>
+
+    <a
+        href="{leave_link}"
+        target="_blank"
+        style="
+            color:#fff;
+            text-decoration:none;
+            padding:4px 20px;
+            font-size:13px;
+            border-radius:6px;
+            background-color:#171717;
+            display:inline-block;
+            line-height:20px;
+        "
+    >
+        Open Now
+    </a>
+    """
+
+    frappe.sendmail(
+        recipients=[first_approver],
+        subject=subject,
+        message=message,
+        now=False
+    )
 
 
 # =========================================================
@@ -859,3 +1110,172 @@ def get_leave_types_for_employee(doctype, txt, searchfield, start, page_len, fil
           AND name LIKE %(txt)s
         LIMIT %(start)s, %(page_len)s
     """, {"allocated_types": allocated_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
+
+
+def get_sandwich_additional_days(leave_type, from_date, to_date):
+    """Calculate additional sandwich days for the given leave type and date range."""
+    if not leave_type or not from_date or not to_date:
+        return 0
+
+    orion_settings = frappe.get_single("Orion Settings")
+    if not orion_settings.get("enable_sandwich_leave"):
+        return 0
+
+    lt = frappe.get_cached_doc("Leave Type", leave_type) if frappe.db.exists("Leave Type", leave_type) else None
+    if not lt or not lt.get("custom_enable_sandwich_rule"):
+        return 0
+
+    configured_days = [d.weekday for d in (lt.get("custom_sandwich_days") or []) if d.weekday]
+    if not configured_days:
+        return 0
+
+    frm = getdate(from_date)
+    to = getdate(to_date)
+    range_days = (to - frm).days
+    additional = 0
+
+    if "Saturday" in configured_days and (4 - frm.weekday()) % 7 == range_days:
+        additional += 1
+    if "Sunday" in configured_days and frm.weekday() == 0:
+        additional += 1
+
+    return additional
+
+
+def _get_sandwich_dates(leave_type, from_date, to_date):
+    """Return list of date strings for sandwich days, or empty list.
+
+    Replicates the sandwich logic from get_sandwich_additional_days
+    but returns actual date strings instead of a count.
+    """
+    if not leave_type or not from_date or not to_date:
+        return []
+
+    orion_settings = frappe.get_single("Orion Settings")
+    if not orion_settings.get("enable_sandwich_leave"):
+        return []
+
+    lt = frappe.get_cached_doc("Leave Type", leave_type) if frappe.db.exists("Leave Type", leave_type) else None
+    if not lt or not lt.get("custom_enable_sandwich_rule"):
+        return []
+
+    configured = [d.weekday for d in (lt.get("custom_sandwich_days") or []) if d.weekday]
+    if not configured:
+        return []
+
+    frm = getdate(from_date)
+    to = getdate(to_date)
+    range_days = (to - frm).days
+
+    result = []
+    if "Saturday" in configured and (4 - frm.weekday()) % 7 == range_days:
+        result.append(add_days(frm, (5 - frm.weekday()) % 7).strftime("%Y-%m-%d"))
+    if "Sunday" in configured and frm.weekday() == 0:
+        result.append(add_days(frm, -1).strftime("%Y-%m-%d"))
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Monkey-patch storage for LeaveApplication methods
+# ---------------------------------------------------------------------------
+_original_get_number_of_leave_days = None
+_original_update_attendance = None
+_original_cancel_attendance = None
+
+
+def _save_original_get_number_of_leave_days(func):
+    global _original_get_number_of_leave_days
+    _original_get_number_of_leave_days = func
+
+
+def _save_original_update_attendance(func):
+    global _original_update_attendance
+    _original_update_attendance = func
+
+
+def _save_original_cancel_attendance(func):
+    global _original_cancel_attendance
+    _original_cancel_attendance = func
+
+
+# ---------------------------------------------------------------------------
+# Patched methods
+# ---------------------------------------------------------------------------
+@frappe.whitelist()
+def patched_get_number_of_leave_days(
+    employee, leave_type, from_date, to_date,
+    half_day=None, half_day_date=None, holiday_list=None,
+):
+    result = _original_get_number_of_leave_days(employee, leave_type, from_date, to_date, half_day, half_day_date, holiday_list)
+    additional = get_sandwich_additional_days(leave_type, from_date, to_date)
+    return flt(result) + additional
+
+
+def patched_update_attendance(self):
+    """Create Attendance records for date range AND sandwich days."""
+    _original_update_attendance(self)
+
+    sandwich_dates = _get_sandwich_dates(self.leave_type, self.from_date, self.to_date)
+    for date_str in sandwich_dates:
+        attendance_name = frappe.db.exists(
+            "Attendance",
+            dict(
+                employee=self.employee,
+                attendance_date=date_str,
+                docstatus=("!=", 2),
+            ),
+        )
+        if not attendance_name:
+            doc = frappe.new_doc("Attendance")
+            doc.employee = self.employee
+            doc.employee_name = self.employee_name
+            doc.attendance_date = date_str
+            doc.company = self.company
+            doc.leave_type = self.leave_type
+            doc.leave_application = self.name
+            doc.status = "On Leave"
+            doc.flags.ignore_validate = True
+            doc.insert(ignore_permissions=True)
+            doc.submit()
+
+
+@frappe.whitelist()
+def create_leave_application_draft(employee, leave_type, company=None, employee_name=None):
+    """Save a minimal Leave Application draft to get a real doc name
+    before uploading medical certificate or other attachments.
+
+    Bypasses mandatory field validation since the user may not have
+    filled in dates/reason yet."""
+    doc = frappe.new_doc("Leave Application")
+    doc.employee = employee
+    doc.leave_type = leave_type
+    doc.company = company
+    doc.employee_name = employee_name
+    doc.status = "Open"
+    doc.custom_approval_status = "Open"
+
+    frappe.flags.creating_leave_draft = True
+    doc.insert(ignore_permissions=True, ignore_mandatory=True)
+    frappe.flags.creating_leave_draft = False
+
+    return doc.name
+
+
+def patched_cancel_attendance(self):
+    """Cancel Attendance records for date range AND sandwich days."""
+    _original_cancel_attendance(self)
+
+    sandwich_dates = _get_sandwich_dates(self.leave_type, self.from_date, self.to_date)
+    for date_str in sandwich_dates:
+        attendance_name = frappe.db.exists(
+            "Attendance",
+            dict(
+                employee=self.employee,
+                attendance_date=date_str,
+                docstatus=1,
+                leave_application=self.name,
+            ),
+        )
+        if attendance_name:
+            frappe.db.set_value("Attendance", attendance_name, "docstatus", 2)
