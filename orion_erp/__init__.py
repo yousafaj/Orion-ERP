@@ -41,7 +41,7 @@ import frappe
 
 _original_assert_write_permission = _s3_ctrl._assert_write_permission
 
-def _patched_assert_write_permission(doctype, docname):
+def _patched_assert_write_permission(doctype, docname, **kwargs):
     if not doctype or doctype == "File" or not docname:
         return
     try:

@@ -6,14 +6,14 @@ frappe.ui.form.on('Quotation', {
                 args: {
                     doctype: 'Employee',
                     filters: { name: frm.doc.custom_prepared_by },
-                    fieldname: ['designation', 'custom_mobile', 'employee_name', 'user_id']
+                    fieldname: ['designation', 'custom_mobile', 'employee_name', 'company_email']
                 },
                 callback: function(r) {
                     if (r.message) {
                         frm.set_value('custom_designation', r.message.designation || '');
                         frm.set_value('custom_contact_no', r.message.custom_mobile || '');
                         frm.set_value('custom_contact_persons', r.message.employee_name || '');
-                        frm.set_value('custom_email', r.message.user_id || '');
+                        frm.set_value('custom_email', r.message.company_email || '');
                     }
                 }
             });
