@@ -14,6 +14,7 @@ class QuotationType(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
-
+		footer: DF.AttachImage | None
+		quotation_type: DF.Data
 	# end: auto-generated types
 	pass
