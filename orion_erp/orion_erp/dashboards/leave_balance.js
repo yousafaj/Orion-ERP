@@ -65,7 +65,8 @@ async function load_leave_balance() {
         });
 
         root_element.innerHTML = [
-            '<div style="font-family:Inter,system-ui,sans-serif;color:#1f2937">',
+            '<style>.dashboard-body{font-family:Inter,system-ui,sans-serif;color:#1f2937}.table-container{overflow-y:auto;overflow-x:auto}.table-container::-webkit-scrollbar{width:8px;height:8px}.table-container::-webkit-scrollbar-track{background:transparent}.table-container::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}.table-container::-webkit-scrollbar-thumb:hover{background:#94a3b8}</style>',
+            '<div class="dashboard-body">',
             '<div style="background:linear-gradient(135deg,#1e40af,#2563eb,#3b82f6);border-radius:12px 12px 0 0;padding:20px 28px;display:flex;align-items:center;gap:16px;box-shadow:0 4px 16px rgba(37,99,235,0.25)">',
             '<div style="font-size:32px;line-height:1">&#x1F343;</div>',
             '<div style="flex:1">',
@@ -105,7 +106,7 @@ async function load_leave_balance() {
             '<div style="display:flex;align-items:center;gap:16px;padding:18px 20px;background:#fafafa;border-radius:10px;border:1px solid #e5e7eb;transition:all 0.25s" class="kpi-card">',
             '<div style="display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,#f3f4f6,#f9fafb);color:#6b7280;font-size:20px;flex-shrink:0"><i class="fa fa-calendar"></i></div>',
             '<div><div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">As of Date</div>',
-            '<div style="font-size:15px;font-weight:700;color:#1f2937;line-height:1.1">', today, '</div>',
+            '<div style="font-size:15px;font-weight:700;color:#1f2937;line-height:1.1;white-space:nowrap">', today, '</div>',
             '<div style="font-size:12px;color:#6b7280;margin-top:2px">Last Updated</div></div></div></div>',
 
             '<div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.04)">',
@@ -114,9 +115,9 @@ async function load_leave_balance() {
             '<i class="fa fa-list-alt" style="color:#2563eb;font-size:13px"></i> Leave Balance Details',
             '<span style="font-size:12px;font-weight:500;color:#6b7280;background:#e5e7eb;padding:2px 10px;border-radius:12px;margin-left:8px">', total_types, '</span></div></div>',
 
-            '<div style="max-height:450px;overflow-y:auto">',
+            '<div class="table-container">',
             '<table style="width:100%;border-collapse:collapse;font-size:14px">',
-            '<thead><tr style="background:#f1f5f9;position:sticky;top:0;z-index:2">',
+            '<thead><tr style="background:#f1f5f9;position:sticky;top:0;z-index:10">',
             '<th style="padding:12px 20px;text-align:left;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Leave Type</th>',
             '<th style="padding:12px 20px;text-align:center;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0;width:180px">Available Days</th>',
             '</tr></thead>',
