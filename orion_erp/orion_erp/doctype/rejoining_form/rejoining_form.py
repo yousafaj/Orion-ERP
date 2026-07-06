@@ -20,21 +20,21 @@ class RejoiningForm(Document):
 		approved_rejoining_date: DF.Date
 		assets: DF.TableMultiSelect[AssetDetail]
 		company: DF.Link | None
+		custom_cancelled_leave_application: DF.Data | None
+		custom_created_leave_application: DF.Data | None
 		custom_employee_user_id: DF.Link | None
 		custom_last_status_change: DF.Datetime | None
-		custom_rejoining_approval_status: DF.Literal[None]
-		custom_created_leave_application: DF.Data | None
-		custom_cancelled_leave_application: DF.Data | None
+		custom_rejoining_approval_status: DF.Literal["Open", "Pending Approval from Approver 1", "Pending Approval from Approver 2", "Pending Approval from Approver 3", "Pending Approval from Approver 4", "Pending Approval from Approver 5", "Submit Pending", "Approved", "Rejected", "Cancelled"]
 		custom_rejoining_approver_1: DF.Link | None
 		custom_rejoining_approver_2: DF.Link | None
 		custom_rejoining_approver_3: DF.Link | None
 		custom_rejoining_approver_4: DF.Link | None
 		custom_rejoining_approver_5: DF.Link | None
-		custom_status_rejoining_approver1: DF.Literal[None]
-		custom_status_rejoining_approver2: DF.Literal[None]
-		custom_status_rejoining_approver3: DF.Literal[None]
-		custom_status_rejoining_approver4: DF.Literal[None]
-		custom_status_rejoining_approver5: DF.Literal[None]
+		custom_status_rejoining_approver1: DF.Literal["Open", "Approved", "Rejected", "Cancelled"]
+		custom_status_rejoining_approver2: DF.Literal["Open", "Approved", "Rejected", "Cancelled"]
+		custom_status_rejoining_approver3: DF.Literal["Open", "Approved", "Rejected", "Cancelled"]
+		custom_status_rejoining_approver4: DF.Literal["Open", "Approved", "Rejected", "Cancelled"]
+		custom_status_rejoining_approver5: DF.Literal["Open", "Approved", "Rejected", "Cancelled"]
 		date_hr: DF.Date
 		date_incharge: DF.Date
 		department: DF.Link | None
@@ -45,6 +45,7 @@ class RejoiningForm(Document):
 		employee_name: DF.Data | None
 		hr_id: DF.Link
 		hr_name: DF.Data | None
+		leave_application: DF.Link | None
 		leave_days_approved: DF.Data | None
 		leave_end_date: DF.Date
 		leave_start_date: DF.Date

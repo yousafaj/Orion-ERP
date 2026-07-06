@@ -43,21 +43,20 @@ def validate_leave_approval(doc, method=None):
 
     current_user = frappe.session.user
 
-    # Prevent direct submission if in approval flow but not fully approved
+    # Prevent direct submission unless all active approvers have approved
     old_doc = doc.get_doc_before_save()
     if old_doc and old_doc.docstatus == 0 and doc.docstatus == 1:
-        if doc.custom_sent_for_approval:
-            statuses = []
-            for row in APPROVAL_FLOW:
-                approver = doc.get(row["approver_field"])
-                status = doc.get(row["status_field"])
-                if approver:
-                    statuses.append(status)
-            all_approved = all(s == "Approved" for s in statuses)
-            if not all_approved:
-                frappe.throw(
-                    _("Leave Application cannot be submitted directly. All approvals must be completed first.")
-                )
+        statuses = []
+        for row in APPROVAL_FLOW:
+            approver = doc.get(row["approver_field"])
+            status = doc.get(row["status_field"])
+            if approver:
+                statuses.append(status)
+        all_approved = all(s == "Approved" for s in statuses)
+        if not all_approved:
+            frappe.throw(
+                _("Leave Application cannot be submitted until all approvers have approved it.")
+            )
 
     if current_user == "Administrator":
         return
@@ -112,6 +111,9 @@ def validate_leave_approval(doc, method=None):
 def handle_leave_approval(doc, method=None):
 
     if not doc.custom_sent_for_approval:
+        return
+
+    if frappe.flags.get("submitting_leave_from_rejoining"):
         return
 
     old_doc = doc.get_doc_before_save()
@@ -690,6 +692,94 @@ def update_leave_application_status(doc):
 # NOTIFICATION HELPERS
 # =========================================================
 
+def _is_medical_certificate_pending(doc):
+    if not doc.leave_type:
+        return False
+    required = frappe.db.get_value("Leave Type", doc.leave_type, "custom_medical_certificate_required")
+    if not required:
+        return False
+    return not doc.custom_medical_certificate
+
+
+def _notify_medical_certificate_pending(doc):
+    employee_email = doc.get("custom_employee_user_id")
+    if not employee_email:
+        return
+
+    leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
+
+    # Notify employee
+    emp_subject = _("Medical Certificate Required - {0}").format(doc.name)
+    emp_message = f"""
+    <h3>Medical Certificate Required</h3>
+    <p>Your leave application <b>{doc.name}</b> has been approved. However, a Medical Certificate is required for <b>{doc.leave_type}</b> and has not yet been uploaded.</p>
+    <p>Please upload the Medical Certificate at the earliest to avoid any payroll impact.</p>
+    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Medical Certificate</b></td><td style="padding:8px;border:1px solid #f3f3f3;"><b style="color:red;">Pending</b></td></tr>
+    </table>
+    <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">Upload Medical Certificate</a>
+    """
+    frappe.sendmail(recipients=[employee_email], subject=emp_subject, message=emp_message, now=False)
+
+    # Notify HR team
+    hr_emails = _get_hr_user_emails()
+    if not hr_emails:
+        return
+
+    hr_subject = _("Approved Leave Missing Medical Certificate - {0}").format(doc.name)
+    hr_message = f"""
+    <h3>Approved Leave Missing Medical Certificate</h3>
+    <p>The following leave application has been approved but is missing the mandatory Medical Certificate for <b>{doc.leave_type}</b>.</p>
+    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Employee</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.employee_name}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Medical Certificate</b></td><td style="padding:8px;border:1px solid #f3f3f3;"><b style="color:red;">Pending</b></td></tr>
+    </table>
+    <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Leave Application</a>
+    """
+    frappe.sendmail(recipients=hr_emails, subject=hr_subject, message=hr_message, now=False)
+
+
+def _get_hr_user_emails():
+    try:
+        configured_roles = frappe.get_all(
+            "Role Details",
+            filters={"parent": "Orion Settings", "parentfield": "excess_leave_notification_roles"},
+            pluck="role"
+        )
+        if configured_roles:
+            roles = configured_roles
+        else:
+            roles = ["HR Manager", "HR User"]
+    except Exception:
+        roles = ["HR Manager", "HR User"]
+
+    if not roles:
+        return []
+
+    users = set()
+    for role in roles:
+        user_list = frappe.get_all(
+            "Has Role",
+            filters={"role": role, "parenttype": "User"},
+            pluck="parent"
+        )
+        if user_list:
+            emails = frappe.get_all(
+                "User",
+                filters={"name": ["in", user_list], "enabled": 1},
+                pluck="email"
+            )
+            users.update(emails)
+
+    return list(users)
+
+
 def _notify_approved(doc, old_doc):
     if not old_doc:
         return
@@ -713,6 +803,9 @@ def _notify_approved(doc, old_doc):
     <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
     """
     frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+
+    if _is_medical_certificate_pending(doc):
+        _notify_medical_certificate_pending(doc)
 
 
 def _notify_rejected(doc, old_doc):

@@ -280,6 +280,12 @@ doc_events = {
     },
     "Leave Allocation": {
         "before_submit": "orion_erp.orion_erp.scripts.leave_allocation_validation.before_submit"
+    },
+    "Payroll Entry": {
+        "validate": "orion_erp.orion_erp.validations.payroll_medical_certificate.validate_medical_certificate_for_payroll_entry"
+    },
+    "Salary Slip": {
+        "validate": "orion_erp.orion_erp.validations.payroll_medical_certificate.validate_medical_certificate_for_salary_slip"
     }
 }
 
