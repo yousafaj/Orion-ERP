@@ -28,6 +28,10 @@ DASHBOARD_FILES = {
     "approved_upcoming_leaves.js": "Approved Upcoming Leaves",
     "monthly_leave_accrual.js": "Monthly Leave Accrual Summary",
     "carry_forward_leaves.js": "Carry Forward Leave Summary",
+    "leave_approval_queue.js": "Leave application Approval Queue",
+    "leave_approval_queue_hr.js": "Leave Application Approval queue for HR Manager",
+    "team_leave_list.js": "Team Leave Lsit",
+    "alert_overlapping_leaves.js": "Alert Overlapping Leaves",
 }
 
 DASHBOARDS_DIR = os.path.join(os.path.dirname(__file__), "orion_erp", "dashboards")
@@ -38,6 +42,19 @@ def after_migrate():
     setup_cicpa_workspace_widgets()
     fix_orion_fleet_cards()
     setup_custom_html_blocks()
+    setup_hr_manager_dashboard_roles()
+
+
+def setup_hr_manager_dashboard_roles():
+    """Assign HR Manager role to the HR Manager Dashboard workspace.
+    Frappe auto-syncs workspace fixtures, but we need to ensure roles are set."""
+    if not frappe.db.exists("Workspace", "HR Manager Dashboard"):
+        return
+    ws = frappe.get_doc("Workspace", "HR Manager Dashboard")
+    if not any(r.role == "HR Manager" for r in ws.roles):
+        ws.append("roles", {"role": "HR Manager"})
+        ws.flags.ignore_permissions = True
+        ws.save(ignore_permissions=True)
 
 
 def setup_custom_html_blocks():
