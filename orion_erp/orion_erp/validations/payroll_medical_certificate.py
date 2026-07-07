@@ -152,4 +152,4 @@ def _send_payroll_reminder_to_employee(employee, employee_name, leave_applicatio
     </table>
     <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">Upload Medical Certificate Now</a>
     """
-    frappe.sendmail(recipients=[user_id], subject=subject, message=message, now=False)
+    frappe.sendmail(recipients=[user_id], subject=subject, message=message, now=True)

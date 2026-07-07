@@ -60,8 +60,38 @@ frappe.ui.form.on("Rejoining Form", {
         validate_all_approvals(frm);
     },
 
+    leave_application(frm) {
+        if (!frm.doc.leave_application) return;
+
+        frappe.call({
+            method: "orion_erp.orion_erp.validations.rejoining_form.get_leave_application_details",
+            args: { leave_application: frm.doc.leave_application },
+            callback: function(r) {
+                if (!r.message) return;
+                let data = r.message;
+                frm.set_value("employee", data.employee || "");
+                frm.set_value("employee_name", data.employee_name || "");
+                frm.set_value("leave_type", data.leave_type || "");
+                frm.set_value("leave_start_date", data.from_date || "");
+                frm.set_value("leave_end_date", data.to_date || "");
+                frm.set_value("leave_days_approved", data.total_leave_days || "");
+                frm.set_value("company", data.company || "");
+                frm.set_value("custom_employee_user_id", data.custom_employee_user_id || "");
+                frm.refresh_fields();
+            }
+        });
+    },
+
     refresh(frm) {
         handle_cancel_button(frm);
+
+        frm.set_query("leave_application", function() {
+            let filters = { docstatus: 1, status: "Approved" };
+            if (frm.doc.employee) {
+                filters.employee = frm.doc.employee;
+            }
+            return { filters: filters };
+        });
 
         let status_to_show = frm.doc.custom_rejoining_approval_status;
 
