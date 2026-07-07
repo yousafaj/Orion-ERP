@@ -46,6 +46,48 @@ def validate_rejoining_approval(doc, method=None):
                     _("Rejoining Form cannot be submitted directly. All approvals must be completed first.")
                 )
 
+    # Validate Approved Rejoining Date equals Leave End Date
+    if doc.approved_rejoining_date and doc.leave_end_date:
+        if getdate(doc.approved_rejoining_date) != getdate(doc.leave_end_date):
+            frappe.throw(
+                _("Approved Rejoining Date must be equal to Leave End Date. Approved Rejoining Date: {0}, Leave End Date: {1}").format(
+                    doc.approved_rejoining_date, doc.leave_end_date
+                )
+            )
+
+    # Validate linked Leave Application
+    if doc.leave_application:
+        la = frappe.db.get_value(
+            "Leave Application",
+            doc.leave_application,
+            ["employee", "docstatus"],
+            as_dict=True
+        )
+        if not la:
+            frappe.throw(_("Leave Application {0} does not exist.").format(doc.leave_application))
+        if la.employee != doc.employee:
+            frappe.throw(
+                _("Leave Application {0} belongs to a different employee. Please select a valid Leave Application.").format(
+                    doc.leave_application
+                )
+            )
+        if la.docstatus != 1:
+            frappe.throw(
+                _("Leave Application {0} is not in Submitted/Approved state.").format(doc.leave_application)
+            )
+        duplicate = frappe.db.exists("Rejoining Form", {
+            "leave_application": doc.leave_application,
+            "docstatus": ["!=", 2],
+            "name": ["!=", doc.name],
+            "employee": doc.employee
+        })
+        if duplicate:
+            frappe.throw(
+                _("Leave Application {0} is already linked to Rejoining Form {1}.").format(
+                    doc.leave_application, duplicate
+                )
+            )
+
     if current_user == "Administrator":
         return
 
@@ -247,6 +289,28 @@ def get_employee_details(employee):
     return {}
 
 
+@frappe.whitelist()
+def get_leave_application_details(leave_application):
+    data = frappe.get_all(
+        "Leave Application",
+        filters={"name": leave_application},
+        fields=[
+            "employee",
+            "employee_name",
+            "leave_type",
+            "from_date",
+            "to_date",
+            "total_leave_days",
+            "company",
+            "custom_employee_user_id"
+        ],
+        limit=1
+    )
+    if data:
+        return data[0]
+    return {}
+
+
 def _notify_first_approver(doc):
     """Send email to the first approver when a new rejoining form is created."""
     for row in APPROVAL_FLOW:
@@ -374,6 +438,8 @@ def _notify_cancelled(doc, old_doc):
 def on_submit_rejoining_form(doc, method=None):
     doc.db_set("custom_rejoining_approval_status", "Approved")
 
+    _handle_linked_leave_application(doc)
+
     existing_la = _get_existing_leave_application(doc)
 
     ld_end = getdate(_get_leave_declaration_end_date(doc))
@@ -424,6 +490,104 @@ def on_submit_rejoining_form(doc, method=None):
                 indicator="orange"
             )
         return
+
+
+def _handle_linked_leave_application(doc):
+    la_name = doc.get("leave_application")
+    if not la_name:
+        return
+
+    if not frappe.db.exists("Leave Application", la_name):
+        return
+
+    original_la = frappe.get_doc("Leave Application", la_name)
+    new_from = getdate(doc.leave_start_date)
+    new_to = getdate(doc.leave_end_date)
+    orig_from = getdate(original_la.from_date)
+    orig_to = getdate(original_la.to_date)
+
+    if new_from == orig_from and new_to == orig_to:
+        return
+
+    _cancel_leave_application(la_name)
+    doc.db_set("custom_cancelled_leave_application", la_name)
+
+    new_la = _create_and_submit_leave_application(doc, new_from, new_to)
+    doc.db_set("custom_created_leave_application", new_la.name)
+
+    _notify_leave_application_created(doc, new_la)
+
+    frappe.msgprint(
+        _("Leave application {0} created with updated dates {1} to {2}.").format(
+            frappe.bold(new_la.name), new_from, new_to
+        ),
+        title=_("Leave Application Updated"),
+        indicator="green"
+    )
+
+
+def _create_and_submit_leave_application(doc, from_date, to_date):
+    la = frappe.new_doc("Leave Application")
+    la.employee = doc.employee
+    la.employee_name = doc.employee_name
+    la.leave_type = doc.leave_type
+    la.from_date = from_date
+    la.to_date = to_date
+    la.company = doc.company
+    la.description = _("Auto-created from Rejoining Form {0}").format(doc.name)
+    la.status = "Open"
+    la.custom_approval_status = "Open"
+
+    from hrms.hr.doctype.leave_application.leave_application import get_leave_balance_on
+    la.leave_balance = get_leave_balance_on(doc.employee, doc.leave_type, getdate(from_date))
+
+    emp = frappe.get_cached_doc("Employee", doc.employee)
+    la.leave_approver = emp.leave_approver
+    la.custom_leave_approver_1 = emp.get("custom_leave_approver_1")
+    la.custom_leave_approver_2 = emp.get("custom_leave_approver_2")
+    la.custom_leave_approver_4 = emp.get("custom_leave_approver_3")
+    la.custom_leave_approver_5 = emp.get("custom_leave_approver_4")
+    la.custom_employee_user_id = emp.user_id
+
+    la.flags.ignore_permissions = True
+    la.insert()
+
+    la.db_set("custom_sent_for_approval", 1)
+    la.reload()
+
+    for field in ("status", "custom_status_approver1", "custom_status_approver2", "custom_status_approver4", "custom_status_approver5"):
+        la.db_set(field, "Approved")
+    la.db_set("custom_approval_status", "Approved")
+
+    frappe.flags.submitting_leave_from_rejoining = True
+    la.submit()
+    frappe.flags.submitting_leave_from_rejoining = False
+
+    return la
+
+
+def _notify_leave_application_created(doc, new_la):
+    employee_email = doc.get("custom_employee_user_id")
+    if not employee_email:
+        return
+    if not frappe.utils.validate_email_address(employee_email, throw=False):
+        return
+
+    link = frappe.utils.get_url() + f"/app/leave-application/{new_la.name}"
+    subject = _("Leave Application Updated - {0}").format(new_la.name)
+    message = f"""
+    <h3>Leave Application Updated</h3>
+    <p>Your leave application has been updated with revised dates due to your rejoining.</p>
+    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Application</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{new_la.name}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{new_la.leave_type}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From Date</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{new_la.from_date}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To Date</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{new_la.to_date}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Status</b></td><td style="padding:8px;border:1px solid #f3f3f3;">Approved</td></tr>
+    </table>
+    <br><a href="{link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
+    """
+    frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
 
 
 def on_cancel_rejoining_form(doc, method=None):

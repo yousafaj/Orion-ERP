@@ -702,47 +702,41 @@ def _is_medical_certificate_pending(doc):
 
 
 def _notify_medical_certificate_pending(doc):
-    employee_email = doc.get("custom_employee_user_id")
-    if not employee_email:
-        return
-
     leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
 
-    # Notify employee
-    emp_subject = _("Medical Certificate Required - {0}").format(doc.name)
-    emp_message = f"""
-    <h3>Medical Certificate Required</h3>
-    <p>Your leave application <b>{doc.name}</b> has been approved. However, a Medical Certificate is required for <b>{doc.leave_type}</b> and has not yet been uploaded.</p>
-    <p>Please upload the Medical Certificate at the earliest to avoid any payroll impact.</p>
-    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Medical Certificate</b></td><td style="padding:8px;border:1px solid #f3f3f3;"><b style="color:red;">Pending</b></td></tr>
-    </table>
-    <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">Upload Medical Certificate</a>
-    """
-    frappe.sendmail(recipients=[employee_email], subject=emp_subject, message=emp_message, now=False)
+    employee_email = doc.get("custom_employee_user_id")
+    if employee_email:
+        emp_subject = _("Medical Certificate Required - {0}").format(doc.name)
+        emp_message = f"""
+        <h3>Medical Certificate Required</h3>
+        <p>Your leave application <b>{doc.name}</b> has been approved. However, a Medical Certificate is required for <b>{doc.leave_type}</b> and has not yet been uploaded.</p>
+        <p>Please upload the Medical Certificate at the earliest to avoid any payroll impact.</p>
+        <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Medical Certificate</b></td><td style="padding:8px;border:1px solid #f3f3f3;"><b style="color:red;">Pending</b></td></tr>
+        </table>
+        <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">Upload Medical Certificate</a>
+        """
+        frappe.sendmail(recipients=[employee_email], subject=emp_subject, message=emp_message, now=True)
 
-    # Notify HR team
     hr_emails = _get_hr_user_emails()
-    if not hr_emails:
-        return
-
-    hr_subject = _("Approved Leave Missing Medical Certificate - {0}").format(doc.name)
-    hr_message = f"""
-    <h3>Approved Leave Missing Medical Certificate</h3>
-    <p>The following leave application has been approved but is missing the mandatory Medical Certificate for <b>{doc.leave_type}</b>.</p>
-    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Employee</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.employee_name}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Medical Certificate</b></td><td style="padding:8px;border:1px solid #f3f3f3;"><b style="color:red;">Pending</b></td></tr>
-    </table>
-    <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Leave Application</a>
-    """
-    frappe.sendmail(recipients=hr_emails, subject=hr_subject, message=hr_message, now=False)
+    if hr_emails:
+        hr_subject = _("Approved Leave Missing Medical Certificate - {0}").format(doc.name)
+        hr_message = f"""
+        <h3>Approved Leave Missing Medical Certificate</h3>
+        <p>The following leave application has been approved but is missing the mandatory Medical Certificate for <b>{doc.leave_type}</b>.</p>
+        <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Employee</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.employee_name}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Medical Certificate</b></td><td style="padding:8px;border:1px solid #f3f3f3;"><b style="color:red;">Pending</b></td></tr>
+        </table>
+        <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Leave Application</a>
+        """
+        frappe.sendmail(recipients=hr_emails, subject=hr_subject, message=hr_message, now=True)
 
 
 def _get_hr_user_emails():
@@ -786,23 +780,23 @@ def _notify_approved(doc, old_doc):
     old_statuses = [old_doc.get(row["status_field"]) for row in APPROVAL_FLOW if doc.get(row["approver_field"])]
     if all(s == "Approved" for s in old_statuses):
         return
+
     employee_email = doc.get("custom_employee_user_id")
-    if not employee_email:
-        return
-    leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
-    subject = _("Leave Application Approved - {0}").format(doc.name)
-    message = f"""
-    <h3>Leave Application Approved</h3>
-    <p>Your leave application <b>{doc.name}</b> has been approved by all approvers.</p>
-    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Status</b></td><td style="padding:8px;border:1px solid #f3f3f3;">Approved</td></tr>
-    </table>
-    <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
-    """
-    frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+    if employee_email:
+        leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
+        subject = _("Leave Application Approved - {0}").format(doc.name)
+        message = f"""
+        <h3>Leave Application Approved</h3>
+        <p>Your leave application <b>{doc.name}</b> has been approved by all approvers.</p>
+        <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Status</b></td><td style="padding:8px;border:1px solid #f3f3f3;">Approved</td></tr>
+        </table>
+        <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
+        """
+        frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=True)
 
     if _is_medical_certificate_pending(doc):
         _notify_medical_certificate_pending(doc)
@@ -896,6 +890,9 @@ def on_submit_leave_application(doc, method=None):
         "custom_leave_balance_after",
         leave_balance_after
     )
+
+    if _is_medical_certificate_pending(doc):
+        _notify_medical_certificate_pending(doc)
 
     additional = get_sandwich_additional_days(doc.leave_type, doc.from_date, doc.to_date)
     if additional:
