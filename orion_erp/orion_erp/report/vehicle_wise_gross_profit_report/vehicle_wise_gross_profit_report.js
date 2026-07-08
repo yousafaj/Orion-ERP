@@ -3,11 +3,36 @@
 
 frappe.query_reports["Vehicle-wise Gross Profit Report"] = {
 	filters: [
-        {
-            fieldname: "vehicle",
-            label: "Vehicle",
-            fieldtype: "Link",
-            options: "Vehicle"
-        }
-    ]
+		{
+			fieldname: "from_date",
+			label: __("From Date"),
+			fieldtype: "Date",
+			reqd: 1
+		},
+		{
+			fieldname: "to_date",
+			label: __("To Date"),
+			fieldtype: "Date",
+			reqd: 1
+		},
+		{
+			fieldname: "company",
+			label: __("Company"),
+			fieldtype: "Link",
+			options: "Company",
+			reqd: 1
+		},
+		{
+			fieldname: "cost_center",
+			label: __("Cost Center"),
+			fieldtype: "Link",
+			options: "Cost Center"
+		},
+		{
+			fieldname: "vehicle",
+			label: __("Vehicle"),
+			fieldtype: "Link",
+			options: "Vehicle"
+		}
+	]
 };
