@@ -1,0 +1,52 @@
+{
+ "charts": [],
+ "content": "[{\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"My Leave Balance Cards\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Leaves Taken This Year\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Pending Leave Applications\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Approved Upcoming Leaves\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Monthly Leave Accrual Summary\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Carry Forward Leave Summary\", \"col\": 12}}]",
+ "creation": "2026-07-06 11:58:01.175640",
+ "custom_blocks": [
+  {
+   "custom_block_name": "My Leave Balance Cards",
+   "label": "My Leave Balance Cards"
+  },
+  {
+   "custom_block_name": "Leaves Taken This Year",
+   "label": "Leaves Taken This Year"
+  },
+  {
+   "custom_block_name": "Pending Leave Applications",
+   "label": "Pending Leave Applications"
+  },
+  {
+   "custom_block_name": "Approved Upcoming Leaves",
+   "label": "Approved Upcoming Leaves"
+  },
+  {
+   "custom_block_name": "Monthly Leave Accrual Summary",
+   "label": "Monthly Leave Accrual Summary"
+  },
+  {
+   "custom_block_name": "Carry Forward Leave Summary",
+   "label": "Carry Forward Leave Summary"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "fa fa-users",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Employee Leave Dashboard",
+ "links": [],
+ "modified": "2026-07-06 14:05:32.139012",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Employee Leave Dashboard",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "HR",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 0.0,
+ "shortcuts": [],
+ "title": "Employee Leave Dashboard"
+}

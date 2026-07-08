@@ -1,0 +1,22 @@
+{
+ "creation": "2026-07-05 21:12:22.725659",
+ "currency": "AED",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "label": "ANNUAL LEAVE",
+ "method": "orion_erp.orion_erp.validations.leave_balance_cards.annual_leave_balance",
+ "modified": "2026-07-05 21:12:22.725659",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "ANNUAL LEAVE-1",
+ "owner": "Administrator",
+ "report_function": "Sum",
+ "show_full_number": 0,
+ "show_percentage_stats": 0,
+ "stats_time_interval": "Daily",
+ "type": "Custom"
+}
