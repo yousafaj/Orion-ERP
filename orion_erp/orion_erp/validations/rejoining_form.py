@@ -703,6 +703,20 @@ def _cancel_leave_application(la_name):
         la.db_set("custom_approval_status", "Cancelled")
         la.db_set("custom_leave_balance_after", 0)
         la.db_set("status", "Cancelled")
+    _cancel_linked_attendance(la_name)
+
+
+def _cancel_linked_attendance(la_name):
+    attendance_records = frappe.get_all(
+        "Attendance",
+        filters={
+            "leave_application": la_name,
+            "docstatus": ["!=", 2]
+        },
+        pluck="name"
+    )
+    for att_name in attendance_records:
+        frappe.db.set_value("Attendance", att_name, "docstatus", 2)
 
 
 def _restore_cancelled_leave_application(la_name):

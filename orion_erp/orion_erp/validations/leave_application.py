@@ -1369,3 +1369,27 @@ def patched_cancel_attendance(self):
         )
         if attendance_name:
             frappe.db.set_value("Attendance", attendance_name, "docstatus", 2)
+
+
+def update_medical_certificate_status_on_file_attach(doc, method=None):
+    if doc.attached_to_doctype != "Leave Application":
+        return
+    if doc.attached_to_field != "custom_medical_certificate":
+        return
+
+    status = frappe.db.get_value("Leave Application", doc.attached_to_name, "custom_medical_certificate_status")
+    if status == "Submitted":
+        return
+
+    frappe.db.set_value("Leave Application", doc.attached_to_name, "custom_medical_certificate_status", "Submitted")
+    frappe.db.set_value("Leave Application", doc.attached_to_name, "custom_medical_certificate", doc.file_url)
+
+
+def reset_medical_certificate_status_on_file_trash(doc, method=None):
+    if doc.attached_to_doctype != "Leave Application":
+        return
+    if doc.attached_to_field != "custom_medical_certificate":
+        return
+
+    frappe.db.set_value("Leave Application", doc.attached_to_name, "custom_medical_certificate_status", "Pending")
+    frappe.db.set_value("Leave Application", doc.attached_to_name, "custom_medical_certificate", "")

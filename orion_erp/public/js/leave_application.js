@@ -294,6 +294,7 @@ frappe.ui.form.on("Leave Application", {
                     frm.set_df_property(field.df.fieldname, "read_only", 1);
                 }
             });
+            frm.set_df_property("custom_medical_certificate", "read_only", 0);
         }
 
         function get_previous_active_status(idx) {
