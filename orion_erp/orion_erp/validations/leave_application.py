@@ -31,6 +31,31 @@ APPROVAL_FLOW = [
     }
 ]
 
+
+def is_leave_override_user(user=None):
+    if not user:
+        user = frappe.session.user
+    if user == "Administrator":
+        return True
+    override_roles = frappe.get_all(
+        "Role Details",
+        filters={"parent": "Orion Settings", "parentfield": "leave_override_roles"},
+        pluck="role"
+    )
+    if not override_roles:
+        return False
+    user_roles = frappe.get_roles(user)
+    return bool(set(override_roles) & set(user_roles))
+
+
+@frappe.whitelist()
+def get_override_roles():
+    return frappe.get_all(
+        "Role Details",
+        filters={"parent": "Orion Settings", "parentfield": "leave_override_roles"},
+        pluck="role"
+    )
+
 # =========================================================
 # VALIDATION
 # =========================================================
@@ -80,7 +105,7 @@ def validate_leave_approval(doc, method=None):
             _("You cannot modify this Leave Application as it has been sent for approval.")
         )
 
-    for row in APPROVAL_FLOW:
+    for idx, row in enumerate(APPROVAL_FLOW):
 
         approver = doc.get(
             row["approver_field"]
@@ -95,13 +120,33 @@ def validate_leave_approval(doc, method=None):
         # Status changed
         if old_value != new_value:
 
-            # Only approver can update
-            if approver != current_user:
+            # Non-override users can only update their own level
+            if not is_leave_override_user():
+                if approver != current_user:
+                    frappe.throw(
+                        _("You are not allowed to update {0}")
+                        .format(status_field)
+                    )
 
-                frappe.throw(
-                    _("You are not allowed to update {0}")
-                    .format(status_field)
-                )
+            # All users (including override) must follow sequential order
+            if new_value == "Approved":
+                status_labels = [
+                    "Status Approver1",
+                    "Status Approver2",
+                    "Status Approver3",
+                    "Status Approver4",
+                    "Status Approver5",
+                ]
+                for prev_idx in range(idx):
+                    prev_row = APPROVAL_FLOW[prev_idx]
+                    prev_approver = doc.get(prev_row["approver_field"])
+                    if prev_approver:
+                        prev_status = doc.get(prev_row["status_field"])
+                        if prev_status != "Approved":
+                            frappe.throw(
+                                _("You cannot approve {0} until {1} is Approved.")
+                                .format(status_labels[idx], status_labels[prev_idx])
+                            )
 
 
 
@@ -213,7 +258,10 @@ def handle_leave_approval(doc, method=None):
         return
 
     if status_changed:
-        send_next_approval_email(doc)
+        if is_leave_override_user():
+            _notify_override_status_change(doc, old_doc)
+        else:
+            send_next_approval_email(doc)
 
     update_leave_application_status(doc)
 
@@ -875,6 +923,76 @@ def _notify_cancelled(doc, old_doc):
     frappe.sendmail(recipients=list(recipients), subject=subject, message=message, now=False)
 
 
+def _notify_override_status_change(doc, old_doc):
+    if not old_doc:
+        return
+
+    current_user = frappe.session.user
+    override_user_name = frappe.db.get_value("User", current_user, "full_name") or current_user
+
+    changed_fields = []
+    for row in APPROVAL_FLOW:
+        old_val = old_doc.get(row["status_field"])
+        new_val = doc.get(row["status_field"])
+        if old_val != new_val:
+            changed_fields.append((row["status_field"], old_val, new_val))
+
+    if not changed_fields:
+        return
+
+    recipients = set()
+    employee_email = doc.get("custom_employee_user_id")
+    if employee_email:
+        recipients.add(employee_email)
+
+    for row in APPROVAL_FLOW:
+        approver = doc.get(row["approver_field"])
+        if approver:
+            recipients.add(approver)
+
+    recipients = {r for r in recipients if frappe.utils.validate_email_address(r, throw=False)}
+
+    if not recipients:
+        return
+
+    leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
+
+    changes_html = ""
+    for field_name, old_val, new_val in changed_fields:
+        label = field_name.replace("custom_status_approver", "Approver ").replace("status", "Approver 1")
+        changes_html += f"""
+            <tr>
+                <td style="padding:8px;border:1px solid #f3f3f3;">{label}</td>
+                <td style="padding:8px;border:1px solid #f3f3f3;">{old_val or "Open"}</td>
+                <td style="padding:8px;border:1px solid #f3f3f3;"><b>{new_val}</b></td>
+            </tr>
+        """
+
+    subject = _("Leave Application Override Approval - {0}").format(doc.name)
+    message = f"""
+    <h3>Leave Application - Override Approval</h3>
+    <p><b>{override_user_name}</b> has overridden the approval status for leave application <b>{doc.name}</b>.</p>
+    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Employee</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.employee_name}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
+    </table>
+    <br>
+    <b>Changes Made:</b>
+    <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
+        <tr>
+            <td style="padding:8px;border:1px solid #f3f3f3;"><b>Level</b></td>
+            <td style="padding:8px;border:1px solid #f3f3f3;"><b>Previous</b></td>
+            <td style="padding:8px;border:1px solid #f3f3f3;"><b>Updated</b></td>
+        </tr>
+        {changes_html}
+    </table>
+    <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
+    """
+    frappe.sendmail(recipients=list(recipients), subject=subject, message=message, now=True)
+
+
 # =========================================================
 # ON SUBMIT
 # =========================================================
@@ -1218,6 +1336,84 @@ def _sandwich_applies_for_employee(employee):
     return emp_cat in categories
 
 
+def _count_weekdays_in_range(from_date, to_date):
+    """Count weekdays (Mon-Fri) between from_date and to_date inclusive."""
+    frm = getdate(from_date)
+    to = getdate(to_date)
+    count = 0
+    current = frm
+    while current <= to:
+        if current.weekday() < 5:
+            count += 1
+        current = add_days(current, 1)
+    return count
+
+
+def _count_weekends_in_range(from_date, to_date):
+    """Count weekend days (Sat+Sun) between from_date and to_date inclusive."""
+    frm = getdate(from_date)
+    to = getdate(to_date)
+    total_days = (to - frm).days + 1
+    return total_days - _count_weekdays_in_range(from_date, to_date)
+
+
+def _get_configured_sandwich_day_names(leave_type):
+    """Return list of configured sandwich weekday names (e.g. ['Saturday']) for the leave type."""
+    lt = frappe.get_cached_doc("Leave Type", leave_type) if frappe.db.exists("Leave Type", leave_type) else None
+    if not lt or not lt.get("custom_enable_sandwich_rule"):
+        return []
+    return [d.weekday for d in (lt.get("custom_sandwich_days") or []) if d.weekday]
+
+
+def _count_non_configured_weekends_in_range(from_date, to_date, configured_day_names):
+    """Count Sat/Sun in range that are NOT in configured_day_names."""
+    frm = getdate(from_date)
+    to = getdate(to_date)
+    count = 0
+    current = frm
+    while current <= to:
+        if current.weekday() == 5 and "Saturday" not in configured_day_names:
+            count += 1
+        elif current.weekday() == 6 and "Sunday" not in configured_day_names:
+            count += 1
+        current = add_days(current, 1)
+    return count
+
+
+def _get_sandwich_adjustments(employee, from_date, to_date, configured_day_names):
+    """Compute sandwich adjustments for configured categories.
+
+    Returns (configured_holidays, non_configured_working_weekends):
+      - configured_holidays: configured sandwich days in range that ARE holidays
+        (excluded by HRMS, need to force-add back)
+      - non_configured_working_weekends: non-configured weekends in range that are
+        NOT holidays (counted by HRMS, need to subtract)
+    """
+    try:
+        from hrms.hr.utils import get_holidays_for_employee
+        holidays_list = get_holidays_for_employee(employee, from_date, to_date)
+        holiday_dates = set(getdate(h.holiday_date) for h in holidays_list)
+    except Exception:
+        holiday_dates = set()
+
+    configured_holidays = 0
+    non_configured_working_weekends = 0
+    frm = getdate(from_date)
+    to = getdate(to_date)
+    current = frm
+    while current <= to:
+        if current.weekday() in (5, 6):
+            day_name = "Saturday" if current.weekday() == 5 else "Sunday"
+            if day_name in configured_day_names:
+                if current in holiday_dates:
+                    configured_holidays += 1
+            else:
+                if current not in holiday_dates:
+                    non_configured_working_weekends += 1
+        current = add_days(current, 1)
+    return configured_holidays, non_configured_working_weekends
+
+
 def get_sandwich_additional_days(leave_type, from_date, to_date, employee=None):
     """Calculate additional sandwich days for the given leave type and date range."""
     if not leave_type or not from_date or not to_date:
@@ -1320,8 +1516,19 @@ def patched_get_number_of_leave_days(
     half_day=None, half_day_date=None, holiday_list=None,
 ):
     result = _original_get_number_of_leave_days(employee, leave_type, from_date, to_date, half_day, half_day_date, holiday_list)
-    additional = get_sandwich_additional_days(leave_type, from_date, to_date, employee)
-    return flt(result) + additional
+
+    if _sandwich_applies_for_employee(employee):
+        configured_day_names = _get_configured_sandwich_day_names(leave_type)
+        additional = get_sandwich_additional_days(leave_type, from_date, to_date, employee)
+        if configured_day_names:
+            configured_holidays, non_configured_working_weekends = _get_sandwich_adjustments(
+                employee, from_date, to_date, configured_day_names
+            )
+            return max(flt(result) + additional + configured_holidays - non_configured_working_weekends, 0)
+        return flt(result)
+
+    weekdays = _count_weekdays_in_range(from_date, to_date)
+    return min(flt(result), weekdays)
 
 
 def patched_update_attendance(self):

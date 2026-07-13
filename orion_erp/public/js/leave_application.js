@@ -26,6 +26,30 @@ const APPROVAL_FLOW = [
     }
 ];
 
+let _cached_override_roles = null;
+let _cached_override_check = null;
+
+function is_leave_override_user(frm) {
+    if (_cached_override_check !== null) {
+        return _cached_override_check;
+    }
+    frappe.call({
+        method: "orion_erp.orion_erp.validations.leave_application.get_override_roles",
+        async: false,
+        callback: function(r) {
+            if (r.message) {
+                _cached_override_roles = r.message;
+                _cached_override_check = frappe.user_roles.some(
+                    role => r.message.includes(role)
+                );
+            } else {
+                _cached_override_check = false;
+            }
+        }
+    });
+    return _cached_override_check;
+}
+
 
 
 frappe.ui.form.on("Leave Application", {
@@ -289,11 +313,15 @@ frappe.ui.form.on("Leave Application", {
         if (frm.doc.custom_sent_for_approval && is_employee && !frm.is_new()) {
             frm.disable_save();
             frm.page.clear_primary_action();
-            frm.fields.forEach(function(field) {
-                if (field.df.fieldname && !field.df.read_only) {
-                    frm.set_df_property(field.df.fieldname, "read_only", 1);
-                }
-            });
+
+            let is_override = is_leave_override_user(frm);
+            if (!is_override) {
+                frm.fields.forEach(function(field) {
+                    if (field.df.fieldname && !field.df.read_only) {
+                        frm.set_df_property(field.df.fieldname, "read_only", 1);
+                    }
+                });
+            }
             frm.set_df_property("custom_medical_certificate", "read_only", 0);
         }
 
@@ -305,6 +333,8 @@ frappe.ui.form.on("Leave Application", {
             }
             return null;
         }
+
+        let is_override = is_leave_override_user(frm);
 
         APPROVAL_FLOW.forEach((row, index) => {
 
@@ -324,6 +354,10 @@ frappe.ui.form.on("Leave Application", {
 
                 visible = true;
 
+
+            } else if (is_override) {
+
+                visible = true;
 
             } else if (
                 approver === current_user
@@ -362,8 +396,13 @@ frappe.ui.form.on("Leave Application", {
 
             let read_only = true;
 
+            // Override users can edit any status
+            if (is_override && !is_employee) {
+
+                read_only = false;
+
             // Only current approver editable
-            if (
+            } else if (
                 approver === current_user &&
                 !is_employee
             ) {
@@ -641,6 +680,18 @@ function handle_submit_button(frm) {
             can_submit = true;
         }
 
+        // All approved - override users can submit
+        let all_approved = active_approvers.every(
+            row => frm.doc[row.status_field] === "Approved"
+        );
+
+        if (all_approved && !can_submit) {
+            let is_override = is_leave_override_user(frm);
+            if (is_override) {
+                can_submit = true;
+            }
+        }
+
         // Cancelled approver can submit
         active_approvers.forEach((row) => {
 
@@ -659,6 +710,11 @@ function handle_submit_button(frm) {
             }
         });
     }
+
+    _refresh_submit_button(frm, can_submit, is_employee, is_sent);
+}
+
+function _refresh_submit_button(frm, can_submit, is_employee, is_sent) {
 
     frm.page.clear_primary_action();
 

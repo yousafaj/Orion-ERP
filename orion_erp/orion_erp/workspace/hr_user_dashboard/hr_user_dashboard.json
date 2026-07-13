@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">HR User Dashboard</span>\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Organisation-wide Leave Summary\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Employees on Leave Today\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Pending Leave Approvals Older Than 48 Hours\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Missing Medical Certificates\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Leave Encashment Requests\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Pending Leave Application Status\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Monthly Leave Accrual Run Status\", \"col\": 12}}]",
+ "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">HR User Dashboard</span>\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Organisation-wide Leave Summary\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Employees on Leave Today\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Pending Leave Approvals Older Than 48 Hours\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Missing Medical Certificates\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Leave Encashment Requests\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Pending Leave Application Status\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Monthly Leave Accrual Run Status\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Current Month Leave Applications\", \"col\": 12}}]",
  "creation": "2026-07-06 22:00:00",
  "custom_blocks": [
   {
@@ -27,11 +27,15 @@
    "custom_block_name": "Pending Leave Application Status",
    "label": "Pending Leave Application Status"
   },
-  {
-   "custom_block_name": "Monthly Leave Accrual Run Status",
-   "label": "Monthly Leave Accrual Run Status"
-  }
- ],
+   {
+    "custom_block_name": "Monthly Leave Accrual Run Status",
+    "label": "Monthly Leave Accrual Run Status"
+   },
+   {
+    "custom_block_name": "Current Month Leave Applications",
+    "label": "Current Month Leave Applications"
+   }
+  ],
  "docstatus": 0,
  "doctype": "Workspace",
  "hide_custom": 0,
