@@ -22,6 +22,7 @@ class OrionSettings(Document):
 
 		allowed_roles: DF.TableMultiSelect[RoleDetails]
 		company_logo: DF.AttachImage | None
+		leave_override_roles: DF.TableMultiSelect[RoleDetails]
 		cron_schedule_date_noe: DF.Date | None
 		cron_schedule_date_oe: DF.Date | None
 		default_bank_name_for_c3_pay: DF.Data | None

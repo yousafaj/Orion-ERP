@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">HR Manager Dashboard</span>\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Leave application Approval Queue\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Leave Application Approval queue for HR Manager\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Team Leave Lsit\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Alert Overlapping Leaves\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Emergency Leave Approval Queue\", \"col\": 12}}]",
+ "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">HR Manager Dashboard</span>\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Leave application Approval Queue\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Leave Application Approval queue for HR Manager\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Team Leave Lsit\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Alert Overlapping Leaves\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Emergency Leave Approval Queue\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Current Month Leave Applications\", \"col\": 12}}]",
  "creation": "2026-07-06 14:05:32.139012",
  "custom_blocks": [
   {
@@ -19,11 +19,15 @@
    "custom_block_name": "Alert Overlapping Leaves",
    "label": "Alert Overlapping Leaves"
   },
-   {
-    "custom_block_name": "Emergency Leave Approval Queue",
-    "label": "Emergency Leave Approval Queue"
-   }
-  ],
+    {
+     "custom_block_name": "Emergency Leave Approval Queue",
+     "label": "Emergency Leave Approval Queue"
+    },
+    {
+     "custom_block_name": "Current Month Leave Applications",
+     "label": "Current Month Leave Applications"
+    }
+   ],
  "docstatus": 0,
  "doctype": "Workspace",
  "hide_custom": 0,
