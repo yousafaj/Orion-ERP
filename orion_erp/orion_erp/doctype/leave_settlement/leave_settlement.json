@@ -163,6 +163,7 @@
   {
    "fieldname": "overtime_allowance",
    "fieldtype": "Currency",
+   "hidden": 1,
    "label": "Overtime Allowance"
   },
   {
@@ -172,6 +173,7 @@
   {
    "fieldname": "other_allowance",
    "fieldtype": "Currency",
+   "hidden": 1,
    "label": "Other Allowance"
   },
   {
@@ -182,21 +184,25 @@
   {
    "fieldname": "outstanding_advance",
    "fieldtype": "Currency",
+   "hidden": 1,
    "label": "Outstanding Advance"
   },
   {
    "fieldname": "traffic_fine",
    "fieldtype": "Currency",
+   "hidden": 1,
    "label": "Traffic fine"
   },
   {
    "fieldname": "adjustments_if_any",
    "fieldtype": "Currency",
+   "hidden": 1,
    "label": "Adjustments, if any"
   },
   {
    "fieldname": "other_deduction",
    "fieldtype": "Currency",
+   "hidden": 1,
    "label": "Other deduction"
   },
   {
@@ -207,12 +213,14 @@
   {
    "fieldname": "total_entitlements",
    "fieldtype": "Currency",
-   "label": "Total Entitlements"
+   "label": "Total Entitlements",
+   "read_only": 1
   },
   {
    "fieldname": "total_deductions",
    "fieldtype": "Currency",
-   "label": "Total Deductions"
+   "label": "Total Deductions",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_bztu",
@@ -221,7 +229,8 @@
   {
    "fieldname": "total_settlement_payable",
    "fieldtype": "Currency",
-   "label": "Total Settlement Payable"
+   "label": "Total Settlement Payable",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_cjdn",
@@ -264,7 +273,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-25 14:19:14.808359",
+ "modified": "2026-07-13 10:09:00.301461",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Leave Settlement",

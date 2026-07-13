@@ -33,6 +33,7 @@
       "default_bank_name_for_c3_pay",
       "leave_types_within_six_months",
       "enable_sandwich_leave",
+      "sandwich_leave_categories",
       "permissions_tab",
       "allowed_roles",
       "leave_escalation_tab",
@@ -95,15 +96,23 @@
     "label": "Leave Types Allowed Within 6 Months of Joining",
     "options": "Leave Type Details"
    },
-    {
-     "default": 0,
-     "description": "When enabled, the sandwich leave rule will be applied globally across all leave types that have the rule enabled.",
-     "fieldname": "enable_sandwich_leave",
-     "fieldtype": "Check",
-     "label": "Enable Sandwich Leave"
-    },
-    {
-     "fieldname": "role_for_non_office_employee_ssa_access",
+     {
+      "default": 0,
+      "description": "When enabled, the sandwich leave rule will be applied globally across all leave types that have the rule enabled.",
+      "fieldname": "enable_sandwich_leave",
+      "fieldtype": "Check",
+      "label": "Enable Sandwich Leave"
+     },
+     {
+      "depends_on": "eval:doc.enable_sandwich_leave",
+      "description": "Select employee categories for which the sandwich leave rule will be applied. Leave empty to apply to all categories.",
+      "fieldname": "sandwich_leave_categories",
+      "fieldtype": "Table MultiSelect",
+      "label": "Sandwich Leave Employee Categories",
+      "options": "Sandwich Leave Category"
+     },
+     {
+      "fieldname": "role_for_non_office_employee_ssa_access",
    "fieldtype": "Table MultiSelect",
    "label": "Role for Non Office Employee SSA Access",
    "options": "Role Details"
