@@ -24,15 +24,17 @@ class MockLeaveType:
         return getattr(self, field, None)
 
 class MockOrionSettings:
-    def __init__(self, enabled=False):
+    def __init__(self, enabled=False, categories=None):
         self.enable_sandwich_leave = enabled
+        self.sandwich_leave_categories = categories or []
 
     def get(self, field, default=None):
         return getattr(self, field, default)
 
 class MockDoc:
     def __init__(self, from_date, to_date, total_leave_days, leave_balance=0,
-                 leave_type="ANNUAL LEAVE", docstatus=0, half_day=0):
+                 leave_type="ANNUAL LEAVE", docstatus=0, half_day=0,
+                 employee_category=None):
         self.from_date = from_date
         self.to_date = to_date
         self.total_leave_days = total_leave_days
@@ -40,6 +42,8 @@ class MockDoc:
         self.leave_type = leave_type
         self.docstatus = docstatus
         self.half_day = half_day
+        self.employee = "EMP-001"
+        self.employee_category = employee_category
         self.messages = []
 
     def db_set(self, field, value, *args, **kwargs):
@@ -56,11 +60,24 @@ def flt(val):
 # =============================================================================
 # CORE LOGIC — matches production get_sandwich_additional_days
 # =============================================================================
-def get_sandwich_additional_days(leave_type_obj, from_date, to_date):
+def _sandwich_applies_for_employee(orion_settings, employee_category):
+    """Check if the employee category is in the configured sandwich leave categories."""
+    categories = getattr(orion_settings, "sandwich_leave_categories", None) or []
+    if not categories:
+        return True
+    if not employee_category:
+        return True
+    return employee_category in categories
+
+
+def get_sandwich_additional_days(leave_type_obj, from_date, to_date, employee_category=None,
+                                 orion_settings=None):
     """Return number of additional sandwich days (0, 1, or 2)."""
     if not from_date or not to_date:
         return 0
     if not leave_type_obj or not leave_type_obj.get("custom_enable_sandwich_rule"):
+        return 0
+    if orion_settings and not _sandwich_applies_for_employee(orion_settings, employee_category):
         return 0
     sandwich_days_config = (leave_type_obj.get("custom_sandwich_days") or "").strip()
     if not sandwich_days_config:
@@ -80,7 +97,8 @@ def validate_sandwich_leave(doc, orion_settings, leave_type_obj):
     """Simulates the monkey-patched get_number_of_leave_days effect on a doc."""
     if not orion_settings.get("enable_sandwich_leave"):
         return
-    additional = get_sandwich_additional_days(leave_type_obj, doc.from_date, doc.to_date)
+    additional = get_sandwich_additional_days(leave_type_obj, doc.from_date, doc.to_date,
+                                              doc.employee_category, orion_settings)
     if additional:
         doc.total_leave_days = flt(doc.total_leave_days) + additional
         day_names = []
@@ -373,6 +391,78 @@ test_case("7.11 Fri half-day: +1 (same logic)", r == 1, f"got {r}")
 # 7.12 Cross-year
 r = get_sandwich_additional_days(lt, "2025-12-29", "2026-01-02")
 test_case("7.12 Cross-year Mon-Fri: +2", r == 2, f"got {r}")
+
+# =============================================================================
+# SECTION 8: Employee Category Filtering
+# =============================================================================
+print("\n--- SECTION 8: Employee Category Filtering ---")
+
+lt = lt_both
+
+# 8.1 No categories configured (empty list) -> applies to all
+os_no_filter = MockOrionSettings(enabled=True, categories=[])
+doc = MockDoc("2026-06-05", "2026-06-05", 1, employee_category="Office")
+validate_sandwich_leave(doc, os_no_filter, lt)
+test_case("8.1 No cat filter, Office: sandwich applied",
+          doc.total_leave_days == 2, f"got {doc.total_leave_days}")
+
+doc = MockDoc("2026-06-05", "2026-06-05", 1, employee_category="Non-Office")
+validate_sandwich_leave(doc, os_no_filter, lt)
+test_case("8.2 No cat filter, Non-Office: sandwich applied",
+          doc.total_leave_days == 2, f"got {doc.total_leave_days}")
+
+# 8.3 Only Office configured -> Office gets sandwich, Non-Office does not
+os_office_only = MockOrionSettings(enabled=True, categories=["Office"])
+doc = MockDoc("2026-06-05", "2026-06-05", 1, employee_category="Office")
+validate_sandwich_leave(doc, os_office_only, lt)
+test_case("8.3 Office only filter, Office: sandwich applied",
+          doc.total_leave_days == 2, f"got {doc.total_leave_days}")
+
+doc = MockDoc("2026-06-05", "2026-06-05", 1, employee_category="Non-Office")
+validate_sandwich_leave(doc, os_office_only, lt)
+test_case("8.4 Office only filter, Non-Office: no sandwich",
+          doc.total_leave_days == 1, f"got {doc.total_leave_days}")
+
+# 8.5 Only Non-Office configured -> Non-Office gets sandwich, Office does not
+os_noe_only = MockOrionSettings(enabled=True, categories=["Non-Office"])
+doc = MockDoc("2026-06-05", "2026-06-05", 1, employee_category="Office")
+validate_sandwich_leave(doc, os_noe_only, lt)
+test_case("8.5 Non-Office only filter, Office: no sandwich",
+          doc.total_leave_days == 1, f"got {doc.total_leave_days}")
+
+doc = MockDoc("2026-06-05", "2026-06-05", 1, employee_category="Non-Office")
+validate_sandwich_leave(doc, os_noe_only, lt)
+test_case("8.6 Non-Office only filter, Non-Office: sandwich applied",
+          doc.total_leave_days == 2, f"got {doc.total_leave_days}")
+
+# 8.7 Both categories configured -> both get sandwich
+os_both = MockOrionSettings(enabled=True, categories=["Office", "Non-Office"])
+doc = MockDoc("2026-06-05", "2026-06-05", 1, employee_category="Office")
+validate_sandwich_leave(doc, os_both, lt)
+test_case("8.7 Both filter, Office: sandwich applied",
+          doc.total_leave_days == 2, f"got {doc.total_leave_days}")
+
+doc = MockDoc("2026-06-05", "2026-06-05", 1, employee_category="Non-Office")
+validate_sandwich_leave(doc, os_both, lt)
+test_case("8.8 Both filter, Non-Office: sandwich applied",
+          doc.total_leave_days == 2, f"got {doc.total_leave_days}")
+
+# 8.9 No employee category on doc -> treated as "no restriction"
+doc = MockDoc("2026-06-05", "2026-06-05", 1, employee_category=None)
+validate_sandwich_leave(doc, os_office_only, lt)
+test_case("8.9 Office filter, no emp category: sandwich applied (no restriction)",
+          doc.total_leave_days == 2, f"got {doc.total_leave_days}")
+
+# 8.10 Direct core function with orion_settings param
+r = get_sandwich_additional_days(lt, "2026-06-05", "2026-06-05",
+                                  employee_category="Office",
+                                  orion_settings=os_office_only)
+test_case("8.10 Core: Office cat, Office filter: +1", r == 1, f"got {r}")
+
+r = get_sandwich_additional_days(lt, "2026-06-05", "2026-06-05",
+                                  employee_category="Non-Office",
+                                  orion_settings=os_office_only)
+test_case("8.11 Core: Non-Office cat, Office filter: +0", r == 0, f"got {r}")
 
 # =============================================================================
 # SUMMARY

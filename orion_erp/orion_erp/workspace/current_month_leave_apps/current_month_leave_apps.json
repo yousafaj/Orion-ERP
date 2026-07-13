@@ -1,0 +1,39 @@
+{
+ "charts": [],
+ "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">Current Month Leave Applications</span>\", \"col\": 12}}, {\"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Current Month Leave Applications\", \"col\": 12}}]",
+ "creation": "2026-07-12 00:00:00.000000",
+ "custom_blocks": [
+  {
+   "custom_block_name": "Current Month Leave Applications",
+   "label": "Current Month Leave Applications"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "fa fa-calendar",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Current Month Leave Applications",
+ "links": [],
+ "modified": "2026-07-12 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Current Month Leave Applications",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "HR",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "HR User"
+  }
+ ],
+ "sequence_id": 103.0,
+ "shortcuts": [],
+ "title": "Current Month Leave Applications"
+}

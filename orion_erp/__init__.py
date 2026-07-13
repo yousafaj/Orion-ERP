@@ -1,5 +1,7 @@
 __version__ = "0.0.1"
 
+import frappe
+
 # Monkey patch
 from frappe.core.doctype.file.file import File
 from orion_erp.orion_erp.override.files import is_remote_file,get_full_path
@@ -34,10 +36,11 @@ def _noop_notify_leave_approver(self):
 
 _la_module.LeaveApplication.notify_leave_approver = _noop_notify_leave_approver
 
+
+
 # Patch S3 plugin's _assert_write_permission to handle
 # unsaved documents (temporary names like "new-leave-application-xxx")
 import frappe_s3_attachment.controller as _s3_ctrl
-import frappe
 
 _original_assert_write_permission = _s3_ctrl._assert_write_permission
 

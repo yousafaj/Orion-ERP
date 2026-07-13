@@ -19,11 +19,11 @@
    "custom_block_name": "Alert Overlapping Leaves",
    "label": "Alert Overlapping Leaves"
   },
-  {
-   "custom_block_name": "Emergency Leave Approval Queue",
-   "label": "Emergency Leave Approval Queue"
-  }
- ],
+   {
+    "custom_block_name": "Emergency Leave Approval Queue",
+    "label": "Emergency Leave Approval Queue"
+   }
+  ],
  "docstatus": 0,
  "doctype": "Workspace",
  "hide_custom": 0,

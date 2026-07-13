@@ -997,3 +997,98 @@ def get_monthly_accrual_status():
         "rows": detail,
         "accrual_has_run": allocated_count > 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# Current Month Leave Applications Dashboard
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+@frappe.read_only()
+def get_current_month_leave_applications():
+    """All leave applications raised during the current month with KPIs."""
+    LeaveApplication = frappe.qb.DocType("Leave Application")
+    Employee = frappe.qb.DocType("Employee")
+
+    today_date = getdate(frappe.utils.today())
+    current_month_start = today_date.replace(day=1)
+    from frappe.utils import get_last_day
+    month_end = str(get_last_day(current_month_start))
+
+    rows = (
+        frappe.qb.from_(LeaveApplication)
+        .select(
+            LeaveApplication.name,
+            LeaveApplication.employee,
+            LeaveApplication.employee_name,
+            LeaveApplication.department,
+            LeaveApplication.company,
+            LeaveApplication.leave_type,
+            LeaveApplication.from_date,
+            LeaveApplication.to_date,
+            LeaveApplication.total_leave_days,
+            LeaveApplication.posting_date,
+            LeaveApplication.status,
+            LeaveApplication.docstatus,
+            LeaveApplication.leave_approver,
+            LeaveApplication.custom_approval_status,
+            LeaveApplication.workflow_state,
+        )
+        .where(LeaveApplication.posting_date >= current_month_start)
+        .where(LeaveApplication.posting_date <= month_end)
+        .orderby(LeaveApplication.posting_date, order=frappe.qb.desc)
+        .limit(5000)
+    ).run(as_dict=True)
+
+    total = len(rows)
+    pending = 0
+    approved = 0
+    rejected = 0
+    cancelled = 0
+
+    detail = []
+    for r in rows:
+        ds = r.get("docstatus", 0)
+        st = (r.get("status") or "").lower()
+        wf = (r.get("custom_approval_status") or r.get("workflow_state") or r.get("status") or "Open")
+
+        if ds == 2 or st == "cancelled":
+            display_status = "Cancelled"
+            cancelled += 1
+        elif st == "approved" or ds == 1:
+            display_status = "Approved"
+            approved += 1
+        elif st == "rejected":
+            display_status = "Rejected"
+            rejected += 1
+        else:
+            display_status = "Pending"
+            pending += 1
+
+        detail.append({
+            "name": r["name"],
+            "employee": r["employee"],
+            "employee_name": r.get("employee_name", ""),
+            "department": r.get("department", ""),
+            "company": r.get("company", ""),
+            "leave_type": r.get("leave_type", ""),
+            "from_date": str(r.get("from_date") or ""),
+            "to_date": str(r.get("to_date") or ""),
+            "total_days": float(r.get("total_leave_days") or 0),
+            "posting_date": str(r.get("posting_date") or ""),
+            "status": display_status,
+            "workflow_state": wf,
+            "leave_approver": r.get("leave_approver", ""),
+        })
+
+    return {
+        "kpi": {
+            "total": total,
+            "pending": pending,
+            "approved": approved,
+            "rejected": rejected,
+            "cancelled": cancelled,
+            "current_month": frappe.utils.formatdate(current_month_start, "MMMM yyyy"),
+        },
+        "rows": detail,
+    }

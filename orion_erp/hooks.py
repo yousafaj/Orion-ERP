@@ -350,6 +350,7 @@ scheduler_events = {
 # Overriding Methods
 # ------------------------------
 override_whitelisted_methods = {
+	"frappe.desk.form.save.savedocs": "orion_erp.orion_erp.override.save.savedocs",
 	"frappe.core.page.permission_manager.permission_manager.get_roles_and_doctypes": "orion_erp.orion_erp.override.permission_manager.get_roles_and_doctypes",
 	"frappe.core.page.permission_manager.permission_manager.get_permissions": "orion_erp.orion_erp.override.permission_manager.get_permissions",
 	"frappe.core.page.permission_manager.permission_manager.add": "orion_erp.orion_erp.override.permission_manager.add",
