@@ -628,6 +628,11 @@ function handle_submit_button(frm) {
 
     let can_submit = false;
 
+    if (frm.doc.custom_approval_status === "Cancelled" || frm.doc.status === "Cancelled") {
+        _refresh_submit_button(frm, false, is_employee, is_sent);
+        return;
+    }
+
     if (current_user === "Administrator") {
         can_submit = true;
     }
@@ -691,24 +696,6 @@ function handle_submit_button(frm) {
                 can_submit = true;
             }
         }
-
-        // Cancelled approver can submit
-        active_approvers.forEach((row) => {
-
-            let approver =
-                frm.doc[row.approver_field];
-
-            let status =
-                frm.doc[row.status_field];
-
-            if (
-                approver === current_user &&
-                status === "Cancelled"
-            ) {
-
-                can_submit = true;
-            }
-        });
     }
 
     _refresh_submit_button(frm, can_submit, is_employee, is_sent);
@@ -728,6 +715,11 @@ function _refresh_submit_button(frm, can_submit, is_employee, is_sent) {
     }
 
     if (frm.doc.docstatus !== 0) {
+        frm.disable_save();
+        return;
+    }
+
+    if (frm.doc.custom_approval_status === "Cancelled") {
         frm.disable_save();
         return;
     }
