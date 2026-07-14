@@ -99,11 +99,17 @@ def validate_leave_approval(doc, method=None):
             doc.custom_approval_status = "Open"
         return
 
-    # If sent for approval, employee cannot edit
+    # If sent for approval, employee cannot edit (unless cancelling all statuses)
     if doc.custom_sent_for_approval and doc.custom_employee_user_id == current_user:
-        frappe.throw(
-            _("You cannot modify this Leave Application as it has been sent for approval.")
+        all_cancelled = all(
+            doc.get(row["status_field"]) == "Cancelled"
+            for row in APPROVAL_FLOW
+            if doc.get(row["approver_field"])
         )
+        if not all_cancelled:
+            frappe.throw(
+                _("You cannot modify this Leave Application as it has been sent for approval.")
+            )
 
     for idx, row in enumerate(APPROVAL_FLOW):
 
@@ -155,9 +161,6 @@ def validate_leave_approval(doc, method=None):
 # =========================================================
 def handle_leave_approval(doc, method=None):
 
-    if not doc.custom_sent_for_approval:
-        return
-
     if frappe.flags.get("submitting_leave_from_rejoining"):
         return
 
@@ -193,6 +196,11 @@ def handle_leave_approval(doc, method=None):
 
             statuses.append(status)
 
+    # If not yet sent for approval, only process cancellations
+    if not doc.custom_sent_for_approval:
+        if "Cancelled" not in statuses:
+            return
+
     
     # REJECTED
     if "Rejected" in statuses:
@@ -223,6 +231,7 @@ def handle_leave_approval(doc, method=None):
                 2
             )
 
+        doc.db_set("status", "Cancelled")
         doc.db_set("custom_last_status_change", now_datetime())
         doc.db_set("custom_reminder_sent", 0)
 
