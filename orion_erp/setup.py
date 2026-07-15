@@ -41,6 +41,7 @@ DASHBOARD_FILES = {
     "leave_encashment_requests.js": "Leave Encashment Requests",
     "pending_leave_status.js": "Pending Leave Application Status",
     "monthly_accrual_status.js": "Monthly Leave Accrual Run Status",
+    "current_month_leave_apps.js": "Current Month Leave Applications",
 }
 
 DASHBOARDS_DIR = os.path.join(os.path.dirname(__file__), "orion_erp", "dashboards")
@@ -53,6 +54,21 @@ def after_migrate():
     setup_custom_html_blocks()
     setup_hr_manager_dashboard_roles()
     setup_hr_user_dashboard_roles()
+    embed_current_month_leave_block()
+    remove_standalone_current_month_workspace()
+    create_employee_categories()
+
+
+EMPLOYEE_CATEGORIES = ["Office", "Non-Office"]
+
+
+def create_employee_categories():
+    for cat in EMPLOYEE_CATEGORIES:
+        if not frappe.db.exists("Employee Category", cat):
+            doc = frappe.new_doc("Employee Category")
+            doc.category_name = cat
+            doc.flags.ignore_permissions = True
+            doc.insert()
 
 
 def setup_hr_user_dashboard_roles():
@@ -97,6 +113,35 @@ def setup_hr_manager_dashboard_roles():
     if changed:
         ws.flags.ignore_permissions = True
         ws.save(ignore_permissions=True)
+
+
+def embed_current_month_leave_block():
+    """Add 'Current Month Leave Applications' custom block to both
+    HR Manager Dashboard and HR User Dashboard workspaces."""
+    import json
+    block_name = "Current Month Leave Applications"
+    for ws_name in ("HR Manager Dashboard", "HR User Dashboard"):
+        if not frappe.db.exists("Workspace", ws_name):
+            continue
+        ws = frappe.get_doc("Workspace", ws_name)
+        changed = False
+        if not any(b.custom_block_name == block_name for b in ws.custom_blocks):
+            ws.append("custom_blocks", {"custom_block_name": block_name, "label": block_name})
+            content = json.loads(ws.content)
+            content.append({"type": "custom_block", "data": {"custom_block_name": block_name, "col": 12}})
+            ws.content = json.dumps(content)
+            changed = True
+        if changed:
+            ws.flags.ignore_permissions = True
+            ws.save(ignore_permissions=True)
+
+
+def remove_standalone_current_month_workspace():
+    """Remove the standalone 'Current Month Leave Applications' workspace
+    since the block is now embedded in HR Manager and HR User dashboards."""
+    ws_name = "Current Month Leave Applications"
+    if frappe.db.exists("Workspace", ws_name):
+        frappe.delete_doc("Workspace", ws_name, force=True, ignore_permissions=True)
 
 
 def setup_custom_html_blocks():
