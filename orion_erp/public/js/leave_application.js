@@ -314,14 +314,11 @@ frappe.ui.form.on("Leave Application", {
             frm.disable_save();
             frm.page.clear_primary_action();
 
-            let is_override = is_leave_override_user(frm);
-            if (!is_override) {
-                frm.fields.forEach(function(field) {
-                    if (field.df.fieldname && !field.df.read_only) {
-                        frm.set_df_property(field.df.fieldname, "read_only", 1);
-                    }
-                });
-            }
+            frm.fields.forEach(function(field) {
+                if (field.df.fieldname && !field.df.read_only) {
+                    frm.set_df_property(field.df.fieldname, "read_only", 1);
+                }
+            });
             frm.set_df_property("custom_medical_certificate", "read_only", 0);
         }
 

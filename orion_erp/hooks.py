@@ -94,7 +94,8 @@ doctype_list_js = {"Employee": "public/js/employee_list.js",
 
 jinja = {
 	"methods": [
-        "orion_erp.orion_erp.scripts.jinja.get_qr_code"
+        "orion_erp.orion_erp.scripts.jinja.get_qr_code",
+        "orion_erp.api.get_company_logo"
     ],
 	# "filters": "orion_erp.utils.jinja_filters
 }

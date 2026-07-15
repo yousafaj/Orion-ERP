@@ -6,6 +6,48 @@ from hrms.hr.doctype.leave_application.leave_application import get_leave_balanc
 from frappe.utils import getdate, today, flt
 
 @frappe.whitelist()
+def get_company_logo():
+	"""Return company logo from Orion Settings as a base64 data URI.
+	Works with S3-stored logos and bypasses permission checks."""
+	import base64
+	from urllib.parse import parse_qs, urlparse
+
+	logo_url = frappe.db.get_value("Orion Settings", None, "company_logo")
+	if not logo_url:
+		return ""
+
+	try:
+		query = parse_qs(urlparse(logo_url).query)
+		key = query.get("key", [None])[0]
+
+		if key:
+			s3_settings = frappe.get_single("S3 File Attachment")
+			import boto3
+
+			s3 = boto3.client(
+				"s3",
+				aws_access_key_id=s3_settings.aws_key,
+				aws_secret_access_key=s3_settings.get_password("aws_secret"),
+				region_name=s3_settings.region_name,
+			)
+			response = s3.get_object(Bucket=s3_settings.bucket_name, Key=key)
+			image_bytes = response["Body"].read()
+			ext = key.rsplit(".", 1)[-1].lower()
+			mime_map = {
+				"png": "image/png",
+				"jpg": "image/jpeg",
+				"jpeg": "image/jpeg",
+				"gif": "image/gif",
+				"svg": "image/svg+xml",
+			}
+			mime = mime_map.get(ext, "image/png")
+			return f"data:{mime};base64,{base64.b64encode(image_bytes).decode()}"
+		else:
+			return logo_url
+	except Exception:
+		return logo_url
+
+@frappe.whitelist()
 def get_customer_focal_person(party_name):
     """
     Given a Customer name, find the first Contact linked to it

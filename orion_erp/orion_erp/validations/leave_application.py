@@ -244,8 +244,8 @@ def handle_leave_approval(doc, method=None):
         _notify_cancelled(doc, old_doc)
 
         # Cancel linked Leave Declaration if not already being cancelled from LD
-        if not frappe.flags.get("cancelling_from_leave_declaration"):
-            _cancel_linked_leave_declaration(doc.name)
+        # if not frappe.flags.get("cancelling_from_leave_declaration"):
+        #     _cancel_linked_leave_declaration(doc.name)
         return
 
     # ALL APPROVED
@@ -267,10 +267,7 @@ def handle_leave_approval(doc, method=None):
         return
 
     if status_changed:
-        if is_leave_override_user():
-            _notify_override_status_change(doc, old_doc)
-        else:
-            send_next_approval_email(doc)
+        send_next_approval_email(doc)
 
     update_leave_application_status(doc)
 
@@ -282,6 +279,8 @@ def send_next_approval_email(doc):
     if not old_doc:
         return
 
+    last_changed_index = None
+
     for index, row in enumerate(APPROVAL_FLOW):
 
         status_field = row["status_field"]
@@ -290,129 +289,130 @@ def send_next_approval_email(doc):
 
         new_status = doc.get(status_field)
 
-        # ONLY WHEN STATUS CHANGED TO APPROVED
         if (
             old_status != "Approved"
             and new_status == "Approved"
         ):
+            last_changed_index = index
 
-            next_index = index + 1
+    if last_changed_index is None:
+        return
 
-            next_approver = None
-            while next_index < len(APPROVAL_FLOW):
-                next_row = APPROVAL_FLOW[next_index]
-                next_approver = doc.get(next_row["approver_field"])
-                if next_approver:
-                    break
-                next_index += 1
+    next_index = last_changed_index + 1
 
-            if not next_approver:
-                return
+    next_approver = None
+    while next_index < len(APPROVAL_FLOW):
+        next_row = APPROVAL_FLOW[next_index]
+        next_approver = doc.get(next_row["approver_field"])
+        if next_approver:
+            break
+        next_index += 1
 
-            subject = "Leave Approval Notification"
+    if not next_approver:
+        return
 
-            leave_link = (
-                frappe.utils.get_url()
-                + f"/app/leave-application/{doc.name}"
-            )
+    subject = "Leave Approval Notification"
 
-            message = f"""
-            <h1>Leave Application Notification</h1>
+    leave_link = (
+        frappe.utils.get_url()
+        + f"/app/leave-application/{doc.name}"
+    )
 
-            <h3>Details:</h3>
+    message = f"""
+    <h1>Leave Application Notification</h1>
 
-            <table class="table table-bordered small"
-                style="
-                    width:100%;
-                    border-collapse:collapse;
-                    border:1px solid #f3f3f3;
-                    max-width:500px
-                ">
+    <h3>Details:</h3>
 
-                <tr>
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        Employee
-                    </td>
+    <table class="table table-bordered small"
+        style="
+            width:100%;
+            border-collapse:collapse;
+            border:1px solid #f3f3f3;
+            max-width:500px
+        ">
 
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        {doc.employee_name}
-                    </td>
-                </tr>
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Employee
+            </td>
 
-                <tr>
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        Leave Type
-                    </td>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.employee_name}
+            </td>
+        </tr>
 
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        {doc.leave_type}
-                    </td>
-                </tr>
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Leave Type
+            </td>
 
-                <tr>
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        From Date
-                    </td>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.leave_type}
+            </td>
+        </tr>
 
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        {doc.from_date}
-                    </td>
-                </tr>
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                From Date
+            </td>
 
-                <tr>
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        To Date
-                    </td>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.from_date}
+            </td>
+        </tr>
 
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        {doc.to_date}
-                    </td>
-                </tr>
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                To Date
+            </td>
 
-                <tr>
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        Status
-                    </td>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                {doc.to_date}
+            </td>
+        </tr>
 
-                    <td style="padding:8px; border:1px solid #f3f3f3;">
-                        Open
-                    </td>
-                </tr>
+        <tr>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Status
+            </td>
 
-            </table>
+            <td style="padding:8px; border:1px solid #f3f3f3;">
+                Pending Approval
+            </td>
+        </tr>
 
-            <br><br>
+    </table>
 
-            <a
-                href="{leave_link}"
-                target="_blank"
-                style="
-                    color:#fff;
-                    text-decoration:none;
-                    padding:4px 20px;
-                    font-size:13px;
-                    border-radius:6px;
-                    background-color:#171717;
-                    display:inline-block;
-                    line-height:20px;
-                "
-            >
-                Open Now
-            </a>
-            """
+    <br><br>
 
-            frappe.sendmail(
+    <a
+        href="{leave_link}"
+        target="_blank"
+        style="
+            color:#fff;
+            text-decoration:none;
+            padding:4px 20px;
+            font-size:13px;
+            border-radius:6px;
+            background-color:#171717;
+            display:inline-block;
+            line-height:20px;
+        "
+    >
+        Open Now
+    </a>
+    """
 
-                recipients=[next_approver],
+    frappe.sendmail(
 
-                subject=subject,
+        recipients=[next_approver],
 
-                message=message,
+        subject=subject,
 
-                now=False
-            )
+        message=message,
 
-            return
+        now=False
+    )
         
 
 @frappe.whitelist()
@@ -650,7 +650,7 @@ def update_leave_application_status(doc):
 
     active_flow = []
 
-    for row in APPROVAL_FLOW:
+    for flow_idx, row in enumerate(APPROVAL_FLOW):
 
         approver = doc.get(row["approver_field"])
         status = doc.get(row["status_field"])
@@ -659,7 +659,8 @@ def update_leave_application_status(doc):
 
             active_flow.append({
                 "approver_field": row["approver_field"],
-                "status": status
+                "status": status,
+                "level": flow_idx + 1
             })
 
     # =====================================================
@@ -731,7 +732,7 @@ def update_leave_application_status(doc):
             if row["status"] != "Approved":
                 doc.db_set(
                     "custom_approval_status",
-                    f"Pending Approval from Approver {idx + 1}"
+                    f"Pending Approval from Approver {row['level']}"
                 )
                 return
 
@@ -1058,27 +1059,25 @@ def on_cancel_leave_application(doc, method=None):
     )
 
     # Cancel linked Leave Declaration if not already being cancelled from LD
-    if not frappe.flags.get("cancelling_from_leave_declaration"):
-        _cancel_linked_leave_declaration(doc.name)
+    # if not frappe.flags.get("cancelling_from_leave_declaration"):
+    #     _cancel_linked_leave_declaration(doc.name)
 
 
 def _cancel_linked_leave_declaration(la_name):
     """Cancel the Leave Declaration linked to this Leave Application."""
-    for field in ("created_leave_application", "extended_leave_application"):
-        ld_name = frappe.db.get_value(
-            "LEAVE DECLARATION",
-            {field: la_name, "docstatus": 1},
-            "name"
-        )
-        if ld_name:
-            frappe.flags.cancelling_from_leave_declaration = True
-            try:
-                ld_doc = frappe.get_doc("LEAVE DECLARATION", ld_name)
-                ld_doc.flags.ignore_permissions = True
-                ld_doc.cancel()
-            finally:
-                frappe.flags.cancelling_from_leave_declaration = False
-            break
+    ld_name = frappe.db.get_value(
+        "LEAVE DECLARATION",
+        {"leave_application": la_name, "docstatus": 1},
+        "name"
+    )
+    if ld_name:
+        frappe.flags.cancelling_from_leave_declaration = True
+        try:
+            ld_doc = frappe.get_doc("LEAVE DECLARATION", ld_name)
+            ld_doc.flags.ignore_permissions = True
+            ld_doc.cancel()
+        finally:
+            frappe.flags.cancelling_from_leave_declaration = False
 
 
 # =========================================================
@@ -1108,8 +1107,8 @@ def cancel_draft_leave(docname):
     doc.db_set("custom_approval_status", "Cancelled")
 
     # Cancel linked Leave Declaration if not already being cancelled from LD
-    if not frappe.flags.get("cancelling_from_leave_declaration"):
-        _cancel_linked_leave_declaration(doc.name)
+    # if not frappe.flags.get("cancelling_from_leave_declaration"):
+    #     _cancel_linked_leave_declaration(doc.name)
 
     doc.add_comment(
         "Info",
