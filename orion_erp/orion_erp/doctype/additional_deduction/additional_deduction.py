@@ -45,8 +45,8 @@ class AdditionalDeduction(Document):
 		if self.salary_component == "Total Deduction":
 			update_additional_deduction_ref(self)
 
-		
-		
+
+
 
 	def create_additional_salary_from_deduction(doc):
 
@@ -95,7 +95,7 @@ class AdditionalDeduction(Document):
 			remove_additional_deduction_ref(self)
 		else:
 			return
-		
+
 		# 1. REMOVE additional_deduction_ref
 		for row in self.additional_deduction_detail or []:
 
@@ -127,7 +127,7 @@ class AdditionalDeduction(Document):
 				update_modified=False
 			)
 
-		
+
 		# 2. CANCEL LINKED ADDITIONAL SALARY
 		if self.ref_doctype == "Additional Salary" and self.ref_docname:
 

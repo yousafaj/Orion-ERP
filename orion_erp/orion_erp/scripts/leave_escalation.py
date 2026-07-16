@@ -170,7 +170,10 @@ def _send_reminder(leave_name, approver, approver_field, leave_type):
     <p><i>If no action is taken, this application will be auto-escalated to the configured escalation roles.</i></p>
     """
 
-    frappe.sendmail(recipients=[approver], subject=subject, message=message, now=False)
+    try:
+        frappe.sendmail(recipients=[approver], subject=subject, message=message, now=False)
+    except Exception:
+        frappe.log_error(title="Leave Reminder Email Failed", message=f"Failed to send leave reminder email to {approver}")
     frappe.db.set_value("Leave Application", leave_name, "custom_reminder_sent", 1)
 
 
@@ -214,5 +217,8 @@ def _escalate(leave_name, approver_field, current_approver, escalation_users, le
     </a>
     """
 
-    frappe.sendmail(recipients=escalation_users, subject=subject, message=message, now=False)
+    try:
+        frappe.sendmail(recipients=escalation_users, subject=subject, message=message, now=False)
+    except Exception:
+        frappe.log_error(title="Leave Escalation Email Failed", message=f"Failed to send leave escalation email for {leave_name}")
     frappe.db.set_value("Leave Application", leave_name, "custom_escalation_sent", 1)

@@ -227,7 +227,7 @@ frappe.ui.form.on("Leave Application", {
                     data.user_id || ""
                 );
 
-            
+
 
                 frm.set_value(
                     "custom_leave_approver_1",

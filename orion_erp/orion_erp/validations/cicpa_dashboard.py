@@ -145,7 +145,7 @@ def setup_cicpa_workspace_widgets():
 
         # 3. Create Custom HTML Block for dashboard widget
         html_block_name = "CICPA Expiry Dashboard Widget"
-        
+
         # HTML Content (including styles and scripts)
         html_content = """
 <div class="cicpa-expiry-widget">
@@ -162,7 +162,7 @@ def setup_cicpa_workspace_widgets():
       </button>
     </div>
   </div>
-  
+
   <div class="widget-body">
     <div id="drivers-tab" class="tab-content active">
       <div class="table-responsive">
@@ -185,7 +185,7 @@ def setup_cicpa_workspace_widgets():
         </table>
       </div>
     </div>
-    
+
     <div id="vehicles-tab" class="tab-content">
       <div class="table-responsive">
         <table class="cicpa-table">
@@ -381,10 +381,10 @@ def setup_cicpa_workspace_widgets():
 window.switchCICPATab = function(tabName) {
   const container = document.querySelector('.cicpa-expiry-widget');
   if (!container) return;
-  
+
   container.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   container.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-  
+
   if (tabName === 'drivers') {
     container.querySelector('button[onclick*="drivers"]').classList.add('active');
     document.getElementById('drivers-tab').classList.add('active');
@@ -400,11 +400,11 @@ window.loadCICPAExpiries = function() {
     callback: function(r) {
       if (r.message) {
         const data = r.message;
-        
+
         // Update tabs counts
         document.getElementById('driver-count').innerText = data.drivers.length;
         document.getElementById('vehicle-count').innerText = data.vehicles.length;
-        
+
         // Render Drivers
         const driverBody = document.getElementById('driver-expiries-body');
         if (data.drivers.length === 0) {
@@ -415,9 +415,9 @@ window.loadCICPAExpiries = function() {
             if (d.days_left < 0) badgeClass = 'expired';
             else if (d.days_left <= 10) badgeClass = 'critical';
             else if (d.days_left <= 30) badgeClass = 'warning';
-            
+
             const daysText = d.days_left < 0 ? 'Expired' : `${d.days_left} Days Left`;
-            
+
             return `
               <tr>
                 <td><strong><a href="/app/driver/${d.driver}" style="color: var(--primary-color, #2980b9); font-weight: 600;">${d.driver_name || d.driver}</a></strong></td>
@@ -430,7 +430,7 @@ window.loadCICPAExpiries = function() {
             `;
           }).join('');
         }
-        
+
         // Render Vehicles
         const vehicleBody = document.getElementById('vehicle-expiries-body');
         if (data.vehicles.length === 0) {
@@ -441,9 +441,9 @@ window.loadCICPAExpiries = function() {
             if (v.days_left < 0) badgeClass = 'expired';
             else if (v.days_left <= 10) badgeClass = 'critical';
             else if (v.days_left <= 30) badgeClass = 'warning';
-            
+
             const daysText = v.days_left < 0 ? 'Expired' : `${v.days_left} Days Left`;
-            
+
             return `
               <tr>
                 <td><strong><a href="/app/vehicle/${v.vehicle}" style="color: var(--primary-color, #2980b9); font-weight: 600;">${v.license_plate}</a></strong></td>
@@ -481,11 +481,11 @@ setTimeout(window.loadCICPAExpiries, 150);
         # 4. Safely integrate widgets into the Orion Fleet Workspace
         if frappe.db.exists("Workspace", "Orion Fleet"):
             workspace = frappe.get_doc("Workspace", "Orion Fleet")
-            
+
             # Check if the block widget is already present in workspace content
             content_list = json.loads(workspace.content or "[]")
             has_widget = any(item.get("type") == "custom_block" and item.get("data", {}).get("custom_block_name") == html_block_name for item in content_list)
-            
+
             if not has_widget:
                 # Add dynamic content blocks
                 content_list.append({
@@ -498,7 +498,7 @@ setTimeout(window.loadCICPAExpiries, 150);
                     "type": "header",
                     "data": {"text": "<span class=\"h4\">CICPA Pass Expiries</span>", "col": 12}
                 })
-                
+
                 # Insert the two Number Cards side-by-side (each takes col size 6)
                 content_list.append({
                     "id": "cicpa-expiring-card-block",
@@ -516,7 +516,7 @@ setTimeout(window.loadCICPAExpiries, 150);
                         "col": 6
                     }
                 })
-                
+
                 # Add the tabbed HTML Widget (takes full col size 12)
                 content_list.append({
                     "id": "cicpa-expiry-widget-block",
@@ -526,9 +526,9 @@ setTimeout(window.loadCICPAExpiries, 150);
                         "col": 12
                     }
                 })
-                
+
                 workspace.content = json.dumps(content_list)
-                
+
                 # Ensure child table entries are also inserted safely
                 existing_cards = {c.number_card_name for c in workspace.number_cards}
                 if expiring_card_name not in existing_cards:
@@ -541,7 +541,7 @@ setTimeout(window.loadCICPAExpiries, 150);
                         "number_card_name": expired_card_name,
                         "label": expired_card_name
                     })
-                
+
                 # Append to workspace.custom_blocks child table
                 existing_blocks = {b.custom_block_name for b in workspace.custom_blocks}
                 if html_block_name not in existing_blocks:
@@ -549,9 +549,9 @@ setTimeout(window.loadCICPAExpiries, 150);
                         "custom_block_name": html_block_name,
                         "label": html_block_name
                     })
-                
+
                 workspace.save(ignore_permissions=True)
                 frappe.db.commit()
-                
+
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "setup_cicpa_workspace_widgets failed")

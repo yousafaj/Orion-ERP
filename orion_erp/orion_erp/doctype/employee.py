@@ -122,13 +122,13 @@ def create_ticket_allowance():
                         "idx": max_idx + 1
                     }).insert(ignore_permissions=True)
 
-                
+
                 current_start = add_months(
                     current_start,
                     cycle_months
                 )
 
-    
+
 
 
 @frappe.whitelist()
@@ -149,11 +149,11 @@ def create_salary_structure_assignment(doc, method):
     exists = frappe.db.exists("Salary Structure Assignment", {
         "employee": doc.name,
         "from_date": getdate(doc.date_of_joining),
-        "docstatus": ["!=", 2]  
+        "docstatus": ["!=", 2]
     })
 
     if exists:
-        return  
+        return
 
     # Create SSA
     ssa = frappe.new_doc("Salary Structure Assignment")

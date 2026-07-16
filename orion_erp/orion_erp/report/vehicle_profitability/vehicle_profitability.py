@@ -120,7 +120,7 @@ def execute(filters=None):
             j.details,       # Details (account)
             amount           # Actual Net (+debit, -credit)
         ])
-        
+
     # ---- Summary (Totals + Profit) ----
     total_sales = 0.0
     total_purchase = 0.0

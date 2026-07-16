@@ -1,6 +1,8 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from orion_erp.orion_erp.validations.rejoining_form import get_leave_declaration_assets
+
 
 class TestRejoiningForm(FrappeTestCase):
     def setUp(self):
@@ -149,3 +151,8 @@ class TestRejoiningForm(FrappeTestCase):
         amend.docstatus = 0
         amend.insert(ignore_permissions=True)
         self.assertEqual(amend.custom_status_rejoining_approver1, "Open")
+
+    def test_get_leave_declaration_assets_returns_list(self):
+        assets = get_leave_declaration_assets("NON-EXISTENT-LA")
+        self.assertIsInstance(assets, list)
+        self.assertEqual(len(assets), 0)

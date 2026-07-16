@@ -174,7 +174,10 @@ def _send_payroll_reminder_to_employee(employee, employee_name, leave_applicatio
     </table>
     <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">Upload Medical Certificate Now</a>
     """
-    frappe.sendmail(recipients=[user_id], subject=subject, message=message, now=True)
+    try:
+        frappe.sendmail(recipients=[user_id], subject=subject, message=message, now=True)
+    except Exception:
+        frappe.log_error(title="Medical Certificate Reminder Email Failed", message=f"Failed to send medical certificate reminder to {user_id}")
 
 
 def _send_payroll_reminder_to_hr(hr_emails, missing_items, company, start_date, end_date):
@@ -211,7 +214,10 @@ def _send_payroll_reminder_to_hr(hr_emails, missing_items, company, start_date, 
         {employee_rows}
     </table>
     """
-    frappe.sendmail(recipients=hr_emails, subject=subject, message=message, now=True)
+    try:
+        frappe.sendmail(recipients=hr_emails, subject=subject, message=message, now=True)
+    except Exception:
+        frappe.log_error(title="Payroll Medical Certificate HR Notification Failed", message=f"Failed to send payroll medical certificate HR notification")
 
 
 def _get_hr_user_emails():

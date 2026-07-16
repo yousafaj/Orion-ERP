@@ -143,7 +143,10 @@ class LeaveDelegation(Document):
             </table>
             """
 
-            frappe.sendmail(recipients=[delegate_user], subject=subject, message=message)
+            try:
+                frappe.sendmail(recipients=[delegate_user], subject=subject, message=message)
+            except Exception:
+                frappe.log_error(title="Leave Delegation Email Failed", message=f"Failed to send leave delegation email to {delegate_user}")
 
 
 @frappe.whitelist()

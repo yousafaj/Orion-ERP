@@ -70,12 +70,15 @@ def send_overdue_passport_alerts():
     </table>
     """
 
-    frappe.sendmail(
-        recipients=recipients,
-        subject=f"[Passport Management] {len(overdue)} Overdue Passport(s) — {formatdate(today())}",
-        message=message,
-        delayed=False,
-    )
+    try:
+        frappe.sendmail(
+            recipients=recipients,
+            subject=f"[Passport Management] {len(overdue)} Overdue Passport(s) — {formatdate(today())}",
+            message=message,
+            delayed=False,
+        )
+    except Exception:
+        frappe.log_error(title="Passport Overdue Email Failed", message=f"Failed to send passport overdue notification")
 
 
 def send_expiry_reminders():
@@ -114,14 +117,17 @@ def send_expiry_reminders():
             if already_sent:
                 continue
 
-            frappe.sendmail(
-                recipients=[user_id],
-                subject=subject,
-                message=(
-                    f"<p>Dear {escape_html(emp.employee_name or '')},</p>"
-                    f"<p>Your passport <b>{escape_html(emp.passport_number or '')}</b> expires on "
-                    f"<b>{escape_html(formatdate(emp.passport_expiry_date))}</b> "
-                    f"({days} days from today). Please initiate renewal.</p>"
-                ),
-                delayed=False,
-            )
+            try:
+                frappe.sendmail(
+                    recipients=[user_id],
+                    subject=subject,
+                    message=(
+                        f"<p>Dear {escape_html(emp.employee_name or '')},</p>"
+                        f"<p>Your passport <b>{escape_html(emp.passport_number or '')}</b> expires on "
+                        f"<b>{escape_html(formatdate(emp.passport_expiry_date))}</b> "
+                        f"({days} days from today). Please initiate renewal.</p>"
+                    ),
+                    delayed=False,
+                )
+            except Exception:
+                frappe.log_error(title="Passport Expiry Reminder Email Failed", message=f"Failed to send passport expiry reminder to {user_id}")

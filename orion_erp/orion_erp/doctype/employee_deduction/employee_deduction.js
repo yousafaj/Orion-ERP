@@ -13,7 +13,7 @@ frappe.ui.form.on("Employee Deduction", {
         frm.get_field('outstanding_employee_deduction_detail').grid.wrapper
             .find('.grid-remove-rows').hide();
 
-        
+
 	},
 
     employee: function(frm) {

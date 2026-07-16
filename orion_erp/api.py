@@ -130,7 +130,7 @@ def fill_employee_details(filters: dict | None = None, limit: int | None = None,
     if not filters:
         filters = frappe.form_dict or {}
     filters = frappe._dict(filters)
-    
+
     required = ["company", "currency", "payroll_payable_account", "start_date", "end_date"]
     missing = [f for f in required if not filters.get(f)]
     if missing:

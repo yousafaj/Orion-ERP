@@ -201,7 +201,7 @@ def handle_leave_approval(doc, method=None):
         if "Cancelled" not in statuses:
             return
 
-    
+
     # REJECTED
     if "Rejected" in statuses:
 
@@ -218,7 +218,7 @@ def handle_leave_approval(doc, method=None):
         _notify_rejected(doc, old_doc)
         return
 
-    
+
     # CANCELLED
     if "Cancelled" in statuses:
 
@@ -243,9 +243,9 @@ def handle_leave_approval(doc, method=None):
 
         _notify_cancelled(doc, old_doc)
 
-        # Cancel linked Leave Declaration if not already being cancelled from LD
-        # if not frappe.flags.get("cancelling_from_leave_declaration"):
-        #     _cancel_linked_leave_declaration(doc.name)
+        # Cancel linked Leave Declaration
+        if not frappe.flags.get("cancelling_from_leave_declaration"):
+            _cancel_linked_leave_declaration(doc.name)
         return
 
     # ALL APPROVED
@@ -256,10 +256,11 @@ def handle_leave_approval(doc, method=None):
 
     if all_approved:
 
-        _notify_approved(doc, old_doc)
         update_leave_application_status(doc)
 
         if doc.docstatus != 1:
+            if _is_medical_certificate_pending(doc):
+                _notify_medical_certificate_pending(doc)
             doc.flags.ignore_permissions = True
             frappe.flags.ignore_permissions = True
             doc.submit()
@@ -403,17 +404,16 @@ def send_next_approval_email(doc):
     </a>
     """
 
-    frappe.sendmail(
+    try:
+        frappe.sendmail(
+            recipients=[next_approver],
+            subject=subject,
+            message=message,
+            now=False,
+        )
+    except Exception:
+        frappe.log_error(title="Leave Approval Email Failed", message=f"Failed to send approval email for leave to {next_approver}")
 
-        recipients=[next_approver],
-
-        subject=subject,
-
-        message=message,
-
-        now=False
-    )
-        
 
 @frappe.whitelist()
 def get_employee_details(employee):
@@ -777,7 +777,10 @@ def _notify_medical_certificate_pending(doc):
         </table>
         <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">Upload Medical Certificate</a>
         """
-        frappe.sendmail(recipients=[employee_email], subject=emp_subject, message=emp_message, now=True)
+        try:
+            frappe.sendmail(recipients=[employee_email], subject=emp_subject, message=emp_message, now=True)
+        except Exception:
+            frappe.log_error(title="Medical Certificate Reminder Email Failed", message=f"Failed to send medical certificate reminder to {employee_email}")
 
     hr_emails = _get_hr_user_emails()
     if hr_emails:
@@ -794,7 +797,10 @@ def _notify_medical_certificate_pending(doc):
         </table>
         <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Leave Application</a>
         """
-        frappe.sendmail(recipients=hr_emails, subject=hr_subject, message=hr_message, now=True)
+        try:
+            frappe.sendmail(recipients=hr_emails, subject=hr_subject, message=hr_message, now=True)
+        except Exception:
+            frappe.log_error(title="Medical Certificate HR Notification Failed", message=f"Failed to send medical certificate HR notification for {doc.name}")
 
 
 def _get_hr_user_emails():
@@ -832,34 +838,6 @@ def _get_hr_user_emails():
     return list(users)
 
 
-def _notify_approved(doc, old_doc):
-    if not old_doc:
-        return
-    old_statuses = [old_doc.get(row["status_field"]) for row in APPROVAL_FLOW if doc.get(row["approver_field"])]
-    if all(s == "Approved" for s in old_statuses):
-        return
-
-    employee_email = doc.get("custom_employee_user_id")
-    if employee_email:
-        leave_link = frappe.utils.get_url() + f"/app/leave-application/{doc.name}"
-        subject = _("Leave Application Approved - {0}").format(doc.name)
-        message = f"""
-        <h3>Leave Application Approved</h3>
-        <p>Your leave application <b>{doc.name}</b> has been approved by all approvers.</p>
-        <table class="table table-bordered small" style="width:100%;border-collapse:collapse;border:1px solid #f3f3f3;max-width:500px;">
-            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Leave Type</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.leave_type}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>From</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.from_date}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>To</b></td><td style="padding:8px;border:1px solid #f3f3f3;">{doc.to_date}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #f3f3f3;"><b>Status</b></td><td style="padding:8px;border:1px solid #f3f3f3;">Approved</td></tr>
-        </table>
-        <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
-        """
-        frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=True)
-
-    if _is_medical_certificate_pending(doc):
-        _notify_medical_certificate_pending(doc)
-
-
 def _notify_rejected(doc, old_doc):
     if not old_doc:
         return
@@ -882,7 +860,10 @@ def _notify_rejected(doc, old_doc):
     </table>
     <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
     """
-    frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+    try:
+        frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+    except Exception:
+        frappe.log_error(title="Leave Rejected Email Failed", message=f"Failed to send rejected leave email to {employee_email}")
 
 
 def _notify_cancelled(doc, old_doc):
@@ -930,7 +911,10 @@ def _notify_cancelled(doc, old_doc):
     </table>
     <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
     """
-    frappe.sendmail(recipients=list(recipients), subject=subject, message=message, now=False)
+    try:
+        frappe.sendmail(recipients=list(recipients), subject=subject, message=message, now=False)
+    except Exception:
+        frappe.log_error(title="Leave Cancelled Email Failed", message=f"Failed to send cancelled leave notification for {doc.name}")
 
 
 def _notify_override_status_change(doc, old_doc):
@@ -1000,7 +984,10 @@ def _notify_override_status_change(doc, old_doc):
     </table>
     <br><a href="{leave_link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
     """
-    frappe.sendmail(recipients=list(recipients), subject=subject, message=message, now=True)
+    try:
+        frappe.sendmail(recipients=list(recipients), subject=subject, message=message, now=True)
+    except Exception:
+        frappe.log_error(title="Override Status Change Email Failed", message=f"Failed to send override status change notification for {doc.name}")
 
 
 # =========================================================
@@ -1018,9 +1005,6 @@ def on_submit_leave_application(doc, method=None):
         "custom_leave_balance_after",
         leave_balance_after
     )
-
-    if _is_medical_certificate_pending(doc):
-        _notify_medical_certificate_pending(doc)
 
     additional = get_sandwich_additional_days(doc.leave_type, doc.from_date, doc.to_date, doc.employee)
     if additional:
@@ -1059,8 +1043,8 @@ def on_cancel_leave_application(doc, method=None):
     )
 
     # Cancel linked Leave Declaration if not already being cancelled from LD
-    # if not frappe.flags.get("cancelling_from_leave_declaration"):
-    #     _cancel_linked_leave_declaration(doc.name)
+    if not frappe.flags.get("cancelling_from_leave_declaration"):
+        _cancel_linked_leave_declaration(doc.name)
 
 
 def _cancel_linked_leave_declaration(la_name):
@@ -1107,8 +1091,8 @@ def cancel_draft_leave(docname):
     doc.db_set("custom_approval_status", "Cancelled")
 
     # Cancel linked Leave Declaration if not already being cancelled from LD
-    # if not frappe.flags.get("cancelling_from_leave_declaration"):
-    #     _cancel_linked_leave_declaration(doc.name)
+    if not frappe.flags.get("cancelling_from_leave_declaration"):
+        _cancel_linked_leave_declaration(doc.name)
 
     doc.add_comment(
         "Info",
@@ -1250,12 +1234,15 @@ def send_first_approval_email(doc):
     </a>
     """
 
-    frappe.sendmail(
-        recipients=[first_approver],
-        subject=subject,
-        message=message,
-        now=False
-    )
+    try:
+        frappe.sendmail(
+            recipients=[first_approver],
+            subject=subject,
+            message=message,
+            now=False,
+        )
+    except Exception:
+        frappe.log_error(title="Leave Submission Email Failed", message=f"Failed to send submission email to {first_approver}")
 
 
 # =========================================================
@@ -1533,7 +1520,6 @@ def patched_get_number_of_leave_days(
                 employee, from_date, to_date, configured_day_names
             )
             return max(flt(result) + additional + configured_holidays - non_configured_working_weekends, 0)
-        return flt(result)
 
     weekdays = _count_weekdays_in_range(from_date, to_date)
     return min(flt(result), weekdays)
