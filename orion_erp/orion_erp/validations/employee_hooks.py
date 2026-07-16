@@ -36,8 +36,8 @@ def _validate_required_certificates(doc):
             _("Missing required certificates: {0}").format(", ".join(missing_display)),
             title=_("Incomplete Certificates Error")
         )
-        
-        
+
+
 def sync_existing_certificates(doc):
     for row in getattr(doc, "custom_certificates", []):
         existing = frappe.get_all(

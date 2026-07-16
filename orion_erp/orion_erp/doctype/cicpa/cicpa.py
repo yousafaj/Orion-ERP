@@ -34,7 +34,7 @@ class CICPA(Document):
 		loa: DF.Link
 		vehicle: DF.Link | None
 	# end: auto-generated types
- 
+
 	def validate(self):
 		if not self.loa or not self.cicpa_type:
 			return
@@ -49,7 +49,7 @@ class CICPA(Document):
 			if loa_doc.remaining_driver_quota <= 0 or loa_doc.total_created_driver_cicpa >= loa_doc.total_driver_quota:
 				frappe.throw(_("Cannot create CICPA: Driver quota exhausted or invalid in LOA {0}.").format(loa_doc.name))
 
-		
+
 	def on_submit(self):
 		if self.loa:
 			try:

@@ -238,7 +238,7 @@ frappe.ui.form.on('Leave Settlement', {
                 );
             });
 
-            
+
             // SET VALUES
             frm.set_value(
                 "total_entitlements",
@@ -392,7 +392,7 @@ function fetch_ticket_allowance(frm) {
         callback: function(r) {
 
             frm.clear_table("ticket_allowance");
-            
+
             if (!r.message || !r.message.length) {
 
                 frm.refresh_field(
@@ -407,7 +407,7 @@ function fetch_ticket_allowance(frm) {
                 let d = frm.add_child(
                     "ticket_allowance"
                 );
-                
+
                 d.from = row.from;
                 d.to = row.to;
                 d.amount = row.amount;

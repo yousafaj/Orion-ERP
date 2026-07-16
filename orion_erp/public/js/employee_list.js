@@ -84,7 +84,7 @@ frappe.views.ListView.prototype.get_meta_html = function (doc) {
 
 
 
-/* 
+/*
    REMOVE "LIKED BY ME" HEADER
 */
 
@@ -133,4 +133,3 @@ frappe.views.ListView.prototype.get_header_html = function () {
 
     return this.get_header_html_skeleton(columns_html, right_html);
 };
-

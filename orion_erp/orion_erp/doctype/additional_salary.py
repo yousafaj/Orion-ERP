@@ -115,7 +115,7 @@ def update_deductions(doc):
             as_dict=1
         )
 
-    
+
 
         if not d:
             continue
@@ -160,7 +160,7 @@ def update_deductions(doc):
                     "reference": updated_reference
                 }
             )
-        
+
             original_parent = frappe.db.get_value(
                 "Employee Deduction Detail",
                 d.child_ref,
@@ -176,7 +176,7 @@ def update_deductions(doc):
 def update_parent_totals(parent):
 
     data = frappe.db.sql("""
-        SELECT 
+        SELECT
             SUM(deduction_amount) as total,
             SUM(paid_amount) as paid,
             SUM(remaining_amount) as remaining,
@@ -473,7 +473,7 @@ def clean_latest_outstanding_refs(doc):
 
     like_pattern = f"%{doc.name}%"
 
-    
+
     # GET LATEST OUTSTANDING ROW FOR THIS REF
     rows = frappe.db.sql("""
         SELECT name, reference

@@ -101,7 +101,7 @@ class LeaveSettlement(Document):
 				continue
 
 			installment_amount = flt(row.remaining_amount)
-			
+
 
 			self.append("leave_settlement_deductions", {
 				"employee": doc.employee,
@@ -272,19 +272,19 @@ def get_ticket_allowance(employee, settlement_date):
 	if not employee or not settlement_date:
 		return []
 
-	
+
 	settlement_date = getdate(settlement_date)
 
 	# Fetch ticket allowance records that match the settlement date
 	tickets = frappe.get_all(
 		"Ticket Allowance Detail",
 		filters={
-			"parent": employee,                
+			"parent": employee,
 			"parenttype": "Employee",
 			"paid": 0,
-			"manual_paid":0,                         
-			"from_date": ["<=", settlement_date],  
-			"to_date": [">=", settlement_date]     
+			"manual_paid":0,
+			"from_date": ["<=", settlement_date],
+			"to_date": [">=", settlement_date]
 		},
 		fields=["from_date", "to_date", "outstanding_amount"],
 		order_by="from_date asc"
@@ -299,7 +299,7 @@ def get_ticket_allowance(employee, settlement_date):
 			"to": t.to_date,
 			"amount": t.outstanding_amount
 		})
-	
+
 	return result
 
 def mark_ticket_paid(doc, method=None):

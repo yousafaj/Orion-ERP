@@ -68,7 +68,7 @@ class EmployeeDeduction(Document):
 
 		if self.docstatus != 1:
 			return
-					
+
 		self.update_child_payment()
 		self.update_parent_totals()
 		self.db_update()
@@ -79,14 +79,14 @@ class EmployeeDeduction(Document):
 		for row in self.outstanding_employee_deduction_detail:
 			row.db_update()
 
-	
+
 	# CHILD PAYMENT LOGIC
 	def update_child_payment(self):
 
 		all_rows = (self.employee_deduction_detail or []) + (self.outstanding_employee_deduction_detail or [])
 
 		for row in all_rows:
-			
+
 			row.deduction_amount = row.deduction_amount or 0
 			row.paid_amount = row.paid_amount or 0
 
@@ -117,7 +117,7 @@ class EmployeeDeduction(Document):
 
 				row.remaining_amount = row.deduction_amount - row.paid_amount
 				row.status = "Paid" if row.remaining_amount == 0 else "Partial Paid"
-				
+
 				row.partial_paid_amount = 0
 				row.partial_paid = 0
 
@@ -130,7 +130,7 @@ class EmployeeDeduction(Document):
 					row.status = "Paid"
 				else:
 					row.status = "Partial Paid"
-			
+
 			if abs(row.remaining_amount) < 0.001:
 				row.remaining_amount = 0
 
@@ -463,7 +463,7 @@ def process_deductions(category, payroll_date):
 					"doctype": "Employee Deduction Detail"
 				})
 
-			
+
 			# OUTSTANDING DEDUCTIONS
 			for row in doc.outstanding_employee_deduction_detail or []:
 

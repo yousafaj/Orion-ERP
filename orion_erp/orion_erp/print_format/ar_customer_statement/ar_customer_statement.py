@@ -32,7 +32,7 @@ def get_enrichment_data(company=None, customer=None):
             company_address = frappe.get_doc(
                 "Address", company_address_name[0].name
             ).as_dict()
-        
+
         result.update({
             "company_name": company_doc.company_name or "",
             "company_address_line1": company_address.get("address_line1", ""),
@@ -47,7 +47,7 @@ def get_enrichment_data(company=None, customer=None):
             "company_trn": company_doc.tax_id or "",
         })
 
-        
+
         from urllib.parse import parse_qs, urlparse
 
         logo_url = frappe.db.get_single_value("Orion Settings", "company_logo")

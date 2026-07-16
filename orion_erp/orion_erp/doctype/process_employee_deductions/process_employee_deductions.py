@@ -26,7 +26,7 @@ class ProcessEmployeeDeductions(Document):
 		payroll_start_date: DF.Date | None
 		year: DF.Link
 	# end: auto-generated types
-	
+
 	def validate(self):
 		validate_duplicate_transaction(self)
 
@@ -496,7 +496,7 @@ def create_additional_salary(self):
 				}
 			)
 
-		
+
 		# INSERT & SUBMIT
 		additional_salary.insert(
 			ignore_permissions=True
@@ -504,7 +504,7 @@ def create_additional_salary(self):
 
 		additional_salary.submit()
 
-		
+
 		# STORE ADDITIONAL SALARY REF
 		for d in rows:
 

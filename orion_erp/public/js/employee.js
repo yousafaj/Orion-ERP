@@ -44,7 +44,7 @@ frappe.ui.form.on('Employee', {
     setup(frm) {
         calculate_probation(frm);
         calculate_total(frm),
-        
+
         // Loop through all fields available in the Employee form
         Object.keys(frm.fields_dict).forEach(fieldname => {
 
@@ -98,7 +98,7 @@ frappe.ui.form.on('Employee', {
         frm.set_query('custom_salary_structure', function() {
             return {
                 filters: {
-                    docstatus: 1  
+                    docstatus: 1
                 }
             };
         });
@@ -118,7 +118,7 @@ frappe.ui.form.on('Employee', {
         }
     },
     refresh: function(frm) {
-        
+
         let grid = frm.fields_dict.custom_ticket_allowance_detail.grid;
 
         grid.cannot_add_rows = true;
@@ -137,13 +137,13 @@ frappe.ui.form.on('Employee', {
                 .attr('readonly', true);
 
         }, 500);
-        
+
         frm.set_query('custom_salary_structure', function() {
             return {
                 filters: {
                     company: frm.doc.company,
                     custom_designation: frm.doc.designation,
-                    docstatus: 1  
+                    docstatus: 1
                 }
             };
         });
@@ -252,7 +252,7 @@ function set_passport_details(frm) {
     let passport_row = frm.doc.custom_certificates.find(row =>
         row.certification_name === "Passport no"
     );
-    
+
     if (passport_row) {
         frm.set_value("passport_number", passport_row.reference_no);
         frm.set_value("date_of_issue", passport_row.date_of_issue);
@@ -403,7 +403,7 @@ frappe.ui.form.on("Ticket Allowance Detail", {
 			return;
 		}
 
-		
+
 		// RENDER REFERENCES TABLE
 		setTimeout(() => {
 

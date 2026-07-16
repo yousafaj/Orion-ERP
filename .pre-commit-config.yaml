@@ -1,6 +1,16 @@
 repos:
-  - repo: https://github.com/returntocorp/semgrep
-    rev: v1.158.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  - repo: https://github.com/semgrep/pre-commit
+    rev: v1.137.0
     hooks:
       - id: semgrep
-        args: ["--config", "auto"]
+        args:
+          - --config=auto
