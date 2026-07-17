@@ -329,24 +329,32 @@ def get_available_leave_applications(doctype, txt, searchfield, start, page_leng
 
 	unpaid_types = frappe.get_all("Leave Type", filters={"is_lwp": 1}, pluck="name")
 
-	query_filters = {
-		"docstatus": 1,
-		"custom_approval_status": "Approved",
-		"custom_leave_declaration": ["is", "not set"],
-	}
-	if unpaid_types:
-		query_filters["leave_type"] = ["not in", unpaid_types]
-	if employee:
-		query_filters["employee"] = employee
-	if txt:
-		query_filters["employee_name"] = ["like", f"%{txt}%"]
+	from frappe.query_builder import DocType
 
-	apps = frappe.get_all(
-		"Leave Application",
-		filters=query_filters,
-		fields=["name", "employee_name", "leave_type", "from_date", "to_date"],
-		order_by="from_date desc",
+	LA = DocType("Leave Application")
+
+	query = (
+		frappe.qb.from_(LA)
+		.select(LA.name, LA.employee_name, LA.leave_type, LA.from_date, LA.to_date)
+		.where(LA.docstatus == 1)
+		.where(LA.custom_approval_status == "Approved")
+		.where(LA.custom_leave_declaration.isnull())
+		.orderby(LA.from_date, order=frappe.qb.desc)
 	)
+
+	if unpaid_types:
+		query = query.where(LA.leave_type.notin(unpaid_types))
+	if employee:
+		query = query.where(LA.employee == employee)
+	if txt:
+		search_term = f"%{txt}%"
+		query = query.where(
+			(LA.name.like(search_term))
+			| (LA.employee_name.like(search_term))
+			| (LA.leave_type.like(search_term))
+		)
+
+	apps = query.run(as_dict=True)
 	return [[a.name, a.employee_name or "", a.leave_type or "", str(a.from_date) if a.from_date else "", str(a.to_date) if a.to_date else ""] for a in apps]
 
 
