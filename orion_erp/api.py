@@ -1134,3 +1134,93 @@ def get_current_month_leave_applications():
         },
         "rows": detail,
     }
+
+
+# ---------------------------------------------------------------------------
+# Rejoining Overdue Dashboard
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+@frappe.read_only()
+def get_rejoining_overdue():
+    """Leave applications whose end date has passed but no Rejoining Form exists."""
+    from frappe.utils import add_days, date_diff
+
+    today_date = getdate(today())
+
+    LA = frappe.qb.DocType("Leave Application")
+    RF = frappe.qb.DocType("Rejoining Form")
+
+    # Subquery: leave applications that already have a submitted Rejoining Form
+    # Must filter out NULLs — SQL NOT IN with NULL returns no rows at all
+    rejoining_sub = (
+        frappe.qb.from_(RF)
+        .select(RF.leave_application)
+        .where((RF.docstatus == 1) & (RF.leave_application.isnotnull()))
+    )
+
+    rows = (
+        frappe.qb.from_(LA)
+        .select(
+            LA.name,
+            LA.employee,
+            LA.employee_name,
+            LA.department,
+            LA.company,
+            LA.leave_type,
+            LA.from_date,
+            LA.to_date,
+            LA.total_leave_days,
+            LA.status,
+        )
+        .where(
+            (LA.docstatus == 1)
+            & (LA.status.isin(["Submitted", "Approved"]))
+            & (LA.to_date < today_date)
+            & (LA.name.notin(rejoining_sub))
+        )
+        .orderby(LA.to_date, order=frappe.qb.asc)
+        .limit(5000)
+    ).run(as_dict=True)
+
+    detail = []
+    total = len(rows)
+    bucket_1_7 = 0
+    bucket_8_30 = 0
+    bucket_30_plus = 0
+
+    for r in rows:
+        to_date = getdate(r.get("to_date"))
+        expected_rejoining = add_days(to_date, 1)
+        overdue_days = date_diff(today_date, to_date)
+
+        if overdue_days <= 7:
+            bucket_1_7 += 1
+        elif overdue_days <= 30:
+            bucket_8_30 += 1
+        else:
+            bucket_30_plus += 1
+
+        detail.append({
+            "employee": r.get("employee", ""),
+            "employee_name": r.get("employee_name", ""),
+            "name": r.get("name", ""),
+            "leave_type": r.get("leave_type", ""),
+            "from_date": str(r.get("from_date") or ""),
+            "to_date": str(r.get("to_date") or ""),
+            "leave_end_date": str(r.get("to_date") or ""),
+            "expected_rejoining_date": str(expected_rejoining),
+            "overdue_days": overdue_days,
+            "department": r.get("department", ""),
+            "company": r.get("company", ""),
+        })
+
+    return {
+        "kpi": {
+            "total": total,
+            "overdue_1_7": bucket_1_7,
+            "overdue_8_30": bucket_8_30,
+            "overdue_30_plus": bucket_30_plus,
+        },
+        "rows": detail,
+    }
