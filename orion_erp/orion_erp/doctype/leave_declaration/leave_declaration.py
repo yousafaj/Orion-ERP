@@ -279,7 +279,7 @@ def _get_employee_active_assets(employee):
 		SELECT ahd.*
 		FROM `tabAsset Handover Detail` ahd
 		INNER JOIN `tabAsset Handover` ah ON ah.name = ahd.parent
-		WHERE ah.employee = %s
+		WHERE ah.employee = %s AND ahd.asset_status = 'Returned'
 		ORDER BY ah.creation DESC
 		""",
 		employee,

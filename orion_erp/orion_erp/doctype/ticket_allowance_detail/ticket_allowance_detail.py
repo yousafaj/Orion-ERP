@@ -24,6 +24,7 @@ class TicketAllowanceDetail(Document):
 		parentfield: DF.Data
 		parenttype: DF.Data
 		partial_paid: DF.Check
+		pro_rata_amount: DF.Currency
 		references_data: DF.LongText | None
 		to_date: DF.Date | None
 	# end: auto-generated types

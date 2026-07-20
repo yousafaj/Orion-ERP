@@ -46,12 +46,13 @@ def validate_rejoining_approval(doc, method=None):
                     _("Rejoining Form cannot be submitted directly. All approvals must be completed first.")
                 )
 
-    # Validate Approved Rejoining Date equals Leave End Date
+    # Validate Approved Rejoining Date is Leave End Date + 1 day
     if doc.approved_rejoining_date and doc.leave_end_date:
-        if getdate(doc.approved_rejoining_date) != getdate(doc.leave_end_date):
+        expected_rejoining = add_days(getdate(doc.leave_end_date), 1)
+        if getdate(doc.approved_rejoining_date) != expected_rejoining:
             frappe.throw(
-                _("Approved Rejoining Date must be equal to Leave End Date. Approved Rejoining Date: {0}, Leave End Date: {1}").format(
-                    doc.approved_rejoining_date, doc.leave_end_date
+                _("Approved Rejoining Date must be the day after Leave End Date. Approved Rejoining Date: {0}, expected: {1}").format(
+                    doc.approved_rejoining_date, expected_rejoining
                 )
             )
 

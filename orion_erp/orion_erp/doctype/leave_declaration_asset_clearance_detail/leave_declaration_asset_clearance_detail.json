@@ -123,12 +123,13 @@
    "non_negative": 1,
    "read_only": 1
   },
-  {
-   "fieldname": "return_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Return Date"
-  },
+   {
+    "fieldname": "return_date",
+    "fieldtype": "Date",
+    "in_list_view": 1,
+    "label": "Return Date",
+    "reqd": 1
+   },
   {
    "fieldname": "remarks",
    "fieldtype": "Text",
