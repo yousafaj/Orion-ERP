@@ -105,14 +105,17 @@ frappe.ui.form.on('Leave Settlement', {
                 "populate_leave_settlement_deductions"
             ).then(() => {
                 frm.refresh_field("leave_settlement_deductions");
+                fetch_ticket_allowance(frm);
+                populate_leave_pay(frm);
+                set_delete_buttons_visibility(frm);
             });
         } else {
             frm.clear_table("leave_settlement_deductions");
             frm.refresh_field("leave_settlement_deductions");
+            fetch_ticket_allowance(frm);
+            populate_leave_pay(frm);
+            set_delete_buttons_visibility(frm);
         }
-        fetch_ticket_allowance(frm);
-        populate_leave_pay(frm);
-        set_delete_buttons_visibility(frm);
     },
     employee: function(frm) {
         const deduction_allowed_types = [
@@ -349,6 +352,8 @@ function calculate_row(frm, cdt, cdn){
 
 function fetch_ticket_allowance(frm) {
 
+    frm.clear_table("ticket_allowance");
+    frm.refresh_field("ticket_allowance");
 
     if (!frm.doc.employee) {
         return;
@@ -370,13 +375,6 @@ function fetch_ticket_allowance(frm) {
             frm.doc.type_of_settlement
         )
     ) {
-
-        frm.clear_table("ticket_allowance");
-
-        frm.refresh_field(
-            "ticket_allowance"
-        );
-
         return;
     }
 
@@ -386,7 +384,8 @@ function fetch_ticket_allowance(frm) {
 
         args: {
             employee: frm.doc.employee,
-            settlement_date: frm.doc.date_of_settlement
+            settlement_date: frm.doc.date_of_settlement,
+            settlement_type: frm.doc.type_of_settlement
         },
 
         callback: function(r) {
