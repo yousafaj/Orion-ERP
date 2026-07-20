@@ -28,8 +28,15 @@
   "column_break_financial",
   "vehicle_handover",
   "accommodation_clearances",
-  "uniform",
-  "asset_section",
+   "uniform",
+   "clearance_section",
+   "type_of_clearance",
+   "column_break_clearance",
+    "hrd_other_details",
+   "transport_other_detail",
+   "administration_other_detail",
+   "operations_other_details",
+   "asset_section",
   "asset_clearance_detail",
   "access_card_section",
   "access_card_detail",
@@ -176,13 +183,48 @@
    "fieldtype": "Data",
    "label": "Accommodation Clearances"
   },
-  {
-   "fieldname": "uniform",
-   "fieldtype": "Data",
-   "label": "Uniform"
-  },
-  {
-   "fieldname": "asset_section",
+   {
+    "fieldname": "uniform",
+    "fieldtype": "Data",
+    "label": "Uniform"
+   },
+   {
+    "fieldname": "clearance_section",
+    "fieldtype": "Section Break",
+    "label": "Clearance Details"
+   },
+   {
+    "fieldname": "type_of_clearance",
+    "fieldtype": "Link",
+    "label": "Type of Clearance",
+    "options": "Type of Clearance"
+   },
+   {
+    "fieldname": "column_break_clearance",
+    "fieldtype": "Column Break"
+   },
+   {
+    "fieldname": "hrd_other_details",
+    "fieldtype": "Data",
+    "label": "HRD Other Details"
+   },
+   {
+    "fieldname": "transport_other_detail",
+    "fieldtype": "Data",
+    "label": "TRANSPORT Other Detail"
+   },
+   {
+    "fieldname": "administration_other_detail",
+    "fieldtype": "Data",
+    "label": "ADMINISTRATION Other Detail"
+   },
+   {
+    "fieldname": "operations_other_details",
+    "fieldtype": "Data",
+    "label": "OPERATIONS Other Details"
+   },
+   {
+    "fieldname": "asset_section",
    "fieldtype": "Section Break",
    "label": "Asset Clearance"
   },

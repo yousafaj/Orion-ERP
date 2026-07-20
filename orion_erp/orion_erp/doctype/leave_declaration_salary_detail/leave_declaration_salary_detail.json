@@ -7,24 +7,32 @@
  "engine": "InnoDB",
  "field_order": [
   "month",
+  "type",
   "amount"
  ],
  "fields": [
-  {
-   "fieldname": "month",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Month",
-   "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
-   "reqd": 1
-  },
-  {
-   "fieldname": "amount",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Amount",
-   "reqd": 1
-  }
+   {
+    "fieldname": "month",
+    "fieldtype": "Select",
+    "in_list_view": 1,
+    "label": "Month",
+    "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
+    "reqd": 1
+   },
+   {
+    "fieldname": "type",
+    "fieldtype": "Select",
+    "in_list_view": 1,
+    "label": "Type",
+    "options": "With OT\nWithout OT"
+   },
+   {
+    "fieldname": "amount",
+    "fieldtype": "Currency",
+    "in_list_view": 1,
+    "label": "Amount",
+    "reqd": 1
+   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
