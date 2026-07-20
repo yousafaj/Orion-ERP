@@ -120,6 +120,7 @@ class LEAVEDECLARATION(Document):
 		self.leave_start_date = la.from_date
 		self.leave_end_date = la.to_date
 		self.leaving_date = la.from_date
+		self.leave_days = la.total_leave_days
 
 		emp = frappe.get_cached_doc("Employee", self.employee)
 		self.designation = emp.designation
@@ -315,6 +316,7 @@ def get_leave_application_data(leave_application):
 		"leaving_date": la.from_date,
 		"designation": emp.designation,
 		"passport_number": passport,
+		"total_leave_days": la.total_leave_days,
 	}
 
 

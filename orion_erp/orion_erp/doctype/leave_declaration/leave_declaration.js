@@ -51,11 +51,8 @@ frappe.ui.form.on("LEAVE DECLARATION", {
                     frm.set_value("designation", d.designation);
                     frm.set_value("passport_number", d.passport_number);
 
-                    if (d.leave_start_date && d.leave_end_date) {
-                        let start = frappe.datetime.str_to_obj(d.leave_start_date);
-                        let end = frappe.datetime.str_to_obj(d.leave_end_date);
-                        let diff = frappe.datetime.get_day_diff(end, start) + 1;
-                        frm.set_value("leave_days", diff);
+                    if (d.total_leave_days !== undefined) {
+                        frm.set_value("leave_days", d.total_leave_days);
                     }
 
                     frappe.call({
@@ -146,7 +143,6 @@ frappe.ui.form.on("LEAVE DECLARATION", {
     },
 
     leave_start_date: function(frm) {
-        calculate_leave_days(frm);
         if (frm.doc.employee && frm.doc.leave_type && frm.doc.leave_start_date) {
             frappe.call({
                 method: "orion_erp.orion_erp.doctype.leave_declaration.leave_declaration.get_leave_balance",
@@ -163,37 +159,6 @@ frappe.ui.form.on("LEAVE DECLARATION", {
     },
 
     leave_end_date: function(frm) {
-        calculate_leave_days(frm);
     },
 
-    rejoining_date: function(frm) {
-        if (frm.doc.leave_end_date && frm.doc.rejoining_date) {
-            let end = frappe.datetime.str_to_obj(frm.doc.leave_end_date);
-            let rj = frappe.datetime.str_to_obj(frm.doc.rejoining_date);
-            if (frappe.datetime.get_day_diff(rj, end) < 0) {
-                frappe.msgprint({
-                    title: __("Early Return"),
-                    indicator: "orange",
-                    message: __("Employee is returning early. Leave application will be adjusted accordingly."),
-                    alert: true
-                });
-            } else if (frappe.datetime.get_day_diff(rj, end) > 0) {
-                frappe.msgprint({
-                    title: __("Extended Leave"),
-                    indicator: "orange",
-                    message: __("Employee is returning late. Extended leave application will be created."),
-                    alert: true
-                });
-            }
-        }
-    }
 });
-
-function calculate_leave_days(frm) {
-    if (frm.doc.leave_start_date && frm.doc.leave_end_date) {
-        let start = frappe.datetime.str_to_obj(frm.doc.leave_start_date);
-        let end = frappe.datetime.str_to_obj(frm.doc.leave_end_date);
-        let diff = frappe.datetime.get_day_diff(end, start) + 1;
-        frm.set_value("leave_days", diff);
-    }
-}
