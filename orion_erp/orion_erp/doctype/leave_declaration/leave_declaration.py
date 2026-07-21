@@ -50,6 +50,7 @@ class LEAVEDECLARATION(Document):
 			self._validate_leave_application_not_used()
 			self._validate_leave_type_not_unpaid()
 			self._fetch_data_from_leave_application()
+		self._validate_asset_clearance_return_date()
 		self._fetch_outstanding_advance()
 
 	def on_submit(self):
@@ -111,6 +112,14 @@ class LEAVEDECLARATION(Document):
 					_("Leave Declaration is not applicable for Unpaid Leave types.")
 				)
 
+	def _validate_asset_clearance_return_date(self):
+		for row in self.asset_clearance_detail or []:
+			if row.asset_status == "Returned" and not row.return_date:
+				frappe.throw(
+					_("Row #{0}: Return Date is mandatory when Asset Status is Returned.")
+					.format(row.idx)
+				)
+
 	def _fetch_data_from_leave_application(self):
 		la = frappe.get_doc("Leave Application", self.leave_application)
 		self.employee = la.employee
@@ -145,7 +154,6 @@ class LEAVEDECLARATION(Document):
 			row.asset_status = asset.get("asset_status")
 			row.qty = asset.get("qty")
 			row.return_date = asset.get("return_date")
-			row.remarks = asset.get("remarks")
 			row.sim_card_number = asset.get("sim_card_number")
 			row.network = asset.get("network")
 			row.sim_status = asset.get("sim_status")
@@ -280,7 +288,7 @@ def _get_employee_active_assets(employee):
 		SELECT ahd.*
 		FROM `tabAsset Handover Detail` ahd
 		INNER JOIN `tabAsset Handover` ah ON ah.name = ahd.parent
-		WHERE ah.employee = %s AND ahd.asset_status = 'Returned'
+		WHERE ah.employee = %s AND ahd.asset_status != 'Returned'
 		ORDER BY ah.creation DESC
 		""",
 		employee,

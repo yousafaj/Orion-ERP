@@ -71,7 +71,6 @@ frappe.ui.form.on("LEAVE DECLARATION", {
                                         asset_status: asset.asset_status,
                                         qty: asset.qty,
                                         return_date: asset.return_date,
-                                        remarks: asset.remarks,
                                         sim_card_number: asset.sim_card_number,
                                         network: asset.network,
                                         sim_status: asset.sim_status,
@@ -161,4 +160,13 @@ frappe.ui.form.on("LEAVE DECLARATION", {
     leave_end_date: function(frm) {
     },
 
+});
+
+frappe.ui.form.on("Leave Declaration Asset Clearance Detail", {
+    asset_status: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        if (row.asset_status === "Returned" && !row.return_date) {
+            frappe.msgprint(__("Return Date is mandatory when Asset Status is Returned."));
+        }
+    },
 });

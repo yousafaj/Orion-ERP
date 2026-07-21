@@ -83,20 +83,26 @@ def validate_leave_approval(doc, method=None):
                 _("Leave Application cannot be submitted until all approvers have approved it.")
             )
 
+    old_doc = doc.get_doc_before_save()
+
+    if not old_doc or (old_doc.docstatus == 2 and doc.docstatus == 0 and not doc.amended_from):
+        if not doc.custom_last_status_change:
+            doc.custom_last_status_change = now_datetime()
+        doc.custom_approval_status = "Open"
+        doc.status = "Open"
+        doc.custom_status_approver1 = "Open"
+        doc.custom_status_approver2 = "Open"
+        doc.custom_status_approver4 = "Open"
+        doc.custom_status_approver5 = "Open"
+        doc.custom_reminder_sent = 0
+        doc.custom_escalation_sent = 0
+        return
+
     if current_user == "Administrator":
         return
 
     # Allow the send_for_approval flow
     if frappe.flags.get("in_send_for_approval"):
-        return
-
-    old_doc = doc.get_doc_before_save()
-
-    if not old_doc:
-        if not doc.custom_last_status_change:
-            doc.custom_last_status_change = now_datetime()
-        if not doc.custom_approval_status:
-            doc.custom_approval_status = "Open"
         return
 
     # If sent for approval, employee cannot edit (unless cancelling all statuses)
@@ -466,7 +472,17 @@ def add_eligibility_warning(doc, title, message):
 
 
 def validate_annual_leave_avail(doc, method=None):
-    if doc.leave_type != "ANNUAL LEAVE" or doc.docstatus == 1:
+    if doc.docstatus == 1:
+        return
+
+    settings = frappe.get_single("Orion Settings")
+    configured_types = [
+        row.leave_type
+        for row in (getattr(settings, "leave_types_requiring_one_year_service", None) or [])
+        if row.leave_type
+    ]
+
+    if not configured_types or doc.leave_type not in configured_types:
         return
 
     employee_doj = frappe.db.get_value("Employee", doc.employee, "date_of_joining")
@@ -479,7 +495,7 @@ def validate_annual_leave_avail(doc, method=None):
     if doj > today:
         add_eligibility_warning(
             doc,
-            "Annual Leave Eligibility",
+            "Leave Eligibility",
             "Employee has not yet joined. Recruitment date is {0}.".format(employee_doj)
         )
         return
@@ -490,19 +506,21 @@ def validate_annual_leave_avail(doc, method=None):
         SELECT COALESCE(SUM(leaves), 0)
         FROM `tabLeave Ledger Entry`
         WHERE employee = %s
-          AND leave_type = 'ANNUAL LEAVE'
+          AND leave_type = %s
           AND docstatus = 1
           AND is_expired = 0
-    """, doc.employee)[0][0] or 0
+    """, (doc.employee, doc.leave_type))[0][0] or 0
 
     balance = flt(balance)
 
     if completed_months < 12:
         add_eligibility_warning(
             doc,
-            "Annual Leave Eligibility",
-            "You must complete 1 year of service to apply for {0} days Annual Leave. "
-            "Your current accrued balance is {1} days.".format(doc.total_leave_days, balance)
+            "Leave Eligibility",
+            "You must complete 1 year of service to apply for {0} days {1}. "
+            "Your current accrued balance is {2} days.".format(
+                doc.total_leave_days, doc.leave_type, balance
+            )
         )
 
 
@@ -553,35 +571,43 @@ def validate_medical_certificate(doc, method=None):
     )
 
 def validate_paternity_leave(doc, method=None):
-    if doc.leave_type != "Paid Paternity Leave":
+    settings = frappe.get_single("Orion Settings")
+    configured_type = getattr(settings, "paternity_leave_type", None)
+    eligibility_months = getattr(settings, "paternity_leave_eligibility_months", None) or 6
+
+    if not configured_type or doc.leave_type != configured_type:
         return
 
     if not doc.custom_child_date_of_birth:
         add_eligibility_warning(
             doc,
             "Paternity Leave Eligibility",
-            "Child's Date of Birth is required for Paid Paternity Leave."
+            "Child's Date of Birth is required for {0}.".format(doc.leave_type)
         )
         return
 
     child_dob = getdate(doc.custom_child_date_of_birth)
-    six_months_later = add_months(child_dob, 6)
+    cutoff_date = add_months(child_dob, eligibility_months)
 
-    if doc.from_date and getdate(doc.from_date) > six_months_later:
+    if doc.from_date and getdate(doc.from_date) > cutoff_date:
         add_eligibility_warning(
             doc,
             "Paternity Leave Eligibility",
-            "Paid Paternity Leave must be taken within 6 months of the child's date of birth. From Date ({0}) exceeds the 6-month period from child's date of birth ({1}).".format(
+            "{0} must be taken within {1} months of the child's date of birth. From Date ({2}) exceeds the {1}-month period from child's date of birth ({3}).".format(
+                doc.leave_type,
+                eligibility_months,
                 str(doc.from_date),
                 str(doc.custom_child_date_of_birth)
             )
         )
 
-    if doc.to_date and getdate(doc.to_date) > six_months_later:
+    if doc.to_date and getdate(doc.to_date) > cutoff_date:
         add_eligibility_warning(
             doc,
             "Paternity Leave Eligibility",
-            "Paid Paternity Leave must be taken within 6 months of the child's date of birth. To Date ({0}) exceeds the 6-month period from child's date of birth ({1}).".format(
+            "{0} must be taken within {1} months of the child's date of birth. To Date ({2}) exceeds the {1}-month period from child's date of birth ({3}).".format(
+                doc.leave_type,
+                eligibility_months,
                 str(doc.to_date),
                 str(doc.custom_child_date_of_birth)
             )
@@ -589,15 +615,25 @@ def validate_paternity_leave(doc, method=None):
 
 
 def validate_hajj_umrah_leave(doc, method=None):
-    if doc.leave_type != "HAJI/ UMRAH LEAVE":
+    settings = frappe.get_single("Orion Settings")
+    configured_type = getattr(settings, "hajj_umrah_leave_type", None)
+
+    if not configured_type or doc.leave_type != configured_type:
         return
 
+    eligible_religions_str = getattr(settings, "hajj_umrah_eligible_religions", None) or "Muslim"
+    eligible_religions = [r.strip() for r in eligible_religions_str.split(",") if r.strip()]
+    allow_once_only = getattr(settings, "hajj_umrah_allow_once_only", 1)
+
     religion = frappe.db.get_value("Employee", doc.employee, "custom_religion")
-    if religion != "Muslim":
+    if religion not in eligible_religions:
         add_eligibility_warning(
             doc,
             "Ineligible",
-            "Hajj/Umrah Leave is only applicable to Muslim employees."
+            "{0} is only applicable to {1} employees.".format(
+                doc.leave_type,
+                "/".join(eligible_religions)
+            )
         )
         return
 
@@ -606,26 +642,30 @@ def validate_hajj_umrah_leave(doc, method=None):
         add_eligibility_warning(
             doc,
             "Exceeds Maximum Leave Days",
-            "Hajj/Umrah Leave cannot exceed {0} days as per the Leave Type configuration. You have requested {1} days.".format(
+            "{0} cannot exceed {1} days as per the Leave Type configuration. You have requested {2} days.".format(
+                doc.leave_type,
                 str(max_days),
                 str(doc.total_leave_days)
             )
         )
 
-    existing = frappe.db.exists("Leave Application", {
-        "employee": doc.employee,
-        "leave_type": doc.leave_type,
-        "docstatus": 1,
-        "status": "Approved",
-        "name": ["!=", doc.name]
-    })
+    if allow_once_only:
+        existing = frappe.db.exists("Leave Application", {
+            "employee": doc.employee,
+            "leave_type": doc.leave_type,
+            "docstatus": 1,
+            "status": "Approved",
+            "name": ["!=", doc.name]
+        })
 
-    if existing:
-        add_eligibility_warning(
-            doc,
-            "Already Availed",
-            "Employee has already availed Hajj/Umrah Leave. This leave type can only be availed once during the entire employment period."
-        )
+        if existing:
+            add_eligibility_warning(
+                doc,
+                "Already Availed",
+                "Employee has already availed {0}. This leave type can only be availed once during the entire employment period.".format(
+                    doc.leave_type
+                )
+            )
 
 
 def reset_status_on_amend(doc, method=None):

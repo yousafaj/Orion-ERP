@@ -324,7 +324,10 @@ def auto_allocate_hajj_umrah(doc, method):
 
 
 def _get_hajj_umrah_leave_type():
-    leave_type_name = "HAJI/ UMRAH LEAVE"
+    settings = frappe.get_single("Orion Settings")
+    leave_type_name = getattr(settings, "hajj_umrah_leave_type", None)
+    if not leave_type_name:
+        return None
     if not frappe.db.exists("Leave Type", {"leave_type_name": leave_type_name}):
         return None
     return frappe.db.get_value("Leave Type", {"leave_type_name": leave_type_name}, "name")

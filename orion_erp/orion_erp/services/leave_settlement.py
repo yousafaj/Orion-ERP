@@ -6,7 +6,7 @@ from datetime import timedelta
 
 
 @frappe.whitelist()
-def get_leave_pay_data(employee, date_of_settlement, doj=None):
+def get_leave_pay_data(employee, date_of_settlement, doj=None, leave_type=None):
     if not employee or not date_of_settlement:
         return []
 
@@ -17,28 +17,46 @@ def get_leave_pay_data(employee, date_of_settlement, doj=None):
         get_leave_allocation_records,
     )
 
-    allocation_records = get_leave_allocation_records(employee, date_of_settlement, "ANNUAL LEAVE")
-    allocation = allocation_records.get("ANNUAL LEAVE", frappe._dict())
+    if leave_type:
+        leave_types = [leave_type]
+    else:
+        settings = frappe.get_single("Orion Settings")
+        leave_types = [
+            row.leave_type
+            for row in (getattr(settings, "leave_types_for_accrual", None) or [])
+            if row.leave_type
+        ]
 
-    if not allocation:
+    if not leave_type and not leave_types:
         return []
 
-    balance = get_leave_balance_on(employee, "ANNUAL LEAVE", date_of_settlement)
-    leave_balance = flt(balance)
+    result = []
 
-    if leave_balance <= 0:
-        return []
+    for lt in leave_types:
+        allocation_records = get_leave_allocation_records(employee, date_of_settlement, lt)
+        allocation = allocation_records.get(lt, frappe._dict())
 
-    offer_salary = flt(frappe.db.get_value("Employee", employee, "custom_total_salary_as_per_offer_letter"))
-    amount = (offer_salary / 30) * leave_balance if offer_salary > 0 else 0
+        if not allocation:
+            continue
 
-    return [{
-        "leave_type": "ANNUAL LEAVE",
-        "from": doj,
-        "to": str(date_of_settlement),
-        "tenure": leave_balance,
-        "amount": amount
-    }]
+        balance = get_leave_balance_on(employee, lt, date_of_settlement)
+        leave_balance = flt(balance)
+
+        if leave_balance <= 0:
+            continue
+
+        offer_salary = flt(frappe.db.get_value("Employee", employee, "custom_total_salary_as_per_offer_letter"))
+        amount = (offer_salary / 30) * leave_balance if offer_salary > 0 else 0
+
+        result.append({
+            "leave_type": lt,
+            "from": doj,
+            "to": str(date_of_settlement),
+            "tenure": leave_balance,
+            "amount": amount
+        })
+
+    return result
 
 
 @frappe.whitelist()
