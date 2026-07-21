@@ -69,6 +69,10 @@ frappe.ui.form.on("Rejoining Form", {
             callback: function(r) {
                 if (!r.message) return;
                 let data = r.message;
+
+                // Skip date change recalculation while populating from Leave Application
+                frm._populating_from_la = true;
+
                 frm.set_value("employee", data.employee || "");
                 frm.set_value("employee_name", data.employee_name || "");
                 frm.set_value("leave_type", data.leave_type || "");
@@ -80,6 +84,8 @@ frappe.ui.form.on("Rejoining Form", {
                 if (data.tentative_rejoining_date) {
                     frm.set_value("tentative_rejoining_date", data.tentative_rejoining_date);
                 }
+
+                frm._populating_from_la = false;
 
                 frappe.call({
                     method: "orion_erp.orion_erp.validations.rejoining_form.get_leave_declaration_assets",

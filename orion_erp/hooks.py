@@ -273,7 +273,10 @@ doc_events = {
         "autoname": "orion_erp.orion_erp.scripts.autoname_assets.autoname_asset"
     },
     "Leave Type": {
-        "validate": "orion_erp.orion_erp.validations.leave_type.validate_no_casual_leave"
+        "validate": [
+              "orion_erp.orion_erp.validations.leave_type.validate_no_casual_leave",
+              "orion_erp.orion_erp.validations.leave_type.validate_earned_leave_not_with_accrual"
+         ]
     },
     "Leave Encashment": {
         "validate": "orion_erp.orion_erp.validations.leave_encashment.validate_leave_encashment",
