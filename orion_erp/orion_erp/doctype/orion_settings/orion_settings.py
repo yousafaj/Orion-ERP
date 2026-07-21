@@ -32,6 +32,13 @@ class OrionSettings(Document):
 		last_month_for_which_payment_processed_oe: DF.Date | None
 		leave_escalation_rules: DF.Table[LeaveEscalationRule]
 		leave_types_within_six_months: DF.TableMultiSelect[LeaveTypeDetails]
+		leave_types_for_accrual: DF.TableMultiSelect[LeaveTypeDetails]
+		leave_types_requiring_one_year_service: DF.TableMultiSelect[LeaveTypeDetails]
+		hajj_umrah_allow_once_only: DF.Check
+		hajj_umrah_eligible_religions: DF.Data | None
+		hajj_umrah_leave_type: DF.Link | None
+		paternity_leave_eligibility_months: DF.Int
+		paternity_leave_type: DF.Link | None
 		manual_paid_check_read_only_date: DF.Date | None
 		payroll_month_date_noe: DF.Date | None
 		payroll_month_date_oe: DF.Date | None
