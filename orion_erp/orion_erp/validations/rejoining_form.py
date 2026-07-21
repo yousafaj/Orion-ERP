@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import add_days, flt, getdate, now_datetime
+from frappe.utils import add_days, getdate, now_datetime
 
 
 APPROVAL_FLOW = [
@@ -61,7 +61,7 @@ def validate_rejoining_approval(doc, method=None):
         la = frappe.db.get_value(
             "Leave Application",
             doc.leave_application,
-            ["employee", "docstatus"],
+            ["employee", "docstatus", "leave_type"],
             as_dict=True
         )
         if not la:
@@ -88,6 +88,15 @@ def validate_rejoining_approval(doc, method=None):
                     doc.leave_application, duplicate
                 )
             )
+
+        # Recalculate leave_days_approved using the same sandwich-aware logic as Leave Applications
+        if doc.leave_start_date and doc.leave_end_date:
+            from orion_erp.orion_erp.validations.leave_application import patched_get_number_of_leave_days
+            calculated_days = patched_get_number_of_leave_days(
+                doc.employee, la.leave_type, doc.leave_start_date, doc.leave_end_date
+            )
+            if calculated_days is not None and doc.leave_days_approved != calculated_days:
+                doc.leave_days_approved = calculated_days
 
     if current_user == "Administrator":
         return
@@ -474,57 +483,6 @@ def on_submit_rejoining_form(doc, method=None):
 
 	_update_asset_status_on_rejoin(doc)
 
-	existing_la = _get_existing_leave_application(doc)
-
-	ld_end = getdate(_get_leave_declaration_end_date(doc))
-	rj_date = getdate(doc.approved_rejoining_date)
-
-	if rj_date == ld_end:
-		return
-
-	if rj_date < ld_end:
-		# Early return — cancel old LA, create new one ending on day before rejoining
-		cancelled_la_name = existing_la["name"] if existing_la else None
-		if existing_la:
-			_cancel_leave_application(existing_la["name"])
-			doc.db_set("custom_cancelled_leave_application", existing_la["name"])
-		last_leave_day = add_days(rj_date, -1)
-		if getdate(doc.leave_start_date) <= last_leave_day:
-			new_la = _create_leave_application(doc, doc.leave_start_date, last_leave_day)
-			doc.db_set("custom_created_leave_application", new_la.name)
-			frappe.msgprint(
-				_("Leave application {0} created from {1} to {2} due to early rejoining.").format(
-					frappe.bold(new_la.name), doc.leave_start_date, last_leave_day
-				),
-				title=_("Leave Application Adjusted"),
-				indicator="orange"
-			)
-		else:
-			frappe.msgprint(
-				_("Employee returned before leave started. Previous leave application {0} cancelled.").format(
-					frappe.bold(cancelled_la_name or "N/A")
-				),
-				title=_("Leave Cancelled"),
-				indicator="orange"
-			)
-		return
-
-	if rj_date > ld_end:
-		# Extended leave — create additional leave application for extra days
-		ext_from = add_days(ld_end, 1)
-		last_leave_day = add_days(rj_date, -1)
-		if ext_from <= last_leave_day:
-			ext_la = _create_leave_application(doc, ext_from, last_leave_day)
-			doc.db_set("custom_created_leave_application", ext_la.name)
-			frappe.msgprint(
-				_("Leave application {0} created for extended leave from {1} to {2}. Kindly approve the same.").format(
-					frappe.bold(ext_la.name), ext_from, last_leave_day
-				),
-				title=_("Extended Leave Application Created"),
-				indicator="orange"
-			)
-		return
-
 
 def _handle_linked_leave_application(doc):
     la_name = doc.get("leave_application")
@@ -536,15 +494,31 @@ def _handle_linked_leave_application(doc):
 
     original_la = frappe.get_doc("Leave Application", la_name)
     new_from = getdate(doc.leave_start_date)
-    new_to = getdate(doc.leave_end_date)
     orig_from = getdate(original_la.from_date)
     orig_to = getdate(original_la.to_date)
+
+    # Calculate the correct leave end date from the approved rejoining date
+    # The last day of leave is always the day before the rejoining date
+    if doc.approved_rejoining_date:
+        new_to = add_days(getdate(doc.approved_rejoining_date), -1)
+    else:
+        new_to = getdate(doc.leave_end_date)
 
     if new_from == orig_from and new_to == orig_to:
         return
 
     _cancel_leave_application(la_name)
     doc.db_set("custom_cancelled_leave_application", la_name)
+
+    if new_from > new_to:
+        frappe.msgprint(
+            _("Employee returned before leave started. Previous leave application {0} cancelled.").format(
+                frappe.bold(la_name)
+            ),
+            title=_("Leave Cancelled"),
+            indicator="orange"
+        )
+        return
 
     new_la = _create_and_submit_leave_application(doc, new_from, new_to)
     doc.db_set("custom_created_leave_application", new_la.name)
@@ -655,83 +629,6 @@ def on_cancel_rejoining_form(doc, method=None):
 				title=_("Rejoining Form Cancel Error"),
 				message=_("Failed to cancel leave application {0} linked to Rejoining Form {1}").format(la_name, doc.name)
 			)
-
-
-def _get_leave_declaration_end_date(doc):
-    """Fetch leave_end_date from the source Leave Declaration for this employee."""
-    ld = frappe.get_all(
-        "LEAVE DECLARATION",
-        filters={
-            "employee": doc.employee,
-            "leave_start_date": doc.leave_start_date,
-            "docstatus": 1,
-        },
-        fields=["leave_end_date"],
-        order_by="creation desc",
-        limit=1,
-    )
-    if ld:
-        return ld[0]["leave_end_date"]
-    return doc.leave_end_date
-
-
-def _get_existing_leave_application(doc):
-    ld_end = _get_leave_declaration_end_date(doc)
-    applications = frappe.get_all(
-        "Leave Application",
-        filters={
-            "employee": doc.employee,
-            "from_date": ["<=", ld_end],
-            "to_date": [">=", doc.leave_start_date],
-            "docstatus": ["!=", 2],
-            "leave_type": doc.leave_type,
-        },
-        fields=["name", "from_date", "to_date"],
-        limit=1,
-    )
-    return applications[0] if applications else None
-
-
-def _create_leave_application(doc, from_date, to_date):
-    la = frappe.new_doc("Leave Application")
-    la.employee = doc.employee
-    la.employee_name = doc.employee_name
-    la.leave_type = doc.leave_type
-    la.from_date = from_date
-    la.to_date = to_date
-    la.company = doc.company
-    la.description = _("Auto-created from Rejoining Form {0}").format(doc.name)
-    la.status = "Open"
-    la.custom_approval_status = "Open"
-
-    from hrms.hr.doctype.leave_application.leave_application import get_leave_balance_on
-    la.leave_balance = get_leave_balance_on(doc.employee, doc.leave_type, getdate(from_date))
-
-    emp = frappe.get_cached_doc("Employee", doc.employee)
-    la.leave_approver = emp.leave_approver
-    la.custom_leave_approver_1 = emp.get("custom_leave_approver_1")
-    la.custom_leave_approver_2 = emp.get("custom_leave_approver_2")
-    la.custom_leave_approver_4 = emp.get("custom_leave_approver_3")
-    la.custom_leave_approver_5 = emp.get("custom_leave_approver_4")
-    la.custom_employee_user_id = emp.user_id
-
-    la.flags.ignore_permissions = True
-    la.insert()
-
-    # Set balance after (total_leave_days is computed during insert by standard validate)
-    la.db_set("custom_leave_balance_after", flt(la.leave_balance) - flt(la.total_leave_days))
-
-    # Send the created leave application for approval
-    from orion_erp.orion_erp.validations.leave_application import send_for_approval
-    try:
-        send_for_approval(la.name)
-    except Exception:
-        frappe.log_error(
-            title=_("Leave Approval Error"),
-            message=_("Failed to send leave application {0} for approval").format(la.name)
-        )
-
-    return la
 
 
 def _cancel_leave_application(la_name):

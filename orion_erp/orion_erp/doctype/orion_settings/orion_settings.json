@@ -75,6 +75,11 @@
          "label": "Company Logo"
       },
       {
+         "fieldname": "vehicle_handover_image",
+         "fieldtype": "Attach Image",
+         "label": "Vehicle Handover Image"
+      },
+      {
          "fieldname": "manual_paid_check_read_only_date",
          "fieldtype": "Date",
          "label": "Manual Paid Check Read Only Date"
