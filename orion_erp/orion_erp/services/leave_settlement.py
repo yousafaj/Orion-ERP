@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, flt
 import re
+import calendar
 from datetime import timedelta
 
 
@@ -46,7 +47,8 @@ def get_leave_pay_data(employee, date_of_settlement, doj=None, leave_type=None):
             continue
 
         offer_salary = flt(frappe.db.get_value("Employee", employee, "custom_total_salary_as_per_offer_letter"))
-        amount = (offer_salary / 30) * leave_balance if offer_salary > 0 else 0
+        days_in_month = calendar.monthrange(date_of_settlement.year, date_of_settlement.month)[1]
+        amount = (offer_salary / days_in_month) * leave_balance if offer_salary > 0 else 0
 
         result.append({
             "leave_type": lt,
