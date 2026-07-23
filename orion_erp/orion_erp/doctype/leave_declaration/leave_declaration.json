@@ -158,12 +158,13 @@
    "fieldtype": "Section Break",
    "label": "Financial & Clearances"
   },
-  {
-   "fieldname": "outstanding_advance",
-   "fieldtype": "Currency",
-   "label": "Outstanding Advance",
-   "read_only": 1
-  },
+   {
+    "fieldname": "outstanding_advance",
+    "fieldtype": "Currency",
+    "label": "Outstanding Advance",
+    "read_only": 1,
+    "description": "Auto-calculated from the latest submitted Employee Deduction. Sum of (Deduction Amount - Paid Amount) for all rows with positive remaining balance across both 'Employee Deduction Detail' and 'Outstanding Employee Deduction Detail' tables."
+   },
   {
    "fieldname": "vehicle_fine",
    "fieldtype": "Currency",

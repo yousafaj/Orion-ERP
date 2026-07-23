@@ -34,6 +34,7 @@
       "leave_types_within_six_months",
       "enable_sandwich_leave",
       "sandwich_leave_categories",
+      "leave_policy_by_gender",
       "permissions_tab",
       "allowed_roles",
       "leave_override_roles",
@@ -125,6 +126,13 @@
          "fieldtype": "Table MultiSelect",
          "label": "Sandwich Leave Employee Categories",
          "options": "Sandwich Leave Category"
+      },
+      {
+         "fieldname": "leave_policy_by_gender",
+         "fieldtype": "Table",
+         "label": "Leave Policy by Gender",
+         "options": "Leave Policy By Gender",
+         "description": "Map each gender to a mandatory Leave Policy. When an Employee is created or updated, the system will auto-assign the leave policy matching the employee's gender."
       },
       {
          "fieldname": "role_for_non_office_employee_ssa_access",
