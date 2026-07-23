@@ -12,6 +12,18 @@ class TestLeaveSettlementTicketAllowance(FrappeTestCase):
     def tearDown(self):
         frappe.db.rollback()
 
+    def _months_between(self, from_date, to_date):
+        months = (to_date.year - from_date.year) * 12 + (to_date.month - from_date.month)
+        if to_date.day < from_date.day:
+            months -= 1
+        return max(0, months)
+
+    def _total_months_in_cycle(self, from_date, to_date):
+        months = (to_date.year - from_date.year) * 12 + (to_date.month - from_date.month)
+        if to_date.day >= from_date.day:
+            months += 1
+        return max(1, months)
+
     def _create_fresh_employee(self):
         emp_name = "TA-TEST-" + str(int(frappe.utils.now_datetime().timestamp() * 1000))
         doj = add_days(today(), -400)
@@ -135,9 +147,9 @@ class TestLeaveSettlementTicketAllowance(FrappeTestCase):
         self.assertEqual(str(pro_rata_row["from"]), str(cycle2_from))
         self.assertEqual(str(pro_rata_row["to"]), str(settlement_date))
 
-        total_days = (cycle2_to - cycle2_from).days + 1
-        days_elapsed = (settlement_date - cycle2_from).days + 1
-        expected_pro_rata = (1200 / total_days) * days_elapsed
+        total_months = self._total_months_in_cycle(cycle2_from, cycle2_to)
+        months_elapsed = self._months_between(cycle2_from, settlement_date)
+        expected_pro_rata = (1200 / total_months) * months_elapsed
         self.assertAlmostEqual(pro_rata_row["amount"], round(expected_pro_rata, 2), places=2)
 
     def test_no_ticket_allowance_before_one_year(self):
@@ -190,9 +202,9 @@ class TestLeaveSettlementTicketAllowance(FrappeTestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["amount"], 1200)
 
-        total_days = (cycle2_to - cycle2_from).days + 1
-        days_elapsed = (settlement_date - cycle2_from).days + 1
-        expected_pro_rata = (1200 / total_days) * days_elapsed
+        total_months = self._total_months_in_cycle(cycle2_from, cycle2_to)
+        months_elapsed = self._months_between(cycle2_from, settlement_date)
+        expected_pro_rata = (1200 / total_months) * months_elapsed
         self.assertAlmostEqual(result[1]["amount"], round(expected_pro_rata, 2), places=2)
 
     def test_internal_transfer_uses_vacation_logic(self):
@@ -246,9 +258,9 @@ class TestLeaveSettlementTicketAllowance(FrappeTestCase):
         from orion_erp.orion_erp.services.leave_settlement import get_ticket_allowance
         result = get_ticket_allowance(self.employee, settlement_date, "Final Settlement")
 
-        total_days_cycle2 = (cycle2_to - cycle2_from).days + 1
-        days_elap = (settlement_date - cycle2_from).days + 1
-        pro_rata_full = (1200 / total_days_cycle2) * days_elap
+        total_months_cycle2 = self._total_months_in_cycle(cycle2_from, cycle2_to)
+        months_elap = self._months_between(cycle2_from, settlement_date)
+        pro_rata_full = (1200 / total_months_cycle2) * months_elap
         expected_payable = max(0, pro_rata_full - 50)
 
         self.assertEqual(len(result), 2)
@@ -270,9 +282,9 @@ class TestLeaveSettlementTicketAllowance(FrappeTestCase):
 
         self._create_ticket_allowance_detail(self.employee, cycle1_from, cycle1_to, 1200)
 
-        total_days_cycle2 = (cycle2_to - cycle2_from).days + 1
-        days_elap = (settlement_date - cycle2_from).days + 1
-        pro_rata_full = (1200 / total_days_cycle2) * days_elap
+        total_months_cycle2 = self._total_months_in_cycle(cycle2_from, cycle2_to)
+        months_elap = self._months_between(cycle2_from, settlement_date)
+        pro_rata_full = (1200 / total_months_cycle2) * months_elap
 
         self._create_ticket_allowance_detail(
             self.employee, cycle2_from, cycle2_to, 1200,
@@ -308,9 +320,9 @@ class TestLeaveSettlementTicketAllowance(FrappeTestCase):
             "pro_rata_amount"
         )
 
-        total_days = (cycle_to - cycle_from).days + 1
-        days_elapsed = (getdate(today()) - cycle_from).days + 1
-        expected = round((1200 / total_days) * days_elapsed, 2)
+        total_months = self._total_months_in_cycle(cycle_from, cycle_to)
+        months_elapsed = self._months_between(cycle_from, getdate(today()))
+        expected = round((1200 / total_months) * months_elapsed, 2)
 
         self.assertIsNotNone(pro_rata)
         self.assertAlmostEqual(float(pro_rata or 0), expected, places=2)

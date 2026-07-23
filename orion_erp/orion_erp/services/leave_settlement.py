@@ -137,11 +137,19 @@ def _get_ticket_allowance_for_final_settlement(employee, settlement_date):
     current_cycle = current_cycle_list[0] if current_cycle_list else None
 
     if current_cycle:
-        total_days = (current_cycle.to_date - current_cycle.from_date).days + 1
-        if total_days > 0:
-            days_elapsed = (settlement_date - current_cycle.from_date).days + 1
-            days_elapsed = min(days_elapsed, total_days)
-            pro_rata = (flt(current_cycle.amount) / total_days) * days_elapsed
+        from_date = getdate(current_cycle.from_date)
+        to_date = getdate(current_cycle.to_date)
+
+        total_months = (to_date.year - from_date.year) * 12 + (to_date.month - from_date.month)
+        if to_date.day >= from_date.day:
+            total_months += 1
+
+        if total_months > 0:
+            months_elapsed = (settlement_date.year - from_date.year) * 12 + (settlement_date.month - from_date.month)
+            if settlement_date.day < from_date.day:
+                months_elapsed -= 1
+            months_elapsed = max(0, min(months_elapsed, total_months))
+            pro_rata = (flt(current_cycle.amount) / total_months) * months_elapsed
             already_paid = flt(current_cycle.paid_amount)
             payable = max(0, pro_rata - already_paid)
 

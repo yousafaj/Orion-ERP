@@ -81,15 +81,16 @@ def _process_employee_ticket_allowance(emp, settings, today_date):
 def _create_ticket_allowance_cycle(emp, rule, from_date, cycle_months):
     to_date = add_days(add_months(from_date, cycle_months), -1)
 
-    exists = frappe.db.exists(
+    existing = frappe.db.exists(
         "Ticket Allowance Detail",
         {
             "parent": emp.name,
             "parenttype": "Employee",
-            "from_date": from_date
+            "from_date": ["<=", to_date],
+            "to_date": [">=", from_date],
         }
     )
-    if exists:
+    if existing:
         return
 
     max_idx = frappe.db.get_value(
@@ -130,13 +131,19 @@ def _update_current_cycle_pro_rata(emp, today_date):
 
     from_date = getdate(current_cycle.from_date)
     to_date = getdate(current_cycle.to_date)
-    total_days = (to_date - from_date).days + 1
-    if total_days <= 0:
+    today = getdate(today_date)
+
+    total_months = (to_date.year - from_date.year) * 12 + (to_date.month - from_date.month)
+    if to_date.day >= from_date.day:
+        total_months += 1
+    if total_months <= 0:
         return
 
-    days_elapsed = (getdate(today_date) - from_date).days + 1
-    days_elapsed = min(days_elapsed, total_days)
-    pro_rata = (flt(current_cycle.amount) / total_days) * days_elapsed
+    months_elapsed = (today.year - from_date.year) * 12 + (today.month - from_date.month)
+    if today.day < from_date.day:
+        months_elapsed -= 1
+    months_elapsed = max(0, min(months_elapsed, total_months))
+    pro_rata = (flt(current_cycle.amount) / total_months) * months_elapsed
 
     frappe.db.set_value(
         "Ticket Allowance Detail",
@@ -189,20 +196,34 @@ def check_salary_structure_assignment(employee, doj):
 
 
 def create_leave_policy_assignment(doc, method):
-    if not doc.custom_leave_policy or not doc.date_of_joining:
+    leave_policy = _get_leave_policy_for_employee(doc)
+    if not leave_policy or not doc.date_of_joining:
         return
 
     existing = frappe.db.exists("Leave Policy Assignment", {
         "employee": doc.name,
-        "leave_policy": doc.custom_leave_policy,
+        "leave_policy": leave_policy,
         "docstatus": ["!=", 2]
     })
     if existing:
         return
 
     effective_from, effective_to = _get_effective_period(doc.date_of_joining)
-    _validate_no_conflicting_allocations(doc, effective_from, effective_to)
-    _create_and_submit_lpa(doc, effective_from, effective_to)
+    _validate_no_conflicting_allocations(doc, leave_policy, effective_from, effective_to)
+    _create_and_submit_lpa(doc, leave_policy, effective_from, effective_to)
+
+
+def _get_leave_policy_for_employee(doc):
+    gender = getattr(doc, "gender", None)
+    if not gender:
+        return getattr(doc, "custom_leave_policy", None)
+
+    settings = frappe.get_single("Orion Settings")
+    for row in settings.leave_policy_by_gender or []:
+        if row.gender == gender:
+            return row.leave_policy
+
+    return getattr(doc, "custom_leave_policy", None)
 
 
 def _get_effective_period(date_of_joining):
@@ -220,11 +241,11 @@ def _get_effective_period(date_of_joining):
     return effective_from, effective_to
 
 
-def _validate_no_conflicting_allocations(doc, effective_from, effective_to):
-    leave_policy = frappe.get_doc("Leave Policy", doc.custom_leave_policy)
+def _validate_no_conflicting_allocations(doc, leave_policy, effective_from, effective_to):
+    leave_policy_doc = frappe.get_doc("Leave Policy", leave_policy)
     conflicting = []
 
-    for detail in leave_policy.leave_policy_details:
+    for detail in leave_policy_doc.leave_policy_details:
         if frappe.db.exists("Leave Allocation", {
             "employee": doc.name,
             "leave_type": detail.leave_type,
@@ -247,10 +268,10 @@ def _validate_no_conflicting_allocations(doc, effective_from, effective_to):
         )
 
 
-def _create_and_submit_lpa(doc, effective_from, effective_to):
+def _create_and_submit_lpa(doc, leave_policy, effective_from, effective_to):
     lpa = frappe.new_doc("Leave Policy Assignment")
     lpa.employee = doc.name
-    lpa.leave_policy = doc.custom_leave_policy
+    lpa.leave_policy = leave_policy
     lpa.assignment_based_on = "Joining Date"
     lpa.effective_from = effective_from
     lpa.effective_to = effective_to
@@ -262,20 +283,24 @@ def _create_and_submit_lpa(doc, effective_from, effective_to):
 def auto_renew_leave_policy_assignments():
     employees = frappe.get_all(
         "Employee",
-        filters={"status": "Active", "custom_leave_policy": ["!=", ""]},
-        fields=["name", "company", "date_of_joining", "custom_leave_policy"]
+        filters={"status": "Active"},
+        fields=["name", "company", "date_of_joining", "gender", "custom_leave_policy"]
     )
     today_date = getdate()
 
     for emp in employees:
+        leave_policy = _get_leave_policy_for_employee(emp)
+        if not leave_policy:
+            continue
+
         effective_from, effective_to = _get_effective_period(emp.date_of_joining)
-        _renew_single_employee_lpa(emp, effective_from, effective_to)
+        _renew_single_employee_lpa(emp, leave_policy, effective_from, effective_to)
 
 
-def _renew_single_employee_lpa(emp, effective_from, effective_to):
+def _renew_single_employee_lpa(emp, leave_policy, effective_from, effective_to):
     exists = frappe.db.exists("Leave Policy Assignment", {
         "employee": emp.name,
-        "leave_policy": emp.custom_leave_policy,
+        "leave_policy": leave_policy,
         "effective_from": effective_from,
         "effective_to": effective_to,
         "docstatus": 1
@@ -285,7 +310,7 @@ def _renew_single_employee_lpa(emp, effective_from, effective_to):
 
     lpa = frappe.new_doc("Leave Policy Assignment")
     lpa.employee = emp.name
-    lpa.leave_policy = emp.custom_leave_policy
+    lpa.leave_policy = leave_policy
     lpa.assignment_based_on = "Joining Date"
     lpa.effective_from = effective_from
     lpa.effective_to = effective_to
