@@ -133,7 +133,10 @@ frappe.ui.form.on('Employee', {
             (parseFloat(frm.doc.custom_food_allowances_fa) || 0) +
             (parseFloat(frm.doc.custom_transportation_allowance) || 0);
 
-        frm.set_value("custom_total_salary_as_per_offer_letter", total);
+        if (parseFloat(frm.doc.custom_total_salary_as_per_offer_letter || 0) !== total) {
+            frm.doc.custom_total_salary_as_per_offer_letter = total;
+            frm.refresh_field("custom_total_salary_as_per_offer_letter");
+        }
 
         set_confirmation_date(frm);
         set_passport_details(frm);
@@ -268,20 +271,6 @@ function show_doj_change_dialog(frm) {
     });
 }
 
-function calculate_total_offered_salary(frm) {
-    let total =
-        (parseInt(frm.doc.custom_basic) || 0) +
-        (parseInt(frm.doc.custom_house_rent_allowances) || 0) +
-        (parseInt(frm.doc.custom_other_allowances) || 0) +
-        (parseInt(frm.doc.custom_food_allowances_fa) || 0) +
-        (parseInt(frm.doc.custom_transportation_allowance) || 0);
-
-    if (frm.doc.custom_total_salary_as_per_offer_letter !== total) {
-        frm.set_value("custom_total_salary_as_per_offer_letter", total, null, true);
-        frm.dirty = false;
-    }
-}
-
 function toggle_salary_structure(frm) {
     if (!frm.doc.name || !frm.doc.date_of_joining) return;
 
@@ -315,15 +304,25 @@ function set_passport_details(frm) {
     );
 
     if (passport_row) {
-        frm.set_value("passport_number", passport_row.reference_no);
-        frm.set_value("date_of_issue", passport_row.date_of_issue);
-        frm.set_value("valid_upto", passport_row.date_of_expiry);
+        if (frm.doc.passport_number !== passport_row.reference_no) {
+            frm.doc.passport_number = passport_row.reference_no;
+            frm.refresh_field("passport_number");
+        }
+        if (frm.doc.date_of_issue !== passport_row.date_of_issue) {
+            frm.doc.date_of_issue = passport_row.date_of_issue;
+            frm.refresh_field("date_of_issue");
+        }
+        if (frm.doc.valid_upto !== passport_row.date_of_expiry) {
+            frm.doc.valid_upto = passport_row.date_of_expiry;
+            frm.refresh_field("valid_upto");
+        }
     }
 }
 
 function set_confirmation_date(frm) {
-    if (frm.doc.date_of_joining) {
-        frm.set_value("final_confirmation_date", frm.doc.date_of_joining);
+    if (frm.doc.date_of_joining && frm.doc.final_confirmation_date !== frm.doc.date_of_joining) {
+        frm.doc.final_confirmation_date = frm.doc.date_of_joining;
+        frm.refresh_field("final_confirmation_date");
     }
 }
 
@@ -333,7 +332,10 @@ function calculate_probation(frm) {
             frm.doc.date_of_joining,
             frm.doc.custom_probation_period
         );
-        frm.set_value("custom_probation_end_date", end_date);
+        if (frm.doc.custom_probation_end_date !== end_date) {
+            frm.doc.custom_probation_end_date = end_date;
+            frm.refresh_field("custom_probation_end_date");
+        }
     }
 }
 
@@ -346,7 +348,8 @@ function calculate_total(frm) {
         (parseInt(frm.doc.custom_transportation_allowances) || 0);
 
     if (frm.doc.custom_total_salary !== total) {
-        frm.set_value("custom_total_salary", total);
+        frm.doc.custom_total_salary = total;
+        frm.refresh_field("custom_total_salary");
     }
 }
 
@@ -358,7 +361,10 @@ function calculate_total_offered_salary(frm) {
         (parseInt(frm.doc.custom_food_allowances_fa) || 0) +
         (parseInt(frm.doc.custom_transportation_allowance) || 0);
 
-    frm.set_value("custom_total_salary_as_per_offer_letter", total);
+    if (parseFloat(frm.doc.custom_total_salary_as_per_offer_letter || 0) !== total) {
+        frm.doc.custom_total_salary_as_per_offer_letter = total;
+        frm.refresh_field("custom_total_salary_as_per_offer_letter");
+    }
 }
 
 function lock_manual_paid(frm) {
