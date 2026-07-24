@@ -9,15 +9,15 @@
   "leave_policy"
  ],
  "fields": [
-  {
-   "fieldname": "gender",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Gender",
-   "options": "\nMale\nFemale\nTransgender\nNon-binary\nGenderqueer\nUndisclosed",
-   "reqd": 1,
-   "unique": 1
-  },
+   {
+    "fieldname": "gender",
+    "fieldtype": "Link",
+    "in_list_view": 1,
+    "label": "Gender",
+    "options": "Gender",
+    "reqd": 1,
+    "unique": 1
+   },
   {
    "fieldname": "leave_policy",
    "fieldtype": "Link",

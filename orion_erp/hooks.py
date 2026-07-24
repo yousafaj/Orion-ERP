@@ -261,12 +261,14 @@ doc_events = {
     },
     "Employee": {
         "validate": ["orion_erp.orion_erp.validations.employee_hooks.validate_employee",
-                    "orion_erp.orion_erp.services.employee.validate_allowance_amounts"],
+                    "orion_erp.orion_erp.services.employee.validate_allowance_amounts",
+                    "orion_erp.orion_erp.services.employee.validate_doj_readonly"],
         "after_insert": "orion_erp.orion_erp.services.employee.create_salary_structure_assignment",
         "on_update": [
+            "orion_erp.orion_erp.services.employee.cancel_allocations_and_reallocate_on_doj_change",
             "orion_erp.orion_erp.services.employee.create_salary_structure_assignment",
             "orion_erp.orion_erp.services.employee.create_leave_policy_assignment",
-            "orion_erp.orion_erp.services.employee.auto_allocate_hajj_umrah"
+            "orion_erp.orion_erp.services.employee.auto_allocate_hajj_umrah",
         ]
     },
     "Asset": {
