@@ -35,6 +35,9 @@
       "enable_sandwich_leave",
       "sandwich_leave_categories",
       "leave_policy_by_gender",
+      "section_break_doj_edit",
+      "doj_edit_roles",
+      "doj_edit_expiry_years",
       "permissions_tab",
       "allowed_roles",
       "leave_override_roles",
@@ -132,9 +135,28 @@
          "fieldtype": "Table",
          "label": "Leave Policy by Gender",
          "options": "Leave Policy By Gender",
-         "description": "Map each gender to a mandatory Leave Policy. When an Employee is created or updated, the system will auto-assign the leave policy matching the employee's gender."
-      },
-      {
+          "description": "Map each gender to a mandatory Leave Policy. When an Employee is created or updated, the system will auto-assign the leave policy matching the employee's gender."
+       },
+       {
+          "fieldname": "section_break_doj_edit",
+          "fieldtype": "Section Break",
+          "label": "DOJ Edit Permissions"
+       },
+       {
+          "fieldname": "doj_edit_roles",
+          "fieldtype": "Table MultiSelect",
+          "label": "Roles Allowed to Edit DOJ",
+          "options": "Role Details",
+          "description": "Users with these roles can edit the Date of Joining after it is saved. Only these roles are allowed to change DOJ on existing employees."
+       },
+       {
+          "fieldname": "doj_edit_expiry_years",
+          "fieldtype": "Int",
+          "label": "DOJ Edit Expiry (Years)",
+          "default": 1,
+          "description": "Number of years after Date of Joining during which the above roles can edit DOJ. After this period, DOJ becomes read-only for all users except Administrator."
+       },
+       {
          "fieldname": "role_for_non_office_employee_ssa_access",
          "fieldtype": "Table MultiSelect",
          "label": "Role for Non Office Employee SSA Access",

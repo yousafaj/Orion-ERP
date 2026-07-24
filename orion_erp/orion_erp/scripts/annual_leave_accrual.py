@@ -121,18 +121,6 @@ def execute_monthly_accrual():
                 )
 
 
-def test():
-    rules = get_rules_from_leave_type("ANNUAL LEAVE")
-
-    process_employee(
-        employee="HR-EMP-00379",
-        doj=getdate("2026-05-05"),
-        month_num=1,
-        rules=rules,
-        leave_type="ANNUAL LEAVE"
-    )
-
-
 def process_employee(employee, doj, month_num, rules, leave_type):
     rate = get_rate_for_month(month_num, rules)
     if not rate:

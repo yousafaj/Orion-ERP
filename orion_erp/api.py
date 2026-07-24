@@ -421,7 +421,7 @@ def get_monthly_leave_accrual():
         get_rules_from_leave_type,
         get_rate_for_month,
         get_completed_months,
-        LEAVE_TYPE,
+        get_configured_leave_types,
     )
 
     employee = frappe.db.get_value(
@@ -446,18 +446,22 @@ def get_monthly_leave_accrual():
     if completed_months < 1:
         return []
 
-    rules = get_rules_from_leave_type()
-    if not rules:
-        return []
+    result = []
+    for leave_type in get_configured_leave_types():
+        rules = get_rules_from_leave_type(leave_type)
+        if not rules:
+            continue
 
-    monthly_rate = get_rate_for_month(completed_months, rules)
-    if monthly_rate <= 0:
-        return []
+        monthly_rate = get_rate_for_month(completed_months, rules)
+        if monthly_rate <= 0:
+            continue
 
-    return [{
-        "leave_type": LEAVE_TYPE,
-        "earned_days": monthly_rate,
-    }]
+        result.append({
+            "leave_type": leave_type,
+            "earned_days": monthly_rate,
+        })
+
+    return result
 
 
 @frappe.whitelist()
