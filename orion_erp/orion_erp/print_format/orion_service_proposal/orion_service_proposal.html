@@ -155,7 +155,7 @@ This runs before window.print() is called.
 
     <!-- Company Logo -->
     <div style="position:absolute; right:0; top:0;">
-        {% set logo = frappe.db.get_value("Orion Settings", None, "company_logo") %}
+        {% set logo = get_company_logo() %}
         {% if logo %}
             <img src="{{ frappe.utils.get_url(logo) }}"
                  style="height:55px; width:auto;">
