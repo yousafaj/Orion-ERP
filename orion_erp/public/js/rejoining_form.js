@@ -69,6 +69,10 @@ frappe.ui.form.on("Rejoining Form", {
             callback: function(r) {
                 if (!r.message) return;
                 let data = r.message;
+
+                // Skip date change recalculation while populating from Leave Application
+                frm._populating_from_la = true;
+
                 frm.set_value("employee", data.employee || "");
                 frm.set_value("employee_name", data.employee_name || "");
                 frm.set_value("leave_type", data.leave_type || "");
@@ -77,6 +81,72 @@ frappe.ui.form.on("Rejoining Form", {
                 frm.set_value("leave_days_approved", data.total_leave_days || "");
                 frm.set_value("company", data.company || "");
                 frm.set_value("custom_employee_user_id", data.custom_employee_user_id || "");
+                if (data.tentative_rejoining_date) {
+                    frm.set_value("tentative_rejoining_date", data.tentative_rejoining_date);
+                }
+
+                frm._populating_from_la = false;
+
+                frappe.call({
+                    method: "orion_erp.orion_erp.validations.rejoining_form.get_leave_declaration_assets",
+                    args: { leave_application: frm.doc.leave_application },
+                    callback: function(res) {
+                        frm.clear_table("asset_clearance_detail");
+                        if (res.message && res.message.length) {
+                            res.message.forEach(function(asset) {
+                                frm.add_child("asset_clearance_detail", {
+                                    asset_type: asset.asset_type,
+                                    asset_code: asset.asset_code,
+                                    issued_by: asset.issued_by,
+                                    issued_date: asset.issued_date,
+                                    attachment_upload: asset.attachment_upload,
+                                    asset_status: asset.asset_status,
+                                    qty: asset.qty,
+                                    return_date: asset.return_date,
+                                    remarks: asset.remarks,
+                                    sim_card_number: asset.sim_card_number,
+                                    network: asset.network,
+                                    sim_status: asset.sim_status,
+                                    brand: asset.brand,
+                                    model: asset.model,
+                                    imei_number: asset.imei_number,
+                                    sim_number: asset.sim_number,
+                                    network_provider: asset.network_provider,
+                                    condition: asset.condition,
+                                    vehicle_type: asset.vehicle_type,
+                                    brand_model: asset.brand_model,
+                                    plate_number: asset.plate_number,
+                                    vehicle_cicpa_pass: asset.vehicle_cicpa_pass,
+                                    fuel_type: asset.fuel_type,
+                                    mulkiya_expiry_uae_specific: asset.mulkiya_expiry_uae_specific,
+                                    odometer_reading_at_issue: asset.odometer_reading_at_issue,
+                                    odometer_reading_at_return: asset.odometer_reading_at_return,
+                                    name_of_last_user: asset.name_of_last_user,
+                                    device_type: asset.device_type,
+                                    it_brand: asset.it_brand,
+                                    it_model: asset.it_model,
+                                    attachment: asset.attachment,
+                                    card_number: asset.card_number,
+                                    card_issue_date: asset.card_issue_date,
+                                    lost__reissued: asset.lost__reissued,
+                                    pass_number: asset.pass_number,
+                                    valid_to: asset.valid_to,
+                                    cicpa_status: asset.cicpa_status,
+                                    linked_account: asset.linked_account,
+                                    expiry_date: asset.expiry_date,
+                                    request_date: asset.request_date,
+                                    parking_status: asset.parking_status,
+                                    parking_slot_number: asset.parking_slot_number,
+                                    source_asset_handover: asset.source_asset_handover,
+                                    source_asset_handover_detail: asset.source_asset_handover_detail,
+                                    previous_asset_status: asset.previous_asset_status,
+                                });
+                            });
+                        }
+                        frm.refresh_field("asset_clearance_detail");
+                    }
+                });
+
                 frm.refresh_fields();
             }
         });
@@ -86,11 +156,14 @@ frappe.ui.form.on("Rejoining Form", {
         handle_cancel_button(frm);
 
         frm.set_query("leave_application", function() {
-            let filters = { docstatus: 1, status: "Approved" };
-            if (frm.doc.employee) {
-                filters.employee = frm.doc.employee;
-            }
-            return { filters: filters };
+            let filters = {
+                docstatus: 1,
+                custom_approval_status: "Approved",
+            };
+            return {
+                filters: filters,
+                query: "orion_erp.orion_erp.validations.rejoining_form.get_available_leave_applications",
+            };
         });
 
         let status_to_show = frm.doc.custom_rejoining_approval_status;
@@ -317,3 +390,43 @@ function apply_custom_status_indicator(frm) {
             .addClass("indicator-pill " + get_indicator_color(status));
     }
 }
+
+frappe.ui.form.on("Asset Clearance Detail", {
+    source_asset_handover_detail(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        if (!row.source_asset_handover_detail || !row.previous_asset_status) return;
+        frappe.call({
+            method: "orion_erp.orion_erp.validations.rejoining_form.update_asset_status_on_row_add",
+            args: {
+                source_asset_handover_detail: row.source_asset_handover_detail,
+                previous_asset_status: row.previous_asset_status,
+                return_date: row.return_date || null,
+            },
+        });
+    },
+
+    form_render(frm, cdt, cdn) {
+        let grid = frm.fields_dict.asset_clearance_detail?.grid;
+        if (!grid || !grid.grid_rows) return;
+        grid.grid_rows.forEach((grid_row) => {
+            if (grid_row.remove_btn && !grid_row._asset_custom_remove_bound) {
+                grid_row._asset_custom_remove_bound = true;
+                let orig_click = grid_row.remove_btn.onclick;
+                grid_row.remove_btn.onclick = function () {
+                    let row = grid_row.doc;
+                    if (row && row.source_asset_handover_detail) {
+                        frappe.call({
+                            method: "orion_erp.orion_erp.validations.rejoining_form.update_asset_status_on_row_remove",
+                            args: {
+                                source_asset_handover_detail: row.source_asset_handover_detail,
+                                asset_status: row.asset_status || null,
+                                return_date: row.return_date || null,
+                            },
+                        });
+                    }
+                    if (orig_click) orig_click.call(this);
+                };
+            }
+        });
+    },
+});

@@ -14,8 +14,31 @@ def _normalize(s: str) -> str:
 
 def validate_employee(doc, method):
     _validate_required_certificates(doc)
+    _validate_leave_policy_for_gender(doc)
     sync_existing_certificates(doc)
     create_air_ticket_entitlement_from_employee(doc)
+
+def _validate_leave_policy_for_gender(doc):
+    gender = getattr(doc, "gender", None)
+    if not gender:
+        return
+
+    settings = frappe.get_single("Orion Settings")
+    leave_policy_by_gender = getattr(settings, "leave_policy_by_gender", None)
+
+    if not leave_policy_by_gender:
+        frappe.throw(
+            _("No Leave Policy by Gender configuration found in Orion Settings. Please configure leave policies for each gender before creating or updating employees."),
+            title=_("Leave Policy Configuration Missing")
+        )
+
+    configured_genders = {row.gender for row in leave_policy_by_gender}
+    if gender not in configured_genders:
+        frappe.throw(
+            _("No Leave Policy configured for gender '{0}' in Orion Settings. Please add a Leave Policy for this gender before creating or updating employees.").format(gender),
+            title=_("Leave Policy Not Configured for Gender")
+        )
+
 
 def _validate_required_certificates(doc):
     """
@@ -36,8 +59,8 @@ def _validate_required_certificates(doc):
             _("Missing required certificates: {0}").format(", ".join(missing_display)),
             title=_("Incomplete Certificates Error")
         )
-        
-        
+
+
 def sync_existing_certificates(doc):
     for row in getattr(doc, "custom_certificates", []):
         existing = frappe.get_all(

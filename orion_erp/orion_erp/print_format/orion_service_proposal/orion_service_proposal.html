@@ -90,7 +90,7 @@ body {
         display: block !important;
     }
 
-    
+
 
 
 
@@ -149,7 +149,7 @@ This runs before window.print() is called.
             <img src="{{ doc.custom_client_logo }}"
                  style="height:55px; width:auto;">
         {% else %}
-            <span style="font-size:16px;">Client's Logo</span>
+            <span style="font-size:16px;"></span>
         {% endif %}
     </div>
 
@@ -234,7 +234,7 @@ This runs before window.print() is called.
             {{ doc.custom_contact_persons }}
             <br>
 
-            
+
             <b>Designation:</b>
             {{ doc.custom_designation or "" }}
             <br>
@@ -310,7 +310,7 @@ This runs before window.print() is called.
 <div style="
     font-size:14px;
     font-weight:bold;
-    
+
     margin-top:20px;
     margin-bottom:10px;
     display:inline-block;
@@ -389,9 +389,9 @@ This runs before window.print() is called.
                 {% else %}
                 Frequency
                 {% endif %}
-                
+
             </th>
-            
+
             {% if doc.custom_quotation_for=="Post Construction Anti Termite Treatment" or doc.custom_quotation_for=="Pre Contsruction Anti Termite Treatment" %}
             <th style="
                 border:1px solid #000;
@@ -402,7 +402,7 @@ This runs before window.print() is called.
                 margin:0;
             ">
                 UOM
-                
+
             </th>
             {% endif %}
         </tr>
@@ -447,7 +447,7 @@ This runs before window.print() is called.
                {% else %}
                {{ row.custom_item_location or "" }}
                 {% endif %}
-                
+
             </td>
 
             <td style="
@@ -472,7 +472,7 @@ This runs before window.print() is called.
                 margin:0;
             ">
                 {{row.uom}}
-                
+
             </td>
             {% endif %}
         </tr>
@@ -497,9 +497,9 @@ This runs before window.print() is called.
 <div style="
     font-size:13px;
     font-weight:bold;
-    
+
     display:inline-block;
-   
+
     margin-top:15px;
     margin-bottom:0;
 ">
@@ -598,7 +598,7 @@ This runs before window.print() is called.
                 margin:0;
             ">
                 UOM
-                
+
             </th>
             {% endif %}
         </tr>
@@ -678,7 +678,7 @@ This runs before window.print() is called.
                 margin:0;
             ">
                 {{row.uom}}
-                
+
             </td>
             {% endif %}
         </tr>

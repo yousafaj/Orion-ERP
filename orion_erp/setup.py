@@ -42,6 +42,7 @@ DASHBOARD_FILES = {
     "pending_leave_status.js": "Pending Leave Application Status",
     "monthly_accrual_status.js": "Monthly Leave Accrual Run Status",
     "current_month_leave_apps.js": "Current Month Leave Applications",
+    "rejoining_overdue.js": "Rejoining Overdue",
 }
 
 DASHBOARDS_DIR = os.path.join(os.path.dirname(__file__), "orion_erp", "dashboards")
@@ -55,6 +56,7 @@ def after_migrate():
     setup_hr_manager_dashboard_roles()
     setup_hr_user_dashboard_roles()
     embed_current_month_leave_block()
+    embed_rejoining_overdue_block()
     remove_standalone_current_month_workspace()
     create_employee_categories()
 
@@ -134,6 +136,26 @@ def embed_current_month_leave_block():
         if changed:
             ws.flags.ignore_permissions = True
             ws.save(ignore_permissions=True)
+
+
+def embed_rejoining_overdue_block():
+    """Add 'Rejoining Overdue' custom block to HR Manager Dashboard workspace."""
+    import json
+    block_name = "Rejoining Overdue"
+    ws_name = "HR Manager Dashboard"
+    if not frappe.db.exists("Workspace", ws_name):
+        return
+    ws = frappe.get_doc("Workspace", ws_name)
+    changed = False
+    if not any(b.custom_block_name == block_name for b in ws.custom_blocks):
+        ws.append("custom_blocks", {"custom_block_name": block_name, "label": block_name})
+        content = json.loads(ws.content)
+        content.append({"type": "custom_block", "data": {"custom_block_name": block_name, "col": 12}})
+        ws.content = json.dumps(content)
+        changed = True
+    if changed:
+        ws.flags.ignore_permissions = True
+        ws.save(ignore_permissions=True)
 
 
 def remove_standalone_current_month_workspace():

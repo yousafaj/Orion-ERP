@@ -5,7 +5,7 @@
  "creation": "2026-04-30 10:24:44.332754",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": [
+  "field_order": [
   "section_break_pwxr",
   "amended_from",
   "naming_series",
@@ -20,9 +20,10 @@
   "reporting_date",
   "reporting_time",
   "reporting_location",
-  "assets",
   "other",
   "other_declaration",
+  "asset_clearance_section",
+  "asset_clearance_detail",
   "to_be_filled_by_department_in_charge_section",
   "approved_rejoining_date",
   "site_allocated",
@@ -123,30 +124,32 @@
    "fieldname": "column_break_xxsi",
    "fieldtype": "Column Break"
   },
-  {
-   "fieldname": "leave_start_date",
-   "fieldtype": "Date",
-   "label": "Leave Start Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "leave_end_date",
-   "fieldtype": "Date",
-   "label": "Leave End Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "leave_days_approved",
-   "fieldtype": "Data",
-   "label": "Leave Days Approved"
-  },
-  {
-   "fieldname": "leave_type",
-   "fieldtype": "Link",
-   "label": "Leave Type",
-   "options": "Leave Type",
-   "reqd": 1
-  },
+   {
+    "fieldname": "leave_start_date",
+    "fieldtype": "Date",
+    "label": "Leave Start Date",
+    "read_only": 1,
+    "reqd": 1
+   },
+   {
+    "fieldname": "leave_end_date",
+    "fieldtype": "Date",
+    "label": "Leave End Date",
+    "reqd": 1
+   },
+   {
+    "fieldname": "leave_days_approved",
+    "fieldtype": "Data",
+    "label": "Leave Days Approved"
+   },
+   {
+    "fieldname": "leave_type",
+    "fieldtype": "Link",
+    "label": "Leave Type",
+    "options": "Leave Type",
+    "read_only": 1,
+    "reqd": 1
+   },
   {
    "fieldname": "reporting_date",
    "fieldtype": "Date",
@@ -221,18 +224,23 @@
    "label": "Date",
    "reqd": 1
   },
-  {
-   "fieldname": "assets",
-   "fieldtype": "Table MultiSelect",
-   "label": "Assets",
-   "options": "Asset Detail"
-  },
-  {
-   "default": "0",
-   "fieldname": "other",
-   "fieldtype": "Check",
-   "label": "Other"
-  },
+   {
+    "fieldname": "asset_clearance_section",
+    "fieldtype": "Section Break",
+    "label": "Asset Clearance"
+   },
+   {
+    "fieldname": "asset_clearance_detail",
+    "fieldtype": "Table",
+    "label": "Asset Clearance Detail",
+    "options": "Asset Clearance Detail"
+   },
+   {
+    "default": "0",
+    "fieldname": "other",
+    "fieldtype": "Check",
+    "label": "Other"
+   },
   {
    "depends_on": "eval:doc.other",
    "fieldname": "other_declaration",

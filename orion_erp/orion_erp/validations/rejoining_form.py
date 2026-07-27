@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import add_days, flt, getdate, now_datetime
+from frappe.utils import add_days, getdate, now_datetime
 
 
 APPROVAL_FLOW = [
@@ -46,12 +46,13 @@ def validate_rejoining_approval(doc, method=None):
                     _("Rejoining Form cannot be submitted directly. All approvals must be completed first.")
                 )
 
-    # Validate Approved Rejoining Date equals Leave End Date
+    # Validate Approved Rejoining Date is Leave End Date + 1 day
     if doc.approved_rejoining_date and doc.leave_end_date:
-        if getdate(doc.approved_rejoining_date) != getdate(doc.leave_end_date):
+        expected_rejoining = add_days(getdate(doc.leave_end_date), 1)
+        if getdate(doc.approved_rejoining_date) != expected_rejoining:
             frappe.throw(
-                _("Approved Rejoining Date must be equal to Leave End Date. Approved Rejoining Date: {0}, Leave End Date: {1}").format(
-                    doc.approved_rejoining_date, doc.leave_end_date
+                _("Approved Rejoining Date must be the day after Leave End Date. Approved Rejoining Date: {0}, expected: {1}").format(
+                    doc.approved_rejoining_date, expected_rejoining
                 )
             )
 
@@ -60,7 +61,7 @@ def validate_rejoining_approval(doc, method=None):
         la = frappe.db.get_value(
             "Leave Application",
             doc.leave_application,
-            ["employee", "docstatus"],
+            ["employee", "docstatus", "leave_type"],
             as_dict=True
         )
         if not la:
@@ -87,6 +88,15 @@ def validate_rejoining_approval(doc, method=None):
                     doc.leave_application, duplicate
                 )
             )
+
+        # Recalculate leave_days_approved using the same sandwich-aware logic as Leave Applications
+        if doc.leave_start_date and doc.leave_end_date:
+            from orion_erp.orion_erp.validations.leave_application import patched_get_number_of_leave_days
+            calculated_days = patched_get_number_of_leave_days(
+                doc.employee, la.leave_type, doc.leave_start_date, doc.leave_end_date
+            )
+            if calculated_days is not None and doc.leave_days_approved != calculated_days:
+                doc.leave_days_approved = calculated_days
 
     if current_user == "Administrator":
         return
@@ -222,7 +232,10 @@ def send_next_approval_email(doc):
             <br><br>
             <a href="{link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">Open Now</a>
             """
-            frappe.sendmail(recipients=[next_approver], subject=subject, message=message, now=False)
+            try:
+                frappe.sendmail(recipients=[next_approver], subject=subject, message=message, now=False)
+            except Exception:
+                frappe.log_error(title="Rejoining Approval Email Failed", message=f"Failed to send rejoining approval email to {next_approver}")
             return
 
 
@@ -306,9 +319,25 @@ def get_leave_application_details(leave_application):
         ],
         limit=1
     )
-    if data:
-        return data[0]
-    return {}
+    if not data:
+        return {}
+
+    result = data[0]
+
+    ld = frappe.get_all(
+        "LEAVE DECLARATION",
+        filters={
+            "leave_application": leave_application,
+            "docstatus": ["in", [1, 2]],
+        },
+        fields=["rejoining_date"],
+        order_by="docstatus desc, creation desc",
+        limit=1,
+    )
+    if ld and ld[0].get("rejoining_date"):
+        result["tentative_rejoining_date"] = ld[0]["rejoining_date"]
+
+    return result
 
 
 def _notify_first_approver(doc):
@@ -338,7 +367,10 @@ def _notify_first_approver(doc):
             <br><br>
             <a href="{link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">Open Now</a>
             """
-            frappe.sendmail(recipients=[approver], subject=subject, message=message, now=False)
+            try:
+                frappe.sendmail(recipients=[approver], subject=subject, message=message, now=False)
+            except Exception:
+                frappe.log_error(title="Rejoining Approval Email Failed", message=f"Failed to send rejoining approval email to {approver}")
             return
 
 
@@ -363,7 +395,10 @@ def _notify_approved(doc, old_doc):
     </table>
     <br><a href="{link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Form</a>
     """
-    frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+    try:
+        frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+    except Exception:
+        frappe.log_error(title="Rejoining Approved Email Failed", message=f"Failed to send rejoining approved email to {employee_email}")
 
 
 def _notify_rejected(doc, old_doc):
@@ -387,7 +422,10 @@ def _notify_rejected(doc, old_doc):
     </table>
     <br><a href="{link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Form</a>
     """
-    frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+    try:
+        frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+    except Exception:
+        frappe.log_error(title="Rejoining Rejected Email Failed", message=f"Failed to send rejoining rejected email to {employee_email}")
 
 
 def _notify_cancelled(doc, old_doc):
@@ -432,64 +470,18 @@ def _notify_cancelled(doc, old_doc):
     </table>
     <br><a href="{link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Form</a>
     """
-    frappe.sendmail(recipients=list(recipients), subject=subject, message=message, now=False)
+    try:
+        frappe.sendmail(recipients=list(recipients), subject=subject, message=message, now=False)
+    except Exception:
+        frappe.log_error(title="Rejoining Cancelled Email Failed", message=f"Failed to send rejoining cancelled notification")
 
 
 def on_submit_rejoining_form(doc, method=None):
-    doc.db_set("custom_rejoining_approval_status", "Approved")
+	doc.db_set("custom_rejoining_approval_status", "Approved")
 
-    _handle_linked_leave_application(doc)
+	_handle_linked_leave_application(doc)
 
-    existing_la = _get_existing_leave_application(doc)
-
-    ld_end = getdate(_get_leave_declaration_end_date(doc))
-    rj_date = getdate(doc.approved_rejoining_date)
-
-    if rj_date == ld_end:
-        return
-
-    if rj_date < ld_end:
-        # Early return — cancel old LA, create new one ending on day before rejoining
-        cancelled_la_name = existing_la["name"] if existing_la else None
-        if existing_la:
-            _cancel_leave_application(existing_la["name"])
-            doc.db_set("custom_cancelled_leave_application", existing_la["name"])
-        last_leave_day = add_days(rj_date, -1)
-        if getdate(doc.leave_start_date) <= last_leave_day:
-            new_la = _create_leave_application(doc, doc.leave_start_date, last_leave_day)
-            doc.db_set("custom_created_leave_application", new_la.name)
-            frappe.msgprint(
-                _("Leave application {0} created from {1} to {2} due to early rejoining.").format(
-                    frappe.bold(new_la.name), doc.leave_start_date, last_leave_day
-                ),
-                title=_("Leave Application Adjusted"),
-                indicator="orange"
-            )
-        else:
-            frappe.msgprint(
-                _("Employee returned before leave started. Previous leave application {0} cancelled.").format(
-                    frappe.bold(cancelled_la_name or "N/A")
-                ),
-                title=_("Leave Cancelled"),
-                indicator="orange"
-            )
-        return
-
-    if rj_date > ld_end:
-        # Extended leave — create additional leave application for extra days
-        ext_from = add_days(ld_end, 1)
-        last_leave_day = add_days(rj_date, -1)
-        if ext_from <= last_leave_day:
-            ext_la = _create_leave_application(doc, ext_from, last_leave_day)
-            doc.db_set("custom_created_leave_application", ext_la.name)
-            frappe.msgprint(
-                _("Leave application {0} created for extended leave from {1} to {2}. Kindly approve the same.").format(
-                    frappe.bold(ext_la.name), ext_from, last_leave_day
-                ),
-                title=_("Extended Leave Application Created"),
-                indicator="orange"
-            )
-        return
+	_update_asset_status_on_rejoin(doc)
 
 
 def _handle_linked_leave_application(doc):
@@ -502,15 +494,31 @@ def _handle_linked_leave_application(doc):
 
     original_la = frappe.get_doc("Leave Application", la_name)
     new_from = getdate(doc.leave_start_date)
-    new_to = getdate(doc.leave_end_date)
     orig_from = getdate(original_la.from_date)
     orig_to = getdate(original_la.to_date)
+
+    # Calculate the correct leave end date from the approved rejoining date
+    # The last day of leave is always the day before the rejoining date
+    if doc.approved_rejoining_date:
+        new_to = add_days(getdate(doc.approved_rejoining_date), -1)
+    else:
+        new_to = getdate(doc.leave_end_date)
 
     if new_from == orig_from and new_to == orig_to:
         return
 
     _cancel_leave_application(la_name)
     doc.db_set("custom_cancelled_leave_application", la_name)
+
+    if new_from > new_to:
+        frappe.msgprint(
+            _("Employee returned before leave started. Previous leave application {0} cancelled.").format(
+                frappe.bold(la_name)
+            ),
+            title=_("Leave Cancelled"),
+            indicator="orange"
+        )
+        return
 
     new_la = _create_and_submit_leave_application(doc, new_from, new_to)
     doc.db_set("custom_created_leave_application", new_la.name)
@@ -587,112 +595,40 @@ def _notify_leave_application_created(doc, new_la):
     </table>
     <br><a href="{link}" target="_blank" style="color:#fff;text-decoration:none;padding:4px 20px;font-size:13px;border-radius:6px;background-color:#171717;display:inline-block;line-height:20px;">View Application</a>
     """
-    frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+    try:
+        frappe.sendmail(recipients=[employee_email], subject=subject, message=message, now=False)
+    except Exception:
+        frappe.log_error(title="Rejoining Leave Application Email Failed", message=f"Failed to send rejoining leave application email to {employee_email}")
 
 
 def on_cancel_rejoining_form(doc, method=None):
-    doc.db_set("custom_rejoining_approval_status", "Cancelled")
+	doc.db_set("custom_rejoining_approval_status", "Cancelled")
 
-    # Restore the cancelled original LA if this was an early-return case
-    cancelled_la_name = doc.get("custom_cancelled_leave_application")
-    if cancelled_la_name:
-        try:
-            restored_name = _restore_cancelled_leave_application(cancelled_la_name)
-            if restored_name:
-                _update_leave_declaration_reference(cancelled_la_name, restored_name)
-        except Exception:
-            frappe.log_error(
-                title=_("Rejoining Form Cancel Error"),
-                message=_("Failed to restore cancelled leave application {0} linked to Rejoining Form {1}").format(cancelled_la_name, doc.name)
-            )
+	_reverse_asset_status_on_cancel(doc)
 
-    # Cancel any linked leave application created from this form
-    la_name = doc.get("custom_created_leave_application")
-    if la_name:
-        try:
-            _cancel_leave_application(la_name)
-        except Exception:
-            frappe.log_error(
-                title=_("Rejoining Form Cancel Error"),
-                message=_("Failed to cancel leave application {0} linked to Rejoining Form {1}").format(la_name, doc.name)
-            )
+	# Restore the cancelled original LA if this was an early-return case
+	cancelled_la_name = doc.get("custom_cancelled_leave_application")
+	if cancelled_la_name:
+		try:
+			restored_name = _restore_cancelled_leave_application(cancelled_la_name)
+			if restored_name:
+				_update_leave_declaration_reference(cancelled_la_name, restored_name)
+		except Exception:
+			frappe.log_error(
+				title=_("Rejoining Form Cancel Error"),
+				message=_("Failed to restore cancelled leave application {0} linked to Rejoining Form {1}").format(cancelled_la_name, doc.name)
+			)
 
-
-def _get_leave_declaration_end_date(doc):
-    """Fetch leave_end_date from the source Leave Declaration for this employee."""
-    ld = frappe.get_all(
-        "LEAVE DECLARATION",
-        filters={
-            "employee": doc.employee,
-            "leave_start_date": doc.leave_start_date,
-            "docstatus": 1,
-        },
-        fields=["leave_end_date"],
-        order_by="creation desc",
-        limit=1,
-    )
-    if ld:
-        return ld[0]["leave_end_date"]
-    return doc.leave_end_date
-
-
-def _get_existing_leave_application(doc):
-    ld_end = _get_leave_declaration_end_date(doc)
-    applications = frappe.get_all(
-        "Leave Application",
-        filters={
-            "employee": doc.employee,
-            "from_date": ["<=", ld_end],
-            "to_date": [">=", doc.leave_start_date],
-            "docstatus": ["!=", 2],
-            "leave_type": doc.leave_type,
-        },
-        fields=["name", "from_date", "to_date"],
-        limit=1,
-    )
-    return applications[0] if applications else None
-
-
-def _create_leave_application(doc, from_date, to_date):
-    la = frappe.new_doc("Leave Application")
-    la.employee = doc.employee
-    la.employee_name = doc.employee_name
-    la.leave_type = doc.leave_type
-    la.from_date = from_date
-    la.to_date = to_date
-    la.company = doc.company
-    la.description = _("Auto-created from Rejoining Form {0}").format(doc.name)
-    la.status = "Open"
-    la.custom_approval_status = "Open"
-
-    from hrms.hr.doctype.leave_application.leave_application import get_leave_balance_on
-    la.leave_balance = get_leave_balance_on(doc.employee, doc.leave_type, getdate(from_date))
-
-    emp = frappe.get_cached_doc("Employee", doc.employee)
-    la.leave_approver = emp.leave_approver
-    la.custom_leave_approver_1 = emp.get("custom_leave_approver_1")
-    la.custom_leave_approver_2 = emp.get("custom_leave_approver_2")
-    la.custom_leave_approver_4 = emp.get("custom_leave_approver_3")
-    la.custom_leave_approver_5 = emp.get("custom_leave_approver_4")
-    la.custom_employee_user_id = emp.user_id
-
-    la.flags.ignore_permissions = True
-    la.insert()
-
-    # Set balance after (total_leave_days is computed during insert by standard validate)
-    la.db_set("custom_leave_balance_after", flt(la.leave_balance) - flt(la.total_leave_days))
-
-    # Send the created leave application for approval
-    from orion_erp.orion_erp.validations.leave_application import send_for_approval
-    try:
-        send_for_approval(la.name)
-    except Exception:
-        frappe.log_error(
-            title=_("Leave Approval Error"),
-            message=_("Failed to send leave application {0} for approval").format(la.name)
-        )
-
-    return la
+	# Cancel any linked leave application created from this form
+	la_name = doc.get("custom_created_leave_application")
+	if la_name:
+		try:
+			_cancel_leave_application(la_name)
+		except Exception:
+			frappe.log_error(
+				title=_("Rejoining Form Cancel Error"),
+				message=_("Failed to cancel leave application {0} linked to Rejoining Form {1}").format(la_name, doc.name)
+			)
 
 
 def _cancel_leave_application(la_name):
@@ -768,21 +704,338 @@ def reset_status_on_amend(doc, method=None):
 
 @frappe.whitelist()
 def cancel_draft_rejoining(docname):
-    doc = frappe.get_doc("Rejoining Form", docname)
+	doc = frappe.get_doc("Rejoining Form", docname)
 
-    if doc.docstatus != 0:
-        frappe.throw(_("Only draft rejoining forms can be cancelled."))
+	if doc.docstatus != 0:
+		frappe.throw(_("Only draft rejoining forms can be cancelled."))
 
-    if doc.custom_rejoining_approval_status == "Cancelled":
-        frappe.throw(_("Rejoining form is already cancelled."))
+	if doc.custom_rejoining_approval_status == "Cancelled":
+		frappe.throw(_("Rejoining form is already cancelled."))
 
-    for row in APPROVAL_FLOW:
-        doc.db_set(row["status_field"], "Cancelled")
-    doc.db_set("docstatus", 2)
-    doc.db_set("custom_rejoining_approval_status", "Cancelled")
+	for row in APPROVAL_FLOW:
+		doc.db_set(row["status_field"], "Cancelled")
+	doc.db_set("docstatus", 2)
+	doc.db_set("custom_rejoining_approval_status", "Cancelled")
 
-    doc.add_comment("Info", _("Rejoining form cancelled by {0}.").format(
-        frappe.bold(frappe.session.user)
-    ))
+	doc.add_comment("Info", _("Rejoining form cancelled by {0}.").format(
+		frappe.bold(frappe.session.user)
+	))
 
-    return True
+	return True
+
+
+def _get_leave_declaration_for_rejoining(doc):
+	ld = frappe.get_all(
+		"LEAVE DECLARATION",
+		filters={
+			"employee": doc.employee,
+			"docstatus": 1,
+			"leave_start_date": doc.leave_start_date,
+		},
+		fields=["name"],
+		order_by="creation desc",
+		limit=1,
+	)
+	if ld:
+		return frappe.get_doc("LEAVE DECLARATION", ld[0]["name"])
+	return None
+
+
+def _update_asset_status_on_rejoin(doc):
+	if not doc.asset_clearance_detail:
+		return
+
+	for row in doc.asset_clearance_detail:
+		if not row.source_asset_handover_detail:
+			continue
+
+		previous_status = row.previous_asset_status
+		if not previous_status:
+			continue
+
+		current_status = frappe.db.get_value(
+			"Asset Handover Detail", row.source_asset_handover_detail, "asset_status"
+		)
+		if current_status == previous_status:
+			continue
+
+		update_fields = {"asset_status": previous_status}
+		if previous_status == "Active":
+			update_fields["return_date"] = None
+
+		frappe.db.set_value(
+			"Asset Handover Detail",
+			row.source_asset_handover_detail,
+			update_fields,
+		)
+
+
+def _reverse_asset_status_on_cancel(doc):
+	if not doc.asset_clearance_detail:
+		return
+
+	for row in doc.asset_clearance_detail:
+		if not row.source_asset_handover_detail:
+			continue
+
+		ld_status = row.asset_status
+		if not ld_status:
+			continue
+
+		current_status = frappe.db.get_value(
+			"Asset Handover Detail", row.source_asset_handover_detail, "asset_status"
+		)
+		if current_status == ld_status:
+			continue
+
+		update_fields = {"asset_status": ld_status}
+		if ld_status in ("Returned", "Lost", "Damaged"):
+			update_fields["return_date"] = row.return_date
+		elif ld_status == "Active":
+			update_fields["return_date"] = None
+
+		frappe.db.set_value(
+			"Asset Handover Detail",
+			row.source_asset_handover_detail,
+			update_fields,
+		)
+
+
+@frappe.whitelist()
+def get_leave_declaration_assets(leave_application):
+	la = frappe.db.get_value(
+		"Leave Application",
+		leave_application,
+		["employee", "from_date"],
+		as_dict=True,
+	)
+	if not la:
+		return []
+
+	ld = frappe.get_all(
+		"LEAVE DECLARATION",
+		filters={
+			"employee": la.employee,
+			"leave_application": leave_application,
+		},
+		fields=["name"],
+		order_by="docstatus desc, creation desc",
+		limit=1,
+	)
+	if ld:
+		ld_doc = frappe.get_doc("LEAVE DECLARATION", ld[0]["name"])
+		if ld_doc.asset_clearance_detail:
+			result = []
+			for row in ld_doc.asset_clearance_detail:
+				result.append(_build_asset_row(row))
+			return result
+
+	assets = frappe.db.sql(
+		"""
+		SELECT ahd.*
+		FROM `tabAsset Handover Detail` ahd
+		INNER JOIN `tabAsset Handover` ah ON ah.name = ahd.parent
+		WHERE ah.employee = %s
+		ORDER BY ah.creation DESC
+		""",
+		la.employee,
+		as_dict=True,
+	)
+	if not assets:
+		return []
+
+	result = []
+	for asset in assets:
+		result.append({
+			"asset_type": asset.get("asset_type"),
+			"asset_code": asset.get("asset_code"),
+			"issued_by": asset.get("issued_by"),
+			"issued_date": asset.get("issued_date"),
+			"attachment_upload": asset.get("attachment_upload"),
+			"asset_status": asset.get("asset_status"),
+			"qty": asset.get("qty"),
+			"return_date": asset.get("return_date"),
+			"remarks": asset.get("remarks"),
+			"sim_card_number": asset.get("sim_card_number"),
+			"network": asset.get("network"),
+			"sim_status": asset.get("sim_status"),
+			"brand": asset.get("brand"),
+			"model": asset.get("model"),
+			"imei_number": asset.get("imei_number"),
+			"sim_number": asset.get("sim_number"),
+			"network_provider": asset.get("network_provider"),
+			"condition": asset.get("condition"),
+			"vehicle_type": asset.get("vehicle_type"),
+			"brand_model": asset.get("brand_model"),
+			"plate_number": asset.get("plate_number"),
+			"vehicle_cicpa_pass": asset.get("vehicle_cicpa_pass"),
+			"fuel_type": asset.get("fuel_type"),
+			"mulkiya_expiry_uae_specific": asset.get("mulkiya_expiry_uae_specific"),
+			"odometer_reading_at_issue": asset.get("odometer_reading_at_issue"),
+			"odometer_reading_at_return": asset.get("odometer_reading_at_return"),
+			"name_of_last_user": asset.get("name_of_last_user"),
+			"device_type": asset.get("device_type"),
+			"it_brand": asset.get("it_brand"),
+			"it_model": asset.get("it_model"),
+			"attachment": asset.get("attachment"),
+			"card_number": asset.get("card_number"),
+			"card_issue_date": asset.get("card_issue_date"),
+			"lost__reissued": asset.get("lost__reissued"),
+			"pass_number": asset.get("pass_number"),
+			"valid_to": asset.get("valid_to"),
+			"cicpa_status": asset.get("cicpa_status"),
+			"linked_account": asset.get("linked_account"),
+			"expiry_date": asset.get("expiry_date"),
+			"request_date": asset.get("request_date"),
+			"parking_status": asset.get("parking_status"),
+			"parking_slot_number": asset.get("parking_slot_number"),
+			"source_asset_handover": asset.get("parent"),
+			"source_asset_handover_detail": asset.get("name"),
+		})
+	return result
+
+
+def _build_asset_row(row):
+	return {
+		"asset_type": row.asset_type,
+		"asset_code": row.asset_code,
+		"issued_by": row.issued_by,
+		"issued_date": row.issued_date,
+		"attachment_upload": row.attachment_upload,
+		"asset_status": row.asset_status,
+		"qty": row.qty,
+		"return_date": row.return_date,
+		"remarks": row.remarks,
+		"sim_card_number": row.sim_card_number,
+		"network": row.network,
+		"sim_status": row.sim_status,
+		"brand": row.brand,
+		"model": row.model,
+		"imei_number": row.imei_number,
+		"sim_number": row.sim_number,
+		"network_provider": row.network_provider,
+		"condition": row.condition,
+		"vehicle_type": row.vehicle_type,
+		"brand_model": row.brand_model,
+		"plate_number": row.plate_number,
+		"vehicle_cicpa_pass": row.vehicle_cicpa_pass,
+		"fuel_type": row.fuel_type,
+		"mulkiya_expiry_uae_specific": row.mulkiya_expiry_uae_specific,
+		"odometer_reading_at_issue": row.odometer_reading_at_issue,
+		"odometer_reading_at_return": row.odometer_reading_at_return,
+		"name_of_last_user": row.name_of_last_user,
+		"device_type": row.device_type,
+		"it_brand": row.it_brand,
+		"it_model": row.it_model,
+		"attachment": row.attachment,
+		"card_number": row.card_number,
+		"card_issue_date": row.card_issue_date,
+		"lost__reissued": row.lost__reissued,
+		"pass_number": row.pass_number,
+		"valid_to": row.valid_to,
+		"cicpa_status": row.cicpa_status,
+		"linked_account": row.linked_account,
+		"expiry_date": row.expiry_date,
+		"request_date": row.request_date,
+		"parking_status": row.parking_status,
+		"parking_slot_number": row.parking_slot_number,
+		"source_asset_handover": row.source_asset_handover,
+		"source_asset_handover_detail": row.source_asset_handover_detail,
+		"previous_asset_status": row.previous_asset_status,
+	}
+
+
+@frappe.whitelist()
+def update_asset_status_on_row_add(source_asset_handover_detail, previous_asset_status=None, return_date=None):
+	"""Restore asset to its previous status when a row is added in Rejoining Form."""
+	if not source_asset_handover_detail or not previous_asset_status:
+		return
+
+	current_status = frappe.db.get_value(
+		"Asset Handover Detail", source_asset_handover_detail, "asset_status"
+	)
+	if current_status == previous_asset_status:
+		return
+
+	update_fields = {"asset_status": previous_asset_status}
+	if previous_asset_status == "Active":
+		update_fields["return_date"] = None
+
+	frappe.db.set_value(
+		"Asset Handover Detail",
+		source_asset_handover_detail,
+		update_fields,
+	)
+
+
+@frappe.whitelist()
+def update_asset_status_on_row_remove(source_asset_handover_detail, asset_status=None, return_date=None):
+	"""Re-apply the LD status when a row is removed in Rejoining Form."""
+	if not source_asset_handover_detail or not asset_status:
+		return
+
+	current_status = frappe.db.get_value(
+		"Asset Handover Detail", source_asset_handover_detail, "asset_status"
+	)
+	if current_status == asset_status:
+		return
+
+	update_fields = {"asset_status": asset_status}
+	if asset_status in ("Returned", "Lost", "Damaged"):
+		update_fields["return_date"] = return_date
+	elif asset_status == "Active":
+		update_fields["return_date"] = None
+
+	frappe.db.set_value(
+		"Asset Handover Detail",
+		source_asset_handover_detail,
+		update_fields,
+	)
+
+
+@frappe.whitelist()
+def get_available_leave_applications(doctype, txt, searchfield, start, page_length, filters):
+	if isinstance(filters, str):
+		import json
+		filters = json.loads(filters)
+
+	filters = filters or {}
+	employee = filters.get("employee")
+
+	unpaid_types = frappe.get_all("Leave Type", filters={"is_lwp": 1}, pluck="name")
+
+	from frappe.query_builder import DocType
+
+	LA = DocType("Leave Application")
+
+	query = (
+		frappe.qb.from_(LA)
+		.select(LA.name, LA.employee_name, LA.leave_type, LA.from_date, LA.to_date)
+		.where(LA.docstatus == 1)
+		.where(LA.custom_approval_status == "Approved")
+		.orderby(LA.from_date, order=frappe.qb.desc)
+	)
+
+	if unpaid_types:
+		query = query.where(LA.leave_type.notin(unpaid_types))
+	if employee:
+		query = query.where(LA.employee == employee)
+	if txt:
+		search_term = f"%{txt}%"
+		query = query.where(
+			(LA.name.like(search_term))
+			| (LA.employee_name.like(search_term))
+			| (LA.leave_type.like(search_term))
+		)
+
+	apps = query.run(as_dict=True)
+	return [
+		[
+			a.name,
+			a.employee_name or "",
+			a.leave_type or "",
+			str(a.from_date) if a.from_date else "",
+			str(a.to_date) if a.to_date else "",
+		]
+		for a in apps
+	]

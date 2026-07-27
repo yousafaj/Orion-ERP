@@ -6,6 +6,48 @@ from hrms.hr.doctype.leave_application.leave_application import get_leave_balanc
 from frappe.utils import getdate, today, flt
 
 @frappe.whitelist()
+def get_company_logo():
+	"""Return company logo from Orion Settings as a base64 data URI.
+	Works with S3-stored logos and bypasses permission checks."""
+	import base64
+	from urllib.parse import parse_qs, urlparse
+
+	logo_url = frappe.db.get_value("Orion Settings", None, "company_logo")
+	if not logo_url:
+		return ""
+
+	try:
+		query = parse_qs(urlparse(logo_url).query)
+		key = query.get("key", [None])[0]
+
+		if key:
+			s3_settings = frappe.get_single("S3 File Attachment")
+			import boto3
+
+			s3 = boto3.client(
+				"s3",
+				aws_access_key_id=s3_settings.aws_key,
+				aws_secret_access_key=s3_settings.get_password("aws_secret"),
+				region_name=s3_settings.region_name,
+			)
+			response = s3.get_object(Bucket=s3_settings.bucket_name, Key=key)
+			image_bytes = response["Body"].read()
+			ext = key.rsplit(".", 1)[-1].lower()
+			mime_map = {
+				"png": "image/png",
+				"jpg": "image/jpeg",
+				"jpeg": "image/jpeg",
+				"gif": "image/gif",
+				"svg": "image/svg+xml",
+			}
+			mime = mime_map.get(ext, "image/png")
+			return f"data:{mime};base64,{base64.b64encode(image_bytes).decode()}"
+		else:
+			return logo_url
+	except Exception:
+		return logo_url
+
+@frappe.whitelist()
 def get_customer_focal_person(party_name):
     """
     Given a Customer name, find the first Contact linked to it
@@ -88,7 +130,7 @@ def fill_employee_details(filters: dict | None = None, limit: int | None = None,
     if not filters:
         filters = frappe.form_dict or {}
     filters = frappe._dict(filters)
-    
+
     required = ["company", "currency", "payroll_payable_account", "start_date", "end_date"]
     missing = [f for f in required if not filters.get(f)]
     if missing:
@@ -379,7 +421,7 @@ def get_monthly_leave_accrual():
         get_rules_from_leave_type,
         get_rate_for_month,
         get_completed_months,
-        LEAVE_TYPE,
+        get_configured_leave_types,
     )
 
     employee = frappe.db.get_value(
@@ -404,18 +446,22 @@ def get_monthly_leave_accrual():
     if completed_months < 1:
         return []
 
-    rules = get_rules_from_leave_type()
-    if not rules:
-        return []
+    result = []
+    for leave_type in get_configured_leave_types():
+        rules = get_rules_from_leave_type(leave_type)
+        if not rules:
+            continue
 
-    monthly_rate = get_rate_for_month(completed_months, rules)
-    if monthly_rate <= 0:
-        return []
+        monthly_rate = get_rate_for_month(completed_months, rules)
+        if monthly_rate <= 0:
+            continue
 
-    return [{
-        "leave_type": LEAVE_TYPE,
-        "earned_days": monthly_rate,
-    }]
+        result.append({
+            "leave_type": leave_type,
+            "earned_days": monthly_rate,
+        })
+
+    return result
 
 
 @frappe.whitelist()
@@ -1089,6 +1135,96 @@ def get_current_month_leave_applications():
             "rejected": rejected,
             "cancelled": cancelled,
             "current_month": frappe.utils.formatdate(current_month_start, "MMMM yyyy"),
+        },
+        "rows": detail,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Rejoining Overdue Dashboard
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+@frappe.read_only()
+def get_rejoining_overdue():
+    """Leave applications whose end date has passed but no Rejoining Form exists."""
+    from frappe.utils import add_days, date_diff
+
+    today_date = getdate(today())
+
+    LA = frappe.qb.DocType("Leave Application")
+    RF = frappe.qb.DocType("Rejoining Form")
+
+    # Subquery: leave applications that already have a submitted Rejoining Form
+    # Must filter out NULLs — SQL NOT IN with NULL returns no rows at all
+    rejoining_sub = (
+        frappe.qb.from_(RF)
+        .select(RF.leave_application)
+        .where((RF.docstatus == 1) & (RF.leave_application.isnotnull()))
+    )
+
+    rows = (
+        frappe.qb.from_(LA)
+        .select(
+            LA.name,
+            LA.employee,
+            LA.employee_name,
+            LA.department,
+            LA.company,
+            LA.leave_type,
+            LA.from_date,
+            LA.to_date,
+            LA.total_leave_days,
+            LA.status,
+        )
+        .where(
+            (LA.docstatus == 1)
+            & (LA.status.isin(["Submitted", "Approved"]))
+            & (LA.to_date < today_date)
+            & (LA.name.notin(rejoining_sub))
+        )
+        .orderby(LA.to_date, order=frappe.qb.asc)
+        .limit(5000)
+    ).run(as_dict=True)
+
+    detail = []
+    total = len(rows)
+    bucket_1_7 = 0
+    bucket_8_30 = 0
+    bucket_30_plus = 0
+
+    for r in rows:
+        to_date = getdate(r.get("to_date"))
+        expected_rejoining = add_days(to_date, 1)
+        overdue_days = date_diff(today_date, to_date)
+
+        if overdue_days <= 7:
+            bucket_1_7 += 1
+        elif overdue_days <= 30:
+            bucket_8_30 += 1
+        else:
+            bucket_30_plus += 1
+
+        detail.append({
+            "employee": r.get("employee", ""),
+            "employee_name": r.get("employee_name", ""),
+            "name": r.get("name", ""),
+            "leave_type": r.get("leave_type", ""),
+            "from_date": str(r.get("from_date") or ""),
+            "to_date": str(r.get("to_date") or ""),
+            "leave_end_date": str(r.get("to_date") or ""),
+            "expected_rejoining_date": str(expected_rejoining),
+            "overdue_days": overdue_days,
+            "department": r.get("department", ""),
+            "company": r.get("company", ""),
+        })
+
+    return {
+        "kpi": {
+            "total": total,
+            "overdue_1_7": bucket_1_7,
+            "overdue_8_30": bucket_8_30,
+            "overdue_30_plus": bucket_30_plus,
         },
         "rows": detail,
     }

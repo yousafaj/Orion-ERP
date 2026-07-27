@@ -6,29 +6,268 @@
  "doctype": "DocType",
  "engine": "InnoDB",
   "field_order": [
-   "section_break_bqau",
-   "employee",
-   "employee_name",
-   "designation",
+  "section_break_bqau",
+  "leave_application",
+  "employee",
+  "employee_name",
+  "designation",
    "leaving_date",
-   "data",
-   "amended_from",
    "column_break_zhxg",
    "company",
-   "passport_number",
-   "leave_type",
-   "leave_start_date",
-   "leave_end_date",
-   "leave_days",
-   "leave_balance_before",
-   "rejoining_date",
-   "created_leave_application",
-   "extended_leave_application"
-  ],
+   "data",
+  "passport_number",
+  "leave_type",
+  "leave_start_date",
+  "leave_end_date",
+  "leave_days",
+  "leave_balance_before",
+  "rejoining_date",
+  "sb_financial",
+  "outstanding_advance",
+  "vehicle_fine",
+  "column_break_financial",
+  "vehicle_handover",
+  "accommodation_clearances",
+   "uniform",
+   "clearance_section",
+   "type_of_clearance",
+   "column_break_clearance",
+    "hrd_other_details",
+   "transport_other_detail",
+   "administration_other_detail",
+   "operations_other_details",
+   "asset_section",
+  "asset_clearance_detail",
+  "access_card_section",
+  "access_card_detail",
+  "salary_section",
+  "salary_detail",
+  "remark_section",
+  "remark",
+  "amended_from"
+ ],
  "fields": [
   {
    "fieldname": "section_break_bqau",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation",
+   "read_only": 1
+  },
+   {
+    "fieldname": "leaving_date",
+    "fieldtype": "Date",
+    "label": "Leaving Date",
+    "read_only": 1,
+    "reqd": 1
+   },
+   {
+    "fieldname": "column_break_zhxg",
+    "fieldtype": "Column Break"
+   },
+   {
+    "fieldname": "data",
+    "fieldtype": "Data",
+    "label": "Data",
+    "reqd": 1
+   },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "passport_number",
+   "fieldtype": "Data",
+   "label": "Passport Number",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "leave_type",
+   "fieldtype": "Link",
+   "label": "Leave Type",
+   "options": "Leave Type",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "leave_start_date",
+   "fieldtype": "Date",
+   "label": "Leave Start Date",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "leave_end_date",
+   "fieldtype": "Date",
+   "label": "Leave End Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "leave_days",
+   "fieldtype": "Float",
+   "label": "Leave Days",
+   "read_only": 1
+  },
+  {
+   "fieldname": "leave_balance_before",
+   "fieldtype": "Float",
+   "label": "Leave Balance Before Application",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejoining_date",
+   "fieldtype": "Date",
+   "label": "Rejoining Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "leave_application",
+   "fieldtype": "Link",
+   "label": "Leave Application",
+   "options": "Leave Application",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "sb_financial",
+   "fieldtype": "Section Break",
+   "label": "Financial & Clearances"
+  },
+   {
+    "fieldname": "outstanding_advance",
+    "fieldtype": "Currency",
+    "label": "Outstanding Advance",
+    "read_only": 1,
+    "description": "Auto-calculated from the latest submitted Employee Deduction. Sum of (Deduction Amount - Paid Amount) for all rows with positive remaining balance across both 'Employee Deduction Detail' and 'Outstanding Employee Deduction Detail' tables."
+   },
+  {
+   "fieldname": "vehicle_fine",
+   "fieldtype": "Currency",
+   "label": "Vehicle Fine"
+  },
+  {
+   "fieldname": "column_break_financial",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "vehicle_handover",
+   "fieldtype": "Data",
+   "label": "Vehicle Handover"
+  },
+  {
+   "fieldname": "accommodation_clearances",
+   "fieldtype": "Data",
+   "label": "Accommodation Clearances"
+  },
+   {
+    "fieldname": "uniform",
+    "fieldtype": "Data",
+    "label": "Uniform"
+   },
+   {
+    "fieldname": "clearance_section",
+    "fieldtype": "Section Break",
+    "label": "Clearance Details"
+   },
+   {
+    "fieldname": "type_of_clearance",
+    "fieldtype": "Link",
+    "label": "Type of Clearance",
+    "options": "Type of Clearance"
+   },
+   {
+    "fieldname": "column_break_clearance",
+    "fieldtype": "Column Break"
+   },
+   {
+    "fieldname": "hrd_other_details",
+    "fieldtype": "Data",
+    "label": "HRD Other Details"
+   },
+   {
+    "fieldname": "transport_other_detail",
+    "fieldtype": "Data",
+    "label": "TRANSPORT Other Detail"
+   },
+   {
+    "fieldname": "administration_other_detail",
+    "fieldtype": "Data",
+    "label": "ADMINISTRATION Other Detail"
+   },
+   {
+    "fieldname": "operations_other_details",
+    "fieldtype": "Data",
+    "label": "OPERATIONS Other Details"
+   },
+   {
+    "fieldname": "asset_section",
+   "fieldtype": "Section Break",
+   "label": "Asset Clearance"
+  },
+   {
+    "fieldname": "asset_clearance_detail",
+    "fieldtype": "Table",
+    "label": "Asset Clearance Detail",
+    "options": "Leave Declaration Asset Clearance Detail",
+    "cannot_add_rows": 1,
+    "cannot_delete_rows": 1
+   },
+  {
+   "fieldname": "access_card_section",
+   "fieldtype": "Section Break",
+   "label": "Access Card"
+  },
+  {
+   "fieldname": "access_card_detail",
+   "fieldtype": "Table",
+   "label": "Access Card Detail",
+   "options": "Access Card Detail"
+  },
+  {
+   "fieldname": "salary_section",
+   "fieldtype": "Section Break",
+   "label": "Salary Detail"
+  },
+  {
+   "fieldname": "salary_detail",
+   "fieldtype": "Table",
+   "label": "Salary Detail",
+   "options": "Leave Declaration Salary Detail"
+  },
+  {
+   "fieldname": "remark_section",
+   "fieldtype": "Section Break",
+   "label": "Remark"
+  },
+  {
+   "fieldname": "remark",
+   "fieldtype": "Small Text",
+   "label": "Remark"
   },
   {
    "fieldname": "amended_from",
@@ -39,108 +278,8 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "employee",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Employee",
-   "options": "Employee",
-   "reqd": 1
-  },
-  {
-   "fetch_from": "employee.employee_name",
-   "fieldname": "employee_name",
-   "fieldtype": "Data",
-   "label": "Employee Name",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "employee.designation",
-   "fieldname": "designation",
-   "fieldtype": "Link",
-   "label": "Designation",
-   "options": "Designation",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_zhxg",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "company",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Company",
-   "options": "Company",
-   "reqd": 1
-  },
-  {
-   "fieldname": "leaving_date",
-   "fieldtype": "Date",
-   "label": "Leaving Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "leave_start_date",
-   "fieldtype": "Date",
-   "label": "Leave Start Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "leave_end_date",
-   "fieldtype": "Date",
-   "label": "Leave End Date"
-  },
-  {
-   "fieldname": "leave_days",
-   "fieldtype": "Float",
-   "label": "Leave Days",
-   "read_only": 1
-  },
-  {
-    "fieldname": "passport_number",
-    "fieldtype": "Data",
-    "label": "Passport Number",
-    "reqd": 1
-   },
-   {
-    "fieldname": "leave_type",
-    "fieldtype": "Link",
-    "label": "Leave Type",
-    "options": "Leave Type",
-    "reqd": 1
-   },
-   {
-    "fieldname": "leave_balance_before",
-    "fieldtype": "Float",
-    "label": "Leave Balance Before Application",
-    "read_only": 1
-   },
-   {
-    "fieldname": "rejoining_date",
-    "fieldtype": "Date",
-    "label": "Rejoining Date"
-   },
-   {
-    "fieldname": "created_leave_application",
-    "fieldtype": "Data",
-    "label": "Created Leave Application",
-    "read_only": 1
-   },
-   {
-    "fieldname": "extended_leave_application",
-    "fieldtype": "Data",
-    "label": "Extended Leave Application",
-    "read_only": 1
-   },
-   {
-    "fieldname": "data",
-    "fieldtype": "Data",
-    "label": "Data",
-    "reqd": 1
-   }
-  ],
+  }
+ ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
