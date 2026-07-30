@@ -137,6 +137,7 @@ frappe.ui.form.on("Rejoining Form", {
                                     request_date: asset.request_date,
                                     parking_status: asset.parking_status,
                                     parking_slot_number: asset.parking_slot_number,
+                                    transfered_to: asset.transfered_to,
                                     source_asset_handover: asset.source_asset_handover,
                                     source_asset_handover_detail: asset.source_asset_handover_detail,
                                     previous_asset_status: asset.previous_asset_status,
