@@ -17,3 +17,5 @@ orion_erp.patches.sync_cancelled_cicpa_status
 orion_erp.patches.remove_vehicle_cicpa_and_vehicle_no
 orion_erp.patches.remove_accident_logs
 orion_erp.patches.remove_rental_management_workspace
+orion_erp.patches.add_table_multiselect_to_wf_field
+orion_erp.patches.set_leave_policy_on_employee_from_gender
