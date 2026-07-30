@@ -762,6 +762,7 @@ def _update_asset_status_on_rejoin(doc):
 		update_fields = {"asset_status": previous_status}
 		if previous_status == "Active":
 			update_fields["return_date"] = None
+			update_fields["transfered_to"] = None
 
 		frappe.db.set_value(
 			"Asset Handover Detail",
@@ -791,8 +792,13 @@ def _reverse_asset_status_on_cancel(doc):
 		update_fields = {"asset_status": ld_status}
 		if ld_status in ("Returned", "Lost", "Damaged"):
 			update_fields["return_date"] = row.return_date
+			update_fields["transfered_to"] = None
+		elif ld_status == "Transfer":
+			update_fields["return_date"] = None
+			update_fields["transfered_to"] = row.transfered_to
 		elif ld_status == "Active":
 			update_fields["return_date"] = None
+			update_fields["transfered_to"] = None
 
 		frappe.db.set_value(
 			"Asset Handover Detail",
@@ -812,24 +818,6 @@ def get_leave_declaration_assets(leave_application):
 	if not la:
 		return []
 
-	ld = frappe.get_all(
-		"LEAVE DECLARATION",
-		filters={
-			"employee": la.employee,
-			"leave_application": leave_application,
-		},
-		fields=["name"],
-		order_by="docstatus desc, creation desc",
-		limit=1,
-	)
-	if ld:
-		ld_doc = frappe.get_doc("LEAVE DECLARATION", ld[0]["name"])
-		if ld_doc.asset_clearance_detail:
-			result = []
-			for row in ld_doc.asset_clearance_detail:
-				result.append(_build_asset_row(row))
-			return result
-
 	assets = frappe.db.sql(
 		"""
 		SELECT ahd.*
@@ -844,15 +832,33 @@ def get_leave_declaration_assets(leave_application):
 	if not assets:
 		return []
 
+	ld_assets_by_detail = {}
+	ld = frappe.get_all(
+		"LEAVE DECLARATION",
+		filters={
+			"employee": la.employee,
+			"leave_application": leave_application,
+		},
+		fields=["name"],
+		order_by="docstatus desc, creation desc",
+		limit=1,
+	)
+	if ld:
+		ld_doc = frappe.get_doc("LEAVE DECLARATION", ld[0]["name"])
+		for row in ld_doc.asset_clearance_detail or []:
+			if row.source_asset_handover_detail:
+				ld_assets_by_detail[row.source_asset_handover_detail] = row
+
 	result = []
 	for asset in assets:
-		result.append({
+		ld_row = ld_assets_by_detail.get(asset.get("name"))
+		row_dict = {
 			"asset_type": asset.get("asset_type"),
 			"asset_code": asset.get("asset_code"),
 			"issued_by": asset.get("issued_by"),
 			"issued_date": asset.get("issued_date"),
 			"attachment_upload": asset.get("attachment_upload"),
-			"asset_status": asset.get("asset_status"),
+			"asset_status": ld_row.asset_status if ld_row else asset.get("asset_status"),
 			"qty": asset.get("qty"),
 			"return_date": asset.get("return_date"),
 			"remarks": asset.get("remarks"),
@@ -891,7 +897,10 @@ def get_leave_declaration_assets(leave_application):
 			"parking_slot_number": asset.get("parking_slot_number"),
 			"source_asset_handover": asset.get("parent"),
 			"source_asset_handover_detail": asset.get("name"),
-		})
+			"transfered_to": ld_row.transfered_to if ld_row else asset.get("transfered_to"),
+			"previous_asset_status": ld_row.previous_asset_status if ld_row else None,
+		}
+		result.append(row_dict)
 	return result
 
 
@@ -942,6 +951,7 @@ def _build_asset_row(row):
 		"source_asset_handover": row.source_asset_handover,
 		"source_asset_handover_detail": row.source_asset_handover_detail,
 		"previous_asset_status": row.previous_asset_status,
+		"transfered_to": row.transfered_to,
 	}
 
 
@@ -960,6 +970,7 @@ def update_asset_status_on_row_add(source_asset_handover_detail, previous_asset_
 	update_fields = {"asset_status": previous_asset_status}
 	if previous_asset_status == "Active":
 		update_fields["return_date"] = None
+		update_fields["transfered_to"] = None
 
 	frappe.db.set_value(
 		"Asset Handover Detail",
@@ -983,8 +994,10 @@ def update_asset_status_on_row_remove(source_asset_handover_detail, asset_status
 	update_fields = {"asset_status": asset_status}
 	if asset_status in ("Returned", "Lost", "Damaged"):
 		update_fields["return_date"] = return_date
+		update_fields["transfered_to"] = None
 	elif asset_status == "Active":
 		update_fields["return_date"] = None
+		update_fields["transfered_to"] = None
 
 	frappe.db.set_value(
 		"Asset Handover Detail",

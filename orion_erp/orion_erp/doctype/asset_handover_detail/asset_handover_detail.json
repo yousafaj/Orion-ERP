@@ -12,10 +12,11 @@
   "issued_date",
   "attachment_upload",
   "column_break_yivn",
-  "asset_status",
-  "qty",
-  "return_date",
-  "remarks",
+   "asset_status",
+   "qty",
+   "return_date",
+   "transfered_to",
+   "remarks",
   "sim_card_section",
   "sim_card_number",
   "network",
@@ -92,25 +93,34 @@
    "in_list_view": 1,
    "label": "Asset Status",
    "mandatory_depends_on": "eval:doc.asset_type!=\"Sim Card\"",
-   "options": "Active\nReturned\nLost\nDamaged"
-  },
-  {
-   "fieldname": "qty",
+    "options": "Active\nReturned\nLost\nDamaged\nTransfer"
+   },
+   {
+    "fieldname": "qty",
    "fieldtype": "Int",
    "label": "Qty",
    "non_negative": 1,
    "reqd": 1
   },
-  {
-   "fieldname": "return_date",
-   "fieldtype": "Date",
-   "label": "Return Date"
-  },
-  {
-   "fieldname": "remarks",
-   "fieldtype": "Text",
-   "label": "Remarks"
-  },
+   {
+    "fieldname": "return_date",
+    "fieldtype": "Date",
+    "label": "Return Date"
+   },
+   {
+    "depends_on": "eval:doc.asset_status=='Transfer'",
+    "fieldname": "transfered_to",
+    "fieldtype": "Link",
+    "in_list_view": 1,
+    "label": "Transfered To",
+    "mandatory_depends_on": "eval:doc.asset_status=='Transfer'",
+    "options": "Employee"
+   },
+   {
+    "fieldname": "remarks",
+    "fieldtype": "Text",
+    "label": "Remarks"
+   },
   {
    "depends_on": "eval:doc.asset_type==\"Sim Card\"",
    "fieldname": "sim_card_section",
