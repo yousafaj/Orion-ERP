@@ -16,7 +16,7 @@ class LeaveDeclarationAssetClearanceDetail(Document):
 		attachment: DF.Attach | None
 		attachment_upload: DF.Attach | None
 		asset_code: DF.Data | None
-		asset_status: DF.Literal["Active", "Returned", "Lost", "Damaged"]
+		asset_status: DF.Literal["Active", "Returned", "Lost", "Damaged", "Transfer"]
 		asset_type: DF.Link
 		brand: DF.Link | None
 		brand_model: DF.Link | None
@@ -58,6 +58,7 @@ class LeaveDeclarationAssetClearanceDetail(Document):
 		sim_status: DF.Literal["Active", "Inactive", "Returned", "Lost"]
 		source_asset_handover: DF.Link | None
 		source_asset_handover_detail: DF.Link | None
+		transfered_to: DF.Link | None
 		valid_to: DF.Date | None
 		vehicle_cicpa_pass: DF.Data | None
 		vehicle_type: DF.Link | None

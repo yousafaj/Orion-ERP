@@ -104,6 +104,7 @@ frappe.ui.form.on("LEAVE DECLARATION", {
                                         request_date: asset.request_date,
                                         parking_status: asset.parking_status,
                                         parking_slot_number: asset.parking_slot_number,
+                                        transfered_to: asset.transfered_to,
                                         source_asset_handover: asset.parent,
                                         source_asset_handover_detail: asset.name,
                                     });
@@ -167,6 +168,15 @@ frappe.ui.form.on("Leave Declaration Asset Clearance Detail", {
         let row = locals[cdt][cdn];
         if (row.asset_status === "Returned" && !row.return_date) {
             frappe.msgprint(__("Return Date is mandatory when Asset Status is Returned."));
+        }
+        if (row.asset_status === "Transfer" && !row.transfered_to) {
+            frappe.msgprint(__("Transfered To is mandatory when Asset Status is Transfer."));
+        }
+    },
+    transfered_to: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        if (row.asset_status === "Transfer" && !row.transfered_to) {
+            frappe.msgprint(__("Transfered To is mandatory when Asset Status is Transfer."));
         }
     },
 });

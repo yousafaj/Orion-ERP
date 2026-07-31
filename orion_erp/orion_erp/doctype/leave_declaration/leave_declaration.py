@@ -119,6 +119,11 @@ class LEAVEDECLARATION(Document):
 					_("Row #{0}: Return Date is mandatory when Asset Status is Returned.")
 					.format(row.idx)
 				)
+			if row.asset_status == "Transfer" and not row.transfered_to:
+				frappe.throw(
+					_("Row #{0}: Transfered To is mandatory when Asset Status is Transfer.")
+					.format(row.idx)
+				)
 
 	def _fetch_data_from_leave_application(self):
 		la = frappe.get_doc("Leave Application", self.leave_application)
@@ -187,6 +192,7 @@ class LEAVEDECLARATION(Document):
 			row.request_date = asset.get("request_date")
 			row.parking_status = asset.get("parking_status")
 			row.parking_slot_number = asset.get("parking_slot_number")
+			row.transfered_to = asset.get("transfered_to")
 			row.source_asset_handover = asset.get("parent")
 			row.source_asset_handover_detail = asset.get("name")
 
@@ -226,8 +232,13 @@ class LEAVEDECLARATION(Document):
 			update_fields = {"asset_status": target_status}
 			if target_status in ("Returned", "Lost", "Damaged"):
 				update_fields["return_date"] = row.return_date or getdate()
+				update_fields["transfered_to"] = None
+			elif target_status == "Transfer":
+				update_fields["return_date"] = None
+				update_fields["transfered_to"] = row.transfered_to
 			else:
 				update_fields["return_date"] = None
+				update_fields["transfered_to"] = None
 
 			frappe.db.set_value(
 				"Asset Handover Detail",
@@ -256,6 +267,9 @@ class LEAVEDECLARATION(Document):
 				continue
 
 			update_fields = {"asset_status": previous_status}
+			if previous_status == "Active":
+				update_fields["transfered_to"] = None
+				update_fields["return_date"] = None
 
 			frappe.db.set_value(
 				"Asset Handover Detail",
