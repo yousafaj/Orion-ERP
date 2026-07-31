@@ -15,7 +15,7 @@ class AssetHandoverDetail(Document):
 		from frappe.types import DF
 
 		asset_code: DF.Data | None
-		asset_status: DF.Literal["Active", "Returned", "Lost", "Damaged"]
+		asset_status: DF.Literal["Active", "Returned", "Lost", "Damaged", "Transfer"]
 		asset_type: DF.Link
 		attachment: DF.Attach | None
 		attachment_upload: DF.Attach | None
@@ -52,6 +52,7 @@ class AssetHandoverDetail(Document):
 		qty: DF.Int
 		remarks: DF.Text | None
 		request_date: DF.Date | None
+		transfered_to: DF.Link | None
 		return_date: DF.Date | None
 		sim_card_number: DF.Data | None
 		sim_number: DF.Data | None

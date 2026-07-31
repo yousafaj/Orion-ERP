@@ -56,7 +56,7 @@ def certificate_expiry_notification():
                         for key, value in row.as_dict().items():
                             if not hasattr(cert, key):
                                 setattr(cert, key, value)
-                
+
                 context = {
                     "doc": cert,
                     "employee": emp_doc
@@ -75,12 +75,15 @@ def certificate_expiry_notification():
                         recipients.append(emp_doc.user_id)
                         sent_employee_notifications.add(key)
 
-                frappe.sendmail(
-                    recipients=list(set(recipients)),
-                    subject=subject,
-                    message=message,
-                    sender=config.sender_email
-                )
+                try:
+                    frappe.sendmail(
+                        recipients=list(set(recipients)),
+                        subject=subject,
+                        message=message,
+                        sender=config.sender_email,
+                    )
+                except Exception:
+                    frappe.log_error(title="Certificate Notification Email Failed", message=f"Failed to send certificate notification email")
 
 
 def get_users_by_role(role_name):

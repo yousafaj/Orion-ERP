@@ -1,0 +1,58 @@
+{
+	"root": true,
+	"env": {
+		"browser": true,
+		"node": true,
+		"es6": true
+	},
+	"globals": {
+		"frappe": true,
+		"cur_frm": true,
+		"frm": true,
+		"fd": true,
+		"moment": true,
+		"$": true,
+		"__": true,
+		"locals": true,
+		"cint": true,
+		"validate_email": true,
+		"get_url": true,
+		"copy_to_clipboard": true,
+		"addascal": true,
+		"has_common": true,
+		"has_granular_access": true,
+		"wow": true
+	},
+	"parserOptions": {
+		"ecmaVersion": 2020,
+		"sourceType": "module"
+	},
+	"rules": {
+		"no-console": "warn",
+		"no-unused-vars": "warn",
+		"no-undef": "error",
+		"no-redeclare": "error",
+		"no-dupe-keys": "error",
+		"no-duplicate-case": "error",
+		"no-unreachable": "error",
+		"no-constant-condition": "warn",
+		"no-empty": "warn",
+		"no-extra-semi": "warn",
+		"no-func-assign": "error",
+		"no-inner-declarations": "error",
+		"no-irregular-whitespace": "warn",
+		"no-unexpected-multiline": "warn",
+		"curly": ["warn", "multi-line"],
+		"eqeqeq": ["warn", "always", { "null": "ignore" }],
+		"no-caller": "error",
+		"no-eval": "error",
+		"no-implied-eval": "error",
+		"no-new-wrappers": "error",
+		"no-throw-literal": "warn",
+		"no-with": "error",
+		"no-use-before-define": ["warn", { "functions": false }],
+		"one-var": ["warn", "never"],
+		"no-var": "warn",
+		"prefer-const": "warn"
+	}
+}

@@ -14,8 +14,58 @@ def _normalize(s: str) -> str:
 
 def validate_employee(doc, method):
     _validate_required_certificates(doc)
+    _validate_leave_policy_for_gender(doc)
+    _validate_leave_policy_change(doc)
     sync_existing_certificates(doc)
     create_air_ticket_entitlement_from_employee(doc)
+
+def _validate_leave_policy_for_gender(doc):
+    gender = getattr(doc, "gender", None)
+    if not gender:
+        return
+
+    settings = frappe.get_single("Orion Settings")
+    leave_policy_by_gender = getattr(settings, "leave_policy_by_gender", None)
+
+    if not leave_policy_by_gender:
+        frappe.throw(
+            _("No Leave Policy by Gender configuration found in Orion Settings. Please configure leave policies for each gender before creating or updating employees."),
+            title=_("Leave Policy Configuration Missing")
+        )
+
+    configured_genders = {row.gender for row in leave_policy_by_gender}
+    if gender not in configured_genders:
+        frappe.throw(
+            _("No Leave Policy configured for gender '{0}' in Orion Settings. Please add a Leave Policy for this gender before creating or updating employees.").format(gender),
+            title=_("Leave Policy Not Configured for Gender")
+        )
+
+
+def _validate_leave_policy_change(doc):
+    if doc.is_new():
+        return
+
+    old_policy = frappe.db.get_value("Employee", doc.name, "custom_leave_policy")
+    if old_policy == doc.custom_leave_policy:
+        return
+
+    any_lpa = frappe.db.get_value("Leave Policy Assignment", {
+        "employee": doc.name,
+        "docstatus": 1
+    }, "name")
+
+    if any_lpa:
+        lpa_dates = frappe.db.get_value("Leave Policy Assignment", any_lpa, ["effective_from", "effective_to"], as_dict=True)
+        frappe.throw(
+            _("Leave Policy Assignment {0} already exists for {1} for the period {2} to {3}. Please cancel it before changing the leave policy.").format(
+                frappe.utils.get_link_to_form("Leave Policy Assignment", any_lpa),
+                frappe.bold(doc.employee_name or doc.name),
+                frappe.bold(str(lpa_dates.effective_from)),
+                frappe.bold(str(lpa_dates.effective_to))
+            ),
+            title=_("Existing Leave Policy Assignment Found")
+        )
+
 
 def _validate_required_certificates(doc):
     """
@@ -36,8 +86,8 @@ def _validate_required_certificates(doc):
             _("Missing required certificates: {0}").format(", ".join(missing_display)),
             title=_("Incomplete Certificates Error")
         )
-        
-        
+
+
 def sync_existing_certificates(doc):
     for row in getattr(doc, "custom_certificates", []):
         existing = frappe.get_all(

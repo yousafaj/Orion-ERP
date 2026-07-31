@@ -26,7 +26,6 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/orion_erp/css/orion_erp.css"
-# app_include_js = "/assets/orion_erp/js/orion_erp.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/orion_erp/css/orion_erp.css"
@@ -36,8 +35,9 @@ app_license = "mit"
 # website_theme_scss = "orion_erp/public/scss/website"
 
 # include js, css files in header of web form
-# webform_include_js = {"doctype": "public/js/doctype.js"}
+webform_include_js = {"Lead": ["public/js/web_form/table_multiselect.js", "public/js/web_form/overrides.js", "public/js/web_form/web_form_override.js"]}
 # webform_include_css = {"doctype": "public/css/doctype.css"}
+
 
 # include js in page
 # page_js = {"page" : "public/js/file.js"}
@@ -48,11 +48,18 @@ doctype_js = {
     "Additional Salary": "public/js/additional_salary.js",
     "Leave Application": "public/js/leave_application.js",
     "Salary Slip": "public/js/salary_slip.js",
-    "Job Offer":"public/js/job_offer.js"
+    "Job Offer":"public/js/job_offer.js",
+    "Driver": "public/js/driver.js",
+    "Quotation": "public/js/quotation.js",
+    "Leave Allocation": "public/js/leave_allocation.js",
+    "Rejoining Form": "public/js/rejoining_form.js",
+    "Web Form": "public/js/web_form/designer_override.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
-doctype_list_js = {"Employee": "public/js/employee_list.js",}
+doctype_list_js = {"Employee": "public/js/employee_list.js",
+                   "Leave Application": "public/js/leave_application_list.js",
+                   "Rejoining Form": "public/js/rejoining_form_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -89,7 +96,8 @@ doctype_list_js = {"Employee": "public/js/employee_list.js",}
 
 jinja = {
 	"methods": [
-        "orion_erp.orion_erp.scripts.jinja.get_qr_code"
+        "orion_erp.orion_erp.scripts.jinja.get_qr_code",
+        "orion_erp.api.get_company_logo"
     ],
 	# "filters": "orion_erp.utils.jinja_filters
 }
@@ -99,6 +107,16 @@ fixtures = [
         "doctype": "Number Card",
         "filters": [
             ["name", "in", ["Total Employees"]]
+        ]
+    },
+    {
+        "doctype": "Role",
+        "filters": [["name", "in", ["PRO"]]]
+    },
+    {
+        "doctype": "Weekday",
+        "filters": [
+            ["name", "in", ["Saturday", "Sunday"]]
         ]
     }
 ]
@@ -146,7 +164,9 @@ permission_query_conditions = {
     "Additional Salary": "orion_erp.orion_erp.permission_query.additonal_salary.get_additional_salary_permission_query",
 	"Salary Structure Assignment": "orion_erp.orion_erp.permission_query.salary_structure_assignment.get_ssa_permission_query",
     "Leave Application":
-    "orion_erp.orion_erp.permission_query.leave_application.leave_application_query"
+    "orion_erp.orion_erp.permission_query.leave_application.leave_application_query",
+    "Rejoining Form":
+    "orion_erp.orion_erp.permission_query.rejoining_form.rejoining_form_query"
 }
 #
 # has_permission = {
@@ -157,9 +177,9 @@ permission_query_conditions = {
 # ---------------
 # Override standard doctype classes
 
-# override_doctype_class = {
-# 	"ToDo": "custom_app.overrides.CustomToDo"
-# }
+override_doctype_class = {
+	"Web Form": "orion_erp.orion_erp.overrides.web_form.CustomWebForm",
+}
 # Document Events
 # ---------------
 # Hook on document methods and events
@@ -174,18 +194,50 @@ permission_query_conditions = {
 
 doc_events = {
     "Leave Application":{
-         "validate":"orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
+         "validate":[
+              "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
+              "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
+              "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
+               "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
+               "orion_erp.orion_erp.validations.leave_application.validate_paternity_leave",
+               "orion_erp.orion_erp.validations.leave_application.reset_status_on_amend",
+               "orion_erp.orion_erp.services.leave_delegation.auto_delegate_leave_application"
+         ],
 
-        "on_update":"orion_erp.orion_erp.validations.leave_application.handle_leave_approval"
+        "on_update":[
+            "orion_erp.orion_erp.validations.leave_application.handle_leave_approval",
+            "orion_erp.orion_erp.services.leave_delegation.handle_auto_delegation_on_update"
+        ],
+        "on_submit":[
+            "orion_erp.orion_erp.validations.leave_application.on_submit_leave_application"
+        ],
+        "on_cancel":[
+            "orion_erp.orion_erp.validations.leave_application.on_cancel_leave_application"
+        ]
+    },
+    "Rejoining Form":{
+        "validate":[
+            "orion_erp.orion_erp.validations.rejoining_form.validate_rejoining_approval",
+            "orion_erp.orion_erp.validations.rejoining_form.reset_status_on_amend"
+        ],
+        "on_update":[
+            "orion_erp.orion_erp.validations.rejoining_form.handle_rejoining_approval"
+        ],
+        "on_submit":[
+            "orion_erp.orion_erp.validations.rejoining_form.on_submit_rejoining_form"
+        ],
+        "on_cancel":[
+            "orion_erp.orion_erp.validations.rejoining_form.on_cancel_rejoining_form"
+        ]
     },
     "Salary Structure Assignment":{
         "validate":"orion_erp.orion_erp.validations.salary_structure_assignment.validate_ssa_employee_category"
     },
     "Additional Salary":{
-        "autoname":"orion_erp.orion_erp.doctype.additional_salary.autoname",
-        "validate":"orion_erp.orion_erp.doctype.additional_salary.validate",
-        "on_submit":"orion_erp.orion_erp.doctype.additional_salary.on_submit",
-        "on_cancel":"orion_erp.orion_erp.doctype.additional_salary.on_cancel"
+        "autoname":"orion_erp.orion_erp.services.additional_salary.autoname",
+        "validate":"orion_erp.orion_erp.services.additional_salary.validate",
+        "on_submit":"orion_erp.orion_erp.services.additional_salary.on_submit",
+        "on_cancel":"orion_erp.orion_erp.services.additional_salary.on_cancel"
     },
 
     "Vehicle": {
@@ -199,12 +251,41 @@ doc_events = {
     },
     "Employee": {
         "validate": ["orion_erp.orion_erp.validations.employee_hooks.validate_employee",
-                    "orion_erp.orion_erp.doctype.employee.validate_allowance_amounts"],
-        "after_insert": "orion_erp.orion_erp.doctype.employee.create_salary_structure_assignment",
-        "on_update": "orion_erp.orion_erp.doctype.employee.create_salary_structure_assignment"
+                    "orion_erp.orion_erp.services.employee.validate_allowance_amounts",
+                    "orion_erp.orion_erp.services.employee.validate_doj_readonly"],
+        "after_insert": "orion_erp.orion_erp.services.employee.create_salary_structure_assignment",
+        "on_update": [
+            "orion_erp.orion_erp.services.employee.cancel_allocations_and_reallocate_on_doj_change",
+            "orion_erp.orion_erp.services.employee.create_salary_structure_assignment",
+            "orion_erp.orion_erp.services.employee.create_leave_policy_assignment",
+            "orion_erp.orion_erp.services.employee.auto_allocate_hajj_umrah",
+        ]
     },
     "Asset": {
         "autoname": "orion_erp.orion_erp.scripts.autoname_assets.autoname_asset"
+    },
+    "Leave Type": {
+        "validate": [
+              "orion_erp.orion_erp.validations.leave_type.validate_no_casual_leave",
+              "orion_erp.orion_erp.validations.leave_type.validate_earned_leave_not_with_accrual"
+         ]
+    },
+    "Leave Encashment": {
+        "validate": "orion_erp.orion_erp.validations.leave_encashment.validate_leave_encashment",
+        "on_cancel": "orion_erp.orion_erp.validations.leave_encashment.on_cancel_leave_encashment"
+    },
+    "Leave Allocation": {
+        "before_submit": "orion_erp.orion_erp.scripts.leave_allocation_validation.before_submit"
+    },
+    "Payroll Entry": {
+        "validate": "orion_erp.orion_erp.validations.payroll_medical_certificate.validate_medical_certificate_for_payroll_entry"
+    },
+    "Salary Slip": {
+        "validate": "orion_erp.orion_erp.validations.payroll_medical_certificate.validate_medical_certificate_for_salary_slip"
+    },
+    "File": {
+        "on_update": "orion_erp.orion_erp.validations.leave_application.update_medical_certificate_status_on_file_attach",
+        "on_trash": "orion_erp.orion_erp.validations.leave_application.reset_medical_certificate_status_on_file_trash"
     }
 }
 
@@ -217,14 +298,34 @@ scheduler_events = {
 	# ],
     "cron": {
         "0 6 30 * *": [
-            "orion_erp.orion_erp.doctype.additional_salary.create_monthly_allowances"
+            "orion_erp.orion_erp.services.additional_salary.create_monthly_allowances"
+        ],
+        # 1st of every month, 02:00 — build last month's Monthly Billing sheets so
+        # Accounts never miss invoicing a customer-month.
+        "0 2 1 * *": [
+            "orion_erp.orion_erp.doctype.monthly_billing.monthly_billing.create_monthly_billing_sheets"
+        ],
+        # Run every minute to check leave application escalation status
+        "* * * * *": [
+            "orion_erp.orion_erp.scripts.leave_escalation.process_leave_escalations"
         ]
     },
 	"daily": [
-        # "orion_erp.orion_erp.doctype.employee_deduction.employee_deduction.run_deduction_cron"
+        # "orion_erp.orion_erp.services.employee_deduction.run_deduction_cron"
 		"orion_erp.tasks.daily.daily",
         "orion_erp.orion_erp.scripts.certificate_notification.certificate_expiry_notification",
-        "orion_erp.orion_erp.doctype.employee.create_ticket_allowance"
+        "orion_erp.orion_erp.services.employee.create_ticket_allowance",
+        "orion_erp.orion_erp.services.leave_delegation.restore_delegations",
+        "orion_erp.passport_management.tasks.send_overdue_passport_alerts",
+        "orion_erp.orion_erp.services.cicpa.auto_expire_cicpas",
+        "orion_erp.orion_erp.services.loa.auto_expire_loas",
+        "orion_erp.orion_erp.services.employee.auto_renew_leave_policy_assignments",
+        "orion_erp.orion_erp.scripts.hajj_umrah_allocation.allocate_hajj_umrah_yearly_for_all",
+        "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_monthly_accrual",
+        "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_carry_forward"
+	],
+	"daily_long": [
+	    "orion_erp.passport_management.tasks.send_expiry_reminders"
 	],
 	# "hourly": [
 	# 	"orion_erp.tasks.hourly"
@@ -245,6 +346,7 @@ scheduler_events = {
 # Overriding Methods
 # ------------------------------
 override_whitelisted_methods = {
+	"frappe.desk.form.save.savedocs": "orion_erp.orion_erp.override.save.savedocs",
 	"frappe.core.page.permission_manager.permission_manager.get_roles_and_doctypes": "orion_erp.orion_erp.override.permission_manager.get_roles_and_doctypes",
 	"frappe.core.page.permission_manager.permission_manager.get_permissions": "orion_erp.orion_erp.override.permission_manager.get_permissions",
 	"frappe.core.page.permission_manager.permission_manager.add": "orion_erp.orion_erp.override.permission_manager.add",
@@ -253,6 +355,7 @@ override_whitelisted_methods = {
 	"frappe.core.page.permission_manager.permission_manager.reset": "orion_erp.orion_erp.override.permission_manager.reset",
 	"frappe.core.page.permission_manager.permission_manager.get_users_with_role": "orion_erp.orion_erp.override.permission_manager.get_users_with_role",
 	"frappe.core.page.permission_manager.permission_manager.get_standard_permissions": "orion_erp.orion_erp.override.permission_manager.get_standard_permissions",
+	"frappe.website.doctype.web_form.web_form.get_form_data": "orion_erp.orion_erp.overrides.web_form.get_form_data",
 }
 #
 # each overriding function accepts a `data` argument;
@@ -318,4 +421,3 @@ export_python_type_annotations = True
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-

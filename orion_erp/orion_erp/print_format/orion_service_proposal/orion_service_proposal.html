@@ -1,0 +1,916 @@
+<!--
+================================================================
+WHY THE HEADER OVERLAPS ON PAGE 2+
+================================================================
+
+ROOT CAUSE:
+Chrome Print Preview does NOT apply @page rules from <style>
+tags that are nested inside <body> elements.
+
+In ERPNext, the print format HTML is injected via:
+  <body>
+    <div class="print-format-gutter">
+      <div class="print-format">
+        {{ body }}    ← our <style> tag with @page lives HERE
+      </div>
+    </div>
+  </body>
+
+Because our @page { margin-top: 80px } is inside <body>
+(nested 3 levels deep inside .print-format), Chrome ignores
+it entirely. The page margin is effectively 0.
+
+On page 1: The header div is still in normal document flow,
+so content flows below it. Looks correct.
+
+On page 2+: The header repeats via position:fixed (top:0).
+But because @page margin-top is ignored, content starts at
+y=0 — the same position as the header. Result: overlap.
+
+THE PERMANENT FIX:
+A <script> tag injects the @page rule into <head> at runtime,
+where Chrome WILL apply it. The @page rule inside <style> is
+kept as a fallback for other browsers.
+
+HEADER HEIGHT: 80px (from inner div height:80px)
+@page margin-top: 80px (EXACT match — no guessing)
+================================================================
+-->
+
+<style>
+@page {
+    margin-top: 80px;
+    margin-bottom: 80px;
+}
+
+.footer-img img {
+    width: 100%;
+    display: block;
+}
+
+.print-format {
+    padding-top: 30px !important;
+}
+
+.letter-head-footer {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.print-format p {
+    margin: 1px 0;
+    line-height: 1.1;
+}
+
+.print-format td {
+    line-height: 1.1;
+}
+
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+@media screen {
+    .print-format {
+        width: 9.4in;
+        padding: 0.20in;
+        min-height: 11.7in;
+    }
+}
+
+@media print {
+    .print-format {
+        display: block !important;
+        padding-top: 0 !important;
+        overflow: visible !important;
+    }
+
+    .page-break {
+        display: block !important;
+    }
+
+
+
+
+
+    #footer-html {
+        position: fixed !important;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        margin: 0 !important;
+        padding: 0 !important;
+        order: initial !important;
+        z-index: 1000;
+    }
+
+    .footer-img {
+        position: fixed !important;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        margin: 0 !important;
+        padding: 0 !important;
+        order: initial !important;
+        z-index: 1000;
+    }
+
+    .footer-img img {
+        max-height: 70px;
+        width: auto;
+    }
+}
+</style>
+
+<!--
+PERMANENT FIX: Chrome ignores @page rules inside <body>.
+Inject the @page rule into <head> at runtime.
+This runs before window.print() is called.
+-->
+<script>
+(function(){
+    var s = document.createElement('style');
+    s.textContent = '@page{margin-top:80px;margin-bottom:80px}';
+    document.head.appendChild(s);
+})();
+</script>
+
+<!-- HEADER: 80px tall, repeats on every page via position:fixed -->
+<div id="header-html">
+
+   <div style="position:relative; width:100%; height:80px;">
+
+    <!-- Client Logo -->
+    <div style="position:absolute; left:0; top:0;">
+        {% if doc.custom_client_logo %}
+            <img src="{{ doc.custom_client_logo }}"
+                 style="height:55px; width:auto;">
+        {% else %}
+            <span style="font-size:16px;"></span>
+        {% endif %}
+    </div>
+
+    <!-- Company Logo -->
+    <div style="position:absolute; right:0; top:0;">
+        {% set logo = get_company_logo() %}
+        {% if logo %}
+            <img src="{{ frappe.utils.get_url(logo) }}"
+                 style="height:55px; width:auto;">
+        {% endif %}
+    </div>
+
+
+</div>
+
+</div>
+
+   <div style="margin-top:40px; font-size:12px; font-weight:bold; line-height:1.6;">
+    Quotation No.: {{ doc.name }}<br>
+    Date: {{ frappe.utils.formatdate(doc.transaction_date, "dd MMMM yyyy") }}<br>
+    Valid Until: {{ frappe.utils.formatdate(doc.valid_till, "dd MMMM yyyy") }}
+</div>
+
+{% if doc.quotation_to == "Lead" %}
+    {% set lead = frappe.get_doc("Lead", doc.party_name) %}
+{% endif %}
+
+<div style="margin-top:50px; width:100%;">
+
+    <!-- Prepared For -->
+    <div style="width:45%; float:left;">
+
+        <div style="font-size:12px; font-weight:bold; margin-bottom:12px;">
+            Prepared For
+        </div>
+
+        <div style="font-size:12px; line-height:1.8;">
+
+            <b>Client Name:</b>
+            {{ lead.lead_name if doc.quotation_to=="Lead" else doc.customer_name }}
+            <br>
+
+            <b>Contact Person:</b>
+            {{ lead.lead_name if doc.quotation_to=="Lead" else "" }}
+            <br>
+
+            <b>Designation:</b>
+            {{ lead.job_title if doc.quotation_to=="Lead" else "" }}
+            <br>
+
+            <b>Contact No.:</b>
+            {{ lead.mobile_no if doc.quotation_to=="Lead" else "" }}
+            <br>
+
+            <b>Email:</b>
+            {{ lead.email_id if doc.quotation_to=="Lead" else "" }}
+            <br>
+
+            <b>TRN/VAT No.:</b>
+            {{ lead.custom_trn_vat_number if doc.quotation_to=="Lead" else "" }}
+
+        </div>
+
+    </div>
+
+    <!-- Prepared By -->
+    <div style="width:40%; float:right;">
+         {% set company = frappe.get_doc("Company", doc.company) %}
+        {% set employee = frappe.get_doc("Employee", doc.custom_prepared_by) %}
+
+        <div style="font-size:12px; font-weight:bold; margin-bottom:12px;">
+            Prepared By
+        </div>
+
+        <div style="font-size:12px; line-height:1.8;">
+
+            <b>Company Name:</b>
+            {{ doc.company }}
+            <br>
+
+            <b>Contact Person:</b>
+            {{ doc.custom_contact_persons }}
+            <br>
+
+
+            <b>Designation:</b>
+            {{ doc.custom_designation or "" }}
+            <br>
+
+            <b>Contact No.:</b>
+            {{ doc.custom_contact_no or "" }}
+            <br>
+
+            <b>Email:</b>
+            {{ doc.custom_email or "" }}
+            <br>
+
+            <b>TRN/VAT No.: {{ company.custom_trn_vat_number or "" }}</b>
+
+        </div>
+
+    </div>
+
+    <div style="clear:both;"></div>
+
+</div>
+
+<!-- SUBJECT -->
+
+<!-- SUBJECT -->
+
+<div style="margin-top:40px; margin-bottom:15px;">
+
+    <div style="
+        font-size:12px;
+        font-weight:bold;
+        margin-bottom:5px;
+    ">
+        Quotation for {{ doc.custom_quotation_for or "" }}
+    </div>
+
+    <div style="
+        font-size:12px;
+        font-weight:bold;
+    ">
+        Project Location:
+        {{ doc.custom_location or "" }}
+    </div>
+
+</div>
+
+<!-- INTRO -->
+
+<div style="margin-top:10px; margin-bottom:10px;">
+
+    <div style="
+        font-size:12px;
+        font-weight:bold;
+        margin-bottom:10px;
+    ">
+        Dear {{ doc.customer_name or "Customer" }},
+    </div>
+
+    <div style="
+        font-size:12px;
+        line-height:1.6;
+        text-align:justify;
+    ">
+        Thank you for the opportunity to provide our quotation.
+        We are pleased to submit our pricing for the supply of
+        services/products described below.
+    </div>
+
+</div>
+
+<!-- SCOPE OF WORK -->
+
+<div style="
+    font-size:14px;
+    font-weight:bold;
+
+    margin-top:20px;
+    margin-bottom:10px;
+    display:inline-block;
+">
+    SCOPE OF WORK / DESCRIPTION
+</div>
+
+<div style="
+    font-size:12px;
+    margin-bottom:10px;
+">
+    The quotation covers the following services/products:
+</div>
+
+<table style="
+    width:100%;
+    border-collapse:collapse;
+    border-spacing:0;
+    font-size:12px;
+    margin:0;
+    padding:0;
+">
+
+    <thead>
+        <tr style="background:#8ccf6f; margin:0; padding:0;">
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000 !important;
+                font-weight:bold !important;
+                padding:0;
+                margin:0;
+            ">
+                Sn. No.
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000 !important;
+                font-weight:bold !important;
+                padding:0;
+                margin:0;
+            ">
+                Service Description
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000 !important;
+                font-weight:bold !important;
+                padding:0;
+                margin:0;
+            ">
+                {% if doc.custom_quotation_for == "Hazardous Waste Management Collection Service"
+               or doc.custom_quotation_for=="Solid Waste Management Collection Service"
+               %}
+               Capacity
+               {% else %}
+                Location
+                {% endif %}
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000 !important;
+                font-weight:bold !important;
+                padding:0;
+                margin:0;
+            ">
+                {% if doc.custom_quotation_for=="Vehicle Rental Service" %}
+                Quantity
+                {% else %}
+                Frequency
+                {% endif %}
+
+            </th>
+
+            {% if doc.custom_quotation_for=="Post Construction Anti Termite Treatment" or doc.custom_quotation_for=="Pre Contsruction Anti Termite Treatment" %}
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000 !important;
+                font-weight:bold !important;
+                padding:0;
+                margin:0;
+            ">
+                UOM
+
+            </th>
+            {% endif %}
+        </tr>
+    </thead>
+
+    <tbody>
+
+        {% for row in doc.items %}
+
+        <tr style="margin:0; padding:0;">
+
+            <td style="
+                border:1px solid #000;
+                text-align:center;
+                vertical-align:middle;
+                padding:0;
+                margin:0;
+            ">
+                 {{ "%02d"|format(loop.index) }}
+            </td>
+
+           <td style="
+            border:1px solid #000;
+            text-align:center !important;
+            vertical-align:middle;
+            padding:4px;
+        ">
+            {{ frappe.utils.strip_html(row.custom_item_description or row.item_name) }}
+        </td>
+
+            <td style="
+                border:1px solid #000;
+                text-align:center;
+                vertical-align:middle;
+                padding:0;
+                margin:0;
+            ">
+                {% if doc.custom_quotation_for == "Hazardous Waste Management Collection Service"
+               or doc.custom_quotation_for =="Solid Waste Management Collection Service"
+                %}
+              {{ row.custom_capacity or "" }}
+               {% else %}
+               {{ row.custom_item_location or "" }}
+                {% endif %}
+
+            </td>
+
+            <td style="
+                border:1px solid #000;
+                text-align:center;
+                vertical-align:middle;
+                padding:0;
+                margin:0;
+            ">
+                {% if doc.custom_quotation_for=="Vehicle Rental Service" %}
+                {{row.qty}}
+                {% else %}
+                {{row.custom_frequency or ""}}
+                {% endif %}
+            </td>
+            {% if doc.custom_quotation_for=="Post Construction Anti Termite Treatment" or doc.custom_quotation_for=="Pre Contsruction Anti Termite Treatment" %}
+            <td style="
+                border:1px solid #000;
+                text-align:center;
+                vertical-align:middle;
+                padding:0;
+                margin:0;
+            ">
+                {{row.uom}}
+
+            </td>
+            {% endif %}
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+<div style="
+    margin-top:15px;
+    font-size:12px;
+    line-height:1.5;
+">
+    Any work not specifically mentioned in this quotation shall
+    be considered outside the scope and may be subject to
+    additional charges.
+</div>
+
+<!-- COMMERCIAL OFFER -->
+
+<div style="
+    font-size:13px;
+    font-weight:bold;
+
+    display:inline-block;
+
+    margin-top:15px;
+    margin-bottom:0;
+">
+    COMMERCIAL OFFER
+</div>
+
+<table style="
+    width:100%;
+    border-collapse:collapse;
+    border-spacing:0;
+    font-size:12px;
+    margin-top:0;
+">
+
+    <thead>
+
+        <tr style="background:#8ccf6f;">
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000;
+                font-weight:bold;
+                width:8%;
+                padding:4px;
+            ">
+                Sn.No.
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000;
+                font-weight:bold;
+                width:54%;
+                padding:4px;
+            ">
+                Service Description
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000;
+                font-weight:bold;
+                width:12%;
+                padding:4px;
+            ">
+                 {% if doc.custom_quotation_for == "Hazardous Waste Management Collection Service"
+               or  doc.custom_quotation_for == "Solid Waste Management Collection Service"
+                %}
+               Capacity
+               {%else%}
+                Location
+                {% endif %}
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000;
+                font-weight:bold;
+                width:10%;
+                padding:4px;
+            ">
+               {% if doc.custom_quotation_for=="Vehicle Rental Service" %}
+                Quantity
+                {% else %}
+                Frequency
+                {% endif %}
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000;
+                font-weight:bold;
+                width:16%;
+                padding:4px;
+            ">
+                {% if doc.custom_quotation_for!="Vehicle Rental Service" %}
+                Unit Price ({{ doc.currency }})
+                {% else %}
+                Monthly<br>
+                Rate/Unit<br>
+                ({{ doc.currency }})
+                {% endif %}
+            </th>
+            {% if doc.custom_quotation_for=="Post Construction Anti Termite Treatment" or doc.custom_quotation_for=="Pre Contsruction Anti Termite Treatment" %}
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                color:#000 !important;
+                font-weight:bold !important;
+                padding:0;
+                margin:0;
+            ">
+                UOM
+
+            </th>
+            {% endif %}
+        </tr>
+
+    </thead>
+
+    <tbody>
+
+        {% for row in doc.items %}
+
+        <tr>
+
+            <td style="
+                border:1px solid #000;
+                text-align:center;
+                vertical-align:middle;
+                padding:4px;
+            ">
+                {{ "%02d"|format(loop.index) }}
+            </td>
+
+                <td style="
+                    border:1px solid #000;
+                    text-align:center !important;
+                    vertical-align:middle;
+                    padding:4px;
+                ">
+                    {{ frappe.utils.strip_html(row.custom_item_description or row.item_name) }}
+                </td>
+
+            <td style="
+                border:1px solid #000;
+                text-align:center;
+                vertical-align:middle;
+                padding:4px;
+            ">
+                 {% if doc.custom_quotation_for == "Hazardous Waste Management Collection Service"
+                or doc.custom_quotation_for == "Solid Waste Management Collection Service"
+                %}
+                {{row.custom_capacity}}
+                {% else %}
+                {{ row.custom_item_location or "" }}
+                {% endif %}
+            </td>
+
+            <td style="
+                border:1px solid #000;
+                text-align:center;
+                vertical-align:middle;
+                padding:4px;
+            ">
+                {% if doc.custom_quotation_for=="Vehicle Rental Service" %}
+                {{row.qty or ""}}
+                {% else %}
+                {{row.custom_frequency or ""}}
+                {% endif %}
+            </td>
+
+            <td style="
+                border:1px solid #000;
+                text-align:center;
+                vertical-align:middle;
+                padding:4px;
+            ">
+                {% if doc.custom_quotation_for=="Pest Control Service" %}
+                {{ frappe.utils.fmt_money(row.rate) }}/{{row.uom}}
+                {% else %}
+                 {{ frappe.utils.fmt_money(row.rate) }}
+                {% endif %}
+            </td>
+            {% if doc.custom_quotation_for=="Post Construction Anti Termite Treatment" or doc.custom_quotation_for=="Pre Contsruction Anti Termite Treatment" %}
+            <td style="
+                border:1px solid #000;
+                text-align:center;
+                vertical-align:middle;
+                padding:0;
+                margin:0;
+            ">
+                {{row.uom}}
+
+            </td>
+            {% endif %}
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+
+
+
+
+
+<div style="clear:both;"></div>
+
+<br><br>
+
+<style>
+.terms-section {
+    font-size: 12px;
+    line-height: 1.6;
+    overflow: hidden !important;
+}
+
+.terms-section *:not(b):not(strong) {
+    color: #000 !important;
+    max-width: 100% !important;
+    overflow-x: visible !important;
+}
+
+/* Remove horizontal scrollbars */
+.terms-section div,
+.terms-section p,
+.terms-section span,
+.terms-section section {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    width: auto !important;
+    max-width: 100% !important;
+}
+
+/* Tables */
+.terms-section table {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-collapse: collapse !important;
+    border: 1px solid #000 !important;
+    table-layout: fixed !important;
+}
+
+.terms-section table td,
+.terms-section table th {
+    border: 1px solid #000 !important;
+    padding: 6px !important;
+    color: #000 !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+}
+
+/* Remove any scrollbar from embedded elements */
+.terms-section * {
+    scrollbar-width: none;
+}
+
+.terms-section *::-webkit-scrollbar {
+    display: none;
+}
+</style>
+
+<div class="terms-section">
+    {{ doc.terms or "" }}
+</div>
+
+
+<!-- APPROVAL -->
+
+<!-- PROPOSAL APPROVAL -->
+
+<div style="
+    font-size:13px;
+    font-weight:bold;
+    margin-top:20px;
+    margin-bottom:0;
+">
+    PROPOSAL APPROVAL
+</div>
+
+<div style="
+    font-size:12px;
+    margin-bottom:5px;
+    line-height:1.3;
+">
+    Should you find our proposal competitive please send back copy of the same with
+    signature and stamp and issue an official LPO accordingly.
+</div>
+
+<table style="
+    width:100%;
+    border-collapse:collapse;
+    border-spacing:0;
+    font-size:12px;
+">
+
+    <thead>
+
+        <tr style="background:#8ccf6f;">
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                font-weight:bold;
+                color:#000;
+                padding:8px;
+                width:22%;
+            ">
+                Company Stamp
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                font-weight:bold;
+                color:#000;
+                padding:8px;
+                width:22%;
+            ">
+                Representative
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                font-weight:bold;
+                color:#000;
+                padding:8px;
+                width:15%;
+            ">
+                Date
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                font-weight:bold;
+                color:#000;
+                padding:8px;
+                width:19%;
+            ">
+                Signature
+            </th>
+
+            <th style="
+                border:1px solid #000;
+                text-align:center;
+                font-weight:bold;
+                color:#000;
+                padding:8px;
+                width:22%;
+            ">
+                Stamp
+            </th>
+
+        </tr>
+
+    </thead>
+
+    <tbody>
+
+        <tr>
+
+            <td style="
+                border:1px solid #000;
+                height:120px;
+            "></td>
+
+            <td style="
+                border:1px solid #000;
+                height:120px;
+            "></td>
+
+            <td style="
+                border:1px solid #000;
+                height:120px;
+            "></td>
+
+            <td style="
+                border:1px solid #000;
+                height:120px;
+            "></td>
+
+            <td style="
+                border:1px solid #000;
+                height:120px;
+            "></td>
+
+        </tr>
+
+    </tbody>
+
+</table>
+
+<!-- FOOTER SECTION -->
+{% set company = frappe.get_doc("Company", doc.company) %}
+{% set employee = frappe.get_doc("Employee", doc.employee) %}
+{% set letter_head = frappe.get_doc("Letter Head", company.default_letter_head) %}
+<div id="footer-html">
+<style>
+/* PDF footer page uses .print-format > .wrapper (main page does not).
+   Reset position:fixed so the footer renders normally in wkhtmltopdf's
+   footer page instead of being pushed off-screen. */
+@media print {
+    .print-format > .wrapper .footer-img {
+        position: static !important;
+        width: 100%;
+        text-align: center;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .print-format > .wrapper .footer-img img {
+        width: 100%;
+        max-height: 70px;
+        display: block;
+        margin: 0 auto;
+    }
+}
+</style>
+{% set footer = frappe.db.get_value("Quotation Type", doc.custom_quotation_for, "footer") %}
+    {% if footer %}
+    <div class="footer-img" style="width:100%; text-align:center;">
+        <img src="{{ footer }}" style="width:100%; max-height:70px; display:block; margin:0 auto;">
+    </div>
+    {% endif %}
+
+</div>

@@ -1,31 +1,31 @@
 # Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
+from frappe import _
 from frappe.model.document import Document
+
+from orion_erp.orion_erp.services.salik import (
+    norm_plate as _norm_plate,
+    parse_date as _parse_date,
+    clean_amount as _clean_amount,
+    cell as _cell,
+    build_plate_index as _build_plate_index,
+    import_salik,
+    download_template,
+    parse_salik_statement as _parse_salik_statement,
+)
 
 
 class SalikorDarbs(Document):
-	# begin: auto-generated types
-	# This code is auto-generated. Do not modify anything in this block.
+    def autoname(self):
+        from frappe.utils import get_first_day, getdate
+        self.billing_month = get_first_day(getdate(self.billing_month))
+        self.name = f"SAL-{self.vehicle}-{self.billing_month}"
 
-	from typing import TYPE_CHECKING
-
-	if TYPE_CHECKING:
-		from frappe.types import DF
-		from orion_erp.orion_erp.doctype.fines_cdt.fines_cdt import Finescdt
-
-		amended_from: DF.Link | None
-		customer: DF.Link | None
-		date: DF.Date
-		detail: DF.Table[Finescdt]
-		driver: DF.Link | None
-		employment_type: DF.Link | None
-		post_salik: DF.Check
-		project: DF.Link | None
-		shift: DF.Link | None
-		type: DF.Literal["", "With Driver", "Without Driver"]
-		vehicle: DF.Link | None
-		vehicle_type: DF.Data | None
-	# end: auto-generated types
-	pass
+    def validate(self):
+        from frappe.utils import get_first_day, getdate
+        from frappe.utils import flt
+        if self.billing_month:
+            self.billing_month = get_first_day(getdate(self.billing_month))
+        self.total_amount = sum(flt(r.amount) for r in (self.crossings or []))

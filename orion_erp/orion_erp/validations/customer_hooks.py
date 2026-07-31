@@ -8,7 +8,7 @@ def validate_customer(doc, method):
     # cicpa_doc = None
     sync_existing_certificates(doc)
     # if doc.custom_cicpa:
-        
+
     #     if hasattr(doc, "custom_certification_list"):
     #         cicpa_exists = any(
     #         row.certification_name == "CICPA" and row.reference_no == doc.custom_cicpa

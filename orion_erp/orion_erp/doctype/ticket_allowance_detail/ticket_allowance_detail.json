@@ -11,6 +11,7 @@
   "paid",
   "partial_paid",
   "amount",
+  "pro_rata_amount",
   "column_break_jfud",
   "manual_paid",
   "paid_amount",
@@ -39,6 +40,13 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Paid",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pro_rata_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Current Year Pro-rata Amount",
    "read_only": 1
   },
   {

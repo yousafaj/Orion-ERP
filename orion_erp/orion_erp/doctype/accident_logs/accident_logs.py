@@ -14,13 +14,7 @@ class AccidentLogs(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
-		incident_date: DF.Date | None
-		incident_details: DF.SmallText | None
-		location: DF.Link | None
-		parent: DF.Data
-		parentfield: DF.Data
-		parenttype: DF.Data
-		project: DF.Link | None
-		vrn: DF.Link | None
+		footer: DF.AttachImage | None
+		quotation_type: DF.Data
 	# end: auto-generated types
 	pass
