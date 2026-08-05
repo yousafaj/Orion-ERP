@@ -53,7 +53,8 @@ doctype_js = {
     "Quotation": "public/js/quotation.js",
     "Leave Allocation": "public/js/leave_allocation.js",
     "Rejoining Form": "public/js/rejoining_form.js",
-    "Web Form": "public/js/web_form/designer_override.js"
+    "Web Form": "public/js/web_form/designer_override.js",
+    "Bank Statement Import": "public/js/bank_statement_import.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
@@ -190,6 +191,7 @@ permission_query_conditions = {
 
 override_doctype_class = {
 	"Web Form": "orion_erp.orion_erp.overrides.web_form.CustomWebForm",
+	"Bank Statement Import": "orion_erp.orion_erp.overrides.bank_statement_import.CustomBankStatementImport",
 }
 # Document Events
 # ---------------
