@@ -1,42 +1,3 @@
-<!--
-================================================================
-WHY THE HEADER OVERLAPS ON PAGE 2+
-================================================================
-
-ROOT CAUSE:
-Chrome Print Preview does NOT apply @page rules from <style>
-tags that are nested inside <body> elements.
-
-In ERPNext, the print format HTML is injected via:
-  <body>
-    <div class="print-format-gutter">
-      <div class="print-format">
-        {{ body }}    ← our <style> tag with @page lives HERE
-      </div>
-    </div>
-  </body>
-
-Because our @page { margin-top: 80px } is inside <body>
-(nested 3 levels deep inside .print-format), Chrome ignores
-it entirely. The page margin is effectively 0.
-
-On page 1: The header div is still in normal document flow,
-so content flows below it. Looks correct.
-
-On page 2+: The header repeats via position:fixed (top:0).
-But because @page margin-top is ignored, content starts at
-y=0 — the same position as the header. Result: overlap.
-
-THE PERMANENT FIX:
-A <script> tag injects the @page rule into <head> at runtime,
-where Chrome WILL apply it. The @page rule inside <style> is
-kept as a fallback for other browsers.
-
-HEADER HEIGHT: 80px (from inner div height:80px)
-@page margin-top: 80px (EXACT match — no guessing)
-================================================================
--->
-
 <style>
 @page {
     margin-top: 80px;
@@ -425,13 +386,12 @@ This runs before window.print() is called.
             </td>
 
            <td style="
-            border:1px solid #000;
-            text-align:center !important;
-            vertical-align:middle;
-            padding:4px;
-        ">
-            {{ frappe.utils.strip_html(row.custom_item_description or row.item_name) }}
-        </td>
+                border:1px solid #000;
+                vertical-align:top;
+                padding:4px;
+            ">
+                {{ (row.custom_item_description or row.item_name) | safe }}
+            </td>
 
             <td style="
                 border:1px solid #000;
@@ -622,11 +582,10 @@ This runs before window.print() is called.
 
                 <td style="
                     border:1px solid #000;
-                    text-align:center !important;
-                    vertical-align:middle;
+                    vertical-align:top;
                     padding:4px;
                 ">
-                    {{ frappe.utils.strip_html(row.custom_item_description or row.item_name) }}
+                    {{ (row.custom_item_description or row.item_name) | safe }}
                 </td>
 
             <td style="
