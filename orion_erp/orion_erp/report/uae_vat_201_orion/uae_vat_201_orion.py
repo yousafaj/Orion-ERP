@@ -319,7 +319,7 @@ def _sales_invoice_breakdown(
 	headers = frappe.db.sql(
 		"""
 		SELECT si.name AS sales_invoice, si.posting_date, si.customer_name AS customer,
-		       si.debit_to AS receivable_account
+		       si.debit_to AS receivable_account, si.vat_emirate
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1 AND si.name IN %s
 		ORDER BY si.posting_date
@@ -369,6 +369,7 @@ def _sales_invoice_breakdown(
 			"posting_date": h.posting_date,
 			"customer": h.customer,
 			"receivable_account": h.receivable_account,
+			"vat_emirate": h.vat_emirate,
 		}
 		for acc in income_accounts:
 			row[_account_fieldname(acc)] = 0
@@ -411,6 +412,7 @@ def _sales_breakdown_columns(income_accounts, tax_accounts):
 			"width": 150,
 		},
 		{"fieldname": "posting_date", "label": _("Posting Date"), "fieldtype": "Date", "width": 110},
+		{"fieldname": "vat_emirate", "label": _("VAT Emirates"), "fieldtype": "Data", "width": 140},
 		{"fieldname": "customer", "label": _("Customer"), "fieldtype": "Data", "width": 220},
 		{"fieldname": "receivable_account", "label": _("Receivable Account"), "fieldtype": "Data", "width": 220},
 	]
