@@ -39,7 +39,7 @@ frappe.query_reports["User Activity Report"] = {
                     callback(r) {
                         const doc = r.message;
                         if (!doc) return;
-                        if (doc.enable_tic_report_configuration && doc.allowed_backdated_range_limit_days > 0) {
+                        if (doc.enable_report_configuration && doc.allowed_backdated_range_limit_days > 0) {
                             let from_date = frappe.query_report.get_filter_value("from_date");
                             let days = doc.allowed_backdated_range_limit_days;
                             let today = frappe.datetime.get_today();
@@ -217,7 +217,7 @@ frappe.query_reports["User Activity Report"] = {
             callback(r) {
                 const doc = r.message;
                 if (!doc) return;
-                if (doc.enable_tic_report_configuration && doc.allowed_backdated_range_limit_days) {
+                if (doc.enable_report_configuration && doc.allowed_backdated_range_limit_days) {
                     let days = doc.allowed_backdated_range_limit_days;
                     let today = frappe.datetime.get_today();
                     let from_date = frappe.datetime.add_days(today, -days);
