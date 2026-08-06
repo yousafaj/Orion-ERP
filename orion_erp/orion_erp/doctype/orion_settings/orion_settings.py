@@ -24,7 +24,7 @@ class OrionSettings(Document):
 		allowed_roles: DF.TableMultiSelect[RoleDetails]
 		allowed_backdated_range_limit_days: DF.Int
 		company_logo: DF.AttachImage | None
-		enable_tic_report_configuration: DF.Check
+		enable_report_configuration: DF.Check
 		leave_override_roles: DF.TableMultiSelect[RoleDetails]
 		cron_schedule_date_noe: DF.Date | None
 		cron_schedule_date_oe: DF.Date | None

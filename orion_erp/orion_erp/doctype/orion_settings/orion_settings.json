@@ -56,7 +56,7 @@
        "hajj_umrah_eligible_religions",
        "hajj_umrah_allow_once_only",
        "user_activity_report_tab",
-       "enable_tic_report_configuration",
+       "enable_report_configuration",
        "allowed_backdated_range_limit_days"
    ],
    "fields": [
@@ -300,9 +300,9 @@
        {
           "default": 0,
           "description": "When enabled, the User Activity Report restricts backdated data access using the allowed backdated range limit below.",
-          "fieldname": "enable_tic_report_configuration",
+          "fieldname": "enable_report_configuration",
           "fieldtype": "Check",
-          "label": "Enable TIC Report Configuration"
+          "label": "Enable Report Configuration"
        },
        {
           "default": 0,
