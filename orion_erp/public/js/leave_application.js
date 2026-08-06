@@ -252,6 +252,13 @@ frappe.ui.form.on("Leave Application", {
                 frm.refresh_fields();
             }
         });
+
+        frm.set_query("leave_type", function() {
+            return {
+                query: "orion_erp.orion_erp.validations.leave_application.get_leave_types_for_employee",
+                filters: { employee: frm.doc.employee }
+            };
+        });
     },
     before_submit(frm) {
 
@@ -264,6 +271,9 @@ frappe.ui.form.on("Leave Application", {
         set_leave_balance_after(frm);
     },
     refresh(frm) {
+        handle_cancel_button(frm);
+
+        let status_to_show =
             frm.doc.custom_approval_status;
 
         if (
@@ -290,6 +300,7 @@ frappe.ui.form.on("Leave Application", {
 
         if (!frm.doc.employee) {
             return;
+        }
 
         let current_user =
             frappe.session.user;

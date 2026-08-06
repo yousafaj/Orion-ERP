@@ -1,6 +1,7 @@
 import os
 import frappe
 from orion_erp.orion_erp.doctype.orion_settings.orion_settings import sync_role_permissions
+from orion_erp.orion_erp.validations.cicpa_dashboard import setup_cicpa_workspace_widgets
 
 DASHBOARD_FILES = {
     "leave_balance.js": "My Leave Balance Cards",
@@ -27,6 +28,23 @@ DASHBOARD_FILES = {
 }
 
 DASHBOARDS_DIR = os.path.join(os.path.dirname(__file__), "orion_erp", "dashboards")
+
+ORION_FLEET_CARDS = [
+    "Un-invoiced Months",
+    "LOA Quota Remaining",
+    "Vehicles Rent Ending (30d)",
+    "Expire in 30 Days",
+    "Expire in 60 Days",
+    "Expired Certificates",
+    "CICPAs Expiring (30 Days)",
+    "Expired CICPAs",
+    "With Client Vehicles",
+    "Idle Vehicles Vehicles",
+    "Internal Use Vehicles",
+    "Workshop Vehicles",
+    "With Client Drivers",
+    "Idle Drivers",
+]
 
 
 def after_migrate():

@@ -2,31 +2,24 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "field:quotation_type",
- "creation": "2025-06-10 11:28:00",
+ "creation": "2025-06-10 11:28:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "quotation_type",
-  "footer"
+  "quotation_type"
  ],
  "fields": [
   {
    "fieldname": "quotation_type",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Quotation Type",
    "reqd": 1,
    "unique": 1
-  },
-  {
-   "fieldname": "footer",
-   "fieldtype": "Attach Image",
-   "label": "Footer"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-03 17:14:58.350038",
+ "modified": "2025-06-10 11:28:00.000000",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Quotation Type",
@@ -46,7 +39,6 @@
    "write": 1
   }
  ],
- "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
