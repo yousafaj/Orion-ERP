@@ -51,10 +51,13 @@
       "leave_types_requiring_one_year_service",
       "paternity_leave_type",
       "paternity_leave_eligibility_months",
-      "section_break_hajj",
-      "hajj_umrah_leave_type",
-      "hajj_umrah_eligible_religions",
-      "hajj_umrah_allow_once_only"
+       "section_break_hajj",
+       "hajj_umrah_leave_type",
+       "hajj_umrah_eligible_religions",
+       "hajj_umrah_allow_once_only",
+       "user_activity_report_tab",
+       "enable_tic_report_configuration",
+       "allowed_backdated_range_limit_days"
    ],
    "fields": [
       {
@@ -282,13 +285,33 @@
          "default": "Muslim",
          "description": "Comma-separated list of religions eligible for Hajj/Umrah Leave. Default is 'Muslim'. Employees with other religions will not be allowed to apply."
       },
-      {
-         "fieldname": "hajj_umrah_allow_once_only",
-         "fieldtype": "Check",
-         "label": "Allow Hajj/Umrah Leave Only Once",
-         "default": 1,
-         "description": "When enabled, employees can only avail Hajj/Umrah Leave once during their entire employment period."
-      }
+       {
+          "fieldname": "hajj_umrah_allow_once_only",
+          "fieldtype": "Check",
+          "label": "Allow Hajj/Umrah Leave Only Once",
+          "default": 1,
+          "description": "When enabled, employees can only avail Hajj/Umrah Leave once during their entire employment period."
+       },
+       {
+          "fieldname": "user_activity_report_tab",
+          "fieldtype": "Tab Break",
+          "label": "User Activity Report"
+       },
+       {
+          "default": 0,
+          "description": "When enabled, the User Activity Report restricts backdated data access using the allowed backdated range limit below.",
+          "fieldname": "enable_tic_report_configuration",
+          "fieldtype": "Check",
+          "label": "Enable TIC Report Configuration"
+       },
+       {
+          "default": 0,
+          "description": "Number of days users can go back when viewing the User Activity Report. Data older than this is not shown.",
+          "fieldname": "allowed_backdated_range_limit_days",
+          "fieldtype": "Int",
+          "label": "Allowed Backdated Range Limit (Days)",
+          "non_negative": 1
+       }
    ],
    "grid_page_length": 50,
    "index_web_pages_for_search": 1,
