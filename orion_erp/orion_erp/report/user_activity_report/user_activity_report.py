@@ -1,6 +1,3 @@
-# Copyright (c) 2026, NDDB and contributors
-# For license information, please see license.txt
-
 
 import frappe
 from frappe.utils import getdate, flt, add_days, nowdate
@@ -65,7 +62,7 @@ def get_data(filters):
 	orion_settings = frappe.get_doc("Orion Settings")
 	allowed_backdated_range_limit_days = orion_settings.allowed_backdated_range_limit_days or 0
 
-	if orion_settings.enable_tic_report_configuration and allowed_backdated_range_limit_days > 0:
+	if orion_settings.enable_report_configuration and allowed_backdated_range_limit_days > 0:
 		configured_date = add_days(nowdate(), -flt(allowed_backdated_range_limit_days))
 	else:
 		configured_date = None
@@ -377,7 +374,7 @@ def get_docfield_options(doctype, txt, searchfield, start, page_len, filters):
 
 @frappe.whitelist()
 def get_field_label(fieldname):
-    return frappe.db.get_value("DocField", fieldname, "label", ignore_permissions=True)
+    return frappe.db.get_value("DocField", fieldname, "label")
 
 @frappe.whitelist()
 def get_module_from_doctype(doctype, txt, searchfield, start, page_len, filters):
