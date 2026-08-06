@@ -1,6 +1,3 @@
-# Copyright (c) 2026, NDDB and contributors
-# For license information, please see license.txt
-
 
 import frappe
 from frappe.utils import getdate, flt, add_days, nowdate

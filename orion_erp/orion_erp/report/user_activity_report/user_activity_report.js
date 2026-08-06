@@ -1,5 +1,5 @@
 frappe.query_reports["User Activity Report"] = {
-		filters: [
+	filters: [
         {
             fieldname: "from_date",
             label: "From Date",
@@ -39,32 +39,17 @@ frappe.query_reports["User Activity Report"] = {
                     callback(r) {
                         const doc = r.message;
                         if (!doc) return;
-                        if (doc.enable_report_configuration) {
-                            let row = (doc.tic_effective_date || []).find(
-                                d => d.report === report.report_name
-                            );
-                            if (doc.allowed_backdated_range_limit_days > 0) {
-                                let from_date = frappe.query_report.get_filter_value("from_date");
-                                let days = doc.allowed_backdated_range_limit_days;
-                                let today = frappe.datetime.get_today();
-                                let back_date = frappe.datetime.add_days(today, -days);
-                                if (from_date && frappe.datetime.str_to_obj(from_date) < frappe.datetime.str_to_obj(back_date)) {
-                                    frappe.msgprint({
-                                        title: "Data Restricted",
-                                        message: `Report shows data for last ${days} days as per Dairy Settings - Allowed Backdated Range Limit.`,
-                                        indicator: "blue"
-                                    });
-                                }
-                            } else if (row && row.effective_date) {
-                                let from_date = frappe.query_report.get_filter_value("from_date");
-                                if (from_date && frappe.datetime.str_to_obj(from_date) < frappe.datetime.str_to_obj(row.effective_date)) {
-                                    frappe.msgprint({
-                                        title: "Invalid Date",
-                                        message: "From Date cannot be older than Effective Date.",
-                                        indicator: "red"
-                                    });
-                                    report.set_filter_value("from_date", row.effective_date);
-                                }
+                        if (doc.enable_report_configuration && doc.allowed_backdated_range_limit_days > 0) {
+                            let from_date = frappe.query_report.get_filter_value("from_date");
+                            let days = doc.allowed_backdated_range_limit_days;
+                            let today = frappe.datetime.get_today();
+                            let back_date = frappe.datetime.add_days(today, -days);
+                            if (from_date && frappe.datetime.str_to_obj(from_date) < frappe.datetime.str_to_obj(back_date)) {
+                                frappe.msgprint({
+                                    title: "Data Restricted",
+                                    message: `Report shows data for last ${days} days as per Orion Settings - Allowed Backdated Range Limit.`,
+                                    indicator: "blue"
+                                });
                             }
                         }
                     }
@@ -232,21 +217,11 @@ frappe.query_reports["User Activity Report"] = {
             callback(r) {
                 const doc = r.message;
                 if (!doc) return;
-                if (doc.enable_report_configuration) {
-                    let row = (doc.tic_effective_date || []).find(
-                        d => d.report === report.report_name
-                    );
-                    // Case 1: fallback to backdated limit
-                    if (doc.allowed_backdated_range_limit_days) {
-                        let days = doc.allowed_backdated_range_limit_days;
-                        let today = frappe.datetime.get_today();
-                        let from_date = frappe.datetime.add_days(today, -days);
-                        report.set_filter_value("from_date", from_date);
-                    }
-                    // Case 2: If matching row + effective date exists
-                    else if (row && row.effective_date) {
-                        report.set_filter_value("from_date", row.effective_date);
-                    }
+                if (doc.enable_report_configuration && doc.allowed_backdated_range_limit_days) {
+                    let days = doc.allowed_backdated_range_limit_days;
+                    let today = frappe.datetime.get_today();
+                    let from_date = frappe.datetime.add_days(today, -days);
+                    report.set_filter_value("from_date", from_date);
                 }
             }
         });
