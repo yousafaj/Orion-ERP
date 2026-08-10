@@ -33,7 +33,7 @@ frappe.ui.form.on("Driver Movement", {
     //                         status: "Active"
     //                     }
     //                 };
-    //             }                
+    //             }
     //         });
     //     }
     // },

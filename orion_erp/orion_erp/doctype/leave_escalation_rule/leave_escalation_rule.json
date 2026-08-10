@@ -1,0 +1,79 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-06-09 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "leave_type",
+  "column_break_jsba",
+  "enabled",
+  "section_break_jyba",
+  "reminder_hours",
+  "column_break_dhyf",
+  "escalation_hours"
+ ],
+ "fields": [
+  {
+   "fieldname": "leave_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Leave Type",
+   "options": "Leave Type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_jsba",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "section_break_jyba",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": 48,
+   "description": "Hours after which a reminder email is sent to the current approver.",
+   "fieldname": "reminder_hours",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Reminder After (Hours)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_dhyf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": 72,
+   "description": "Hours after which the leave is auto-escalated to HR Manager.",
+   "fieldname": "escalation_hours",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Escalate After (Hours)",
+   "non_negative": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-06-09 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Leave Escalation Rule",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

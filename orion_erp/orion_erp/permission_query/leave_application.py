@@ -10,10 +10,18 @@ def leave_application_query(user):
     if user == "Administrator":
         return ""
 
+    from orion_erp.orion_erp.validations.leave_application import is_leave_override_user
+    if is_leave_override_user(user):
+        return ""
+
     return f"""
 
         (
             `tabLeave Application`.custom_employee_user_id = '{user}'
+
+            OR
+
+            `tabLeave Application`.owner = '{user}'
 
             OR
 

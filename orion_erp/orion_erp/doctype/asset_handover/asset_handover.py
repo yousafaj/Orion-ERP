@@ -1,7 +1,7 @@
 # Copyright (c) 2026, osama.ahmed@deliverydevs.com and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
 from frappe.model.document import Document
 
 
@@ -23,4 +23,23 @@ class AssetHandover(Document):
 		naming_series: DF.Literal[None]
 		remarks: DF.Text | None
 	# end: auto-generated types
-	pass
+
+	def validate(self):
+		self.validate_one_handover_per_employee()
+
+	def validate_one_handover_per_employee(self):
+		if not self.employee:
+			return
+
+		existing = frappe.db.exists(
+			"Asset Handover",
+			{
+				"employee": self.employee,
+				"name": ["!=", self.name],
+			},
+		)
+		if existing:
+			frappe.throw(
+				f"Asset Handover <b>{existing}</b> already exists for employee <b>{self.employee}</b>. "
+				"Only one Asset Handover is allowed per employee."
+			)
