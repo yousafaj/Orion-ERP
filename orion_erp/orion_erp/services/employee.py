@@ -196,19 +196,28 @@ def check_salary_structure_assignment(employee, doj):
 
 
 def create_leave_policy_assignment(doc, method):
-    leave_policy = _get_leave_policy_for_employee(doc)
-    if not leave_policy or not doc.date_of_joining:
+    if not doc.date_of_joining:
         return
 
     effective_from, effective_to = _get_effective_period(doc.date_of_joining)
 
-    existing = frappe.db.exists("Leave Policy Assignment", {
+    existing_current = frappe.db.get_value("Leave Policy Assignment", {
         "employee": doc.name,
-        "effective_from": ["<=", effective_to],
-        "effective_to": [">=", effective_from],
-        "docstatus": ["in", [0, 1]]
-    })
-    if existing:
+        "effective_from": effective_from,
+        "effective_to": effective_to,
+        "docstatus": 1
+    }, "name")
+
+    if existing_current:
+        old_policy = frappe.db.get_value("Employee", doc.name, "custom_leave_policy")
+        if not old_policy:
+            lpa_policy = frappe.db.get_value("Leave Policy Assignment", existing_current, "leave_policy")
+            if lpa_policy:
+                frappe.db.set_value("Employee", doc.name, "custom_leave_policy", lpa_policy)
+        return
+
+    leave_policy = _get_leave_policy_for_employee(doc)
+    if not leave_policy:
         return
 
     _validate_no_conflicting_allocations(doc, leave_policy, effective_from, effective_to)
@@ -216,16 +225,18 @@ def create_leave_policy_assignment(doc, method):
 
 
 def _get_leave_policy_for_employee(doc):
+    custom = doc.get("custom_leave_policy") if isinstance(doc, dict) else getattr(doc, "custom_leave_policy", None)
+    if custom:
+        return custom
+
     gender = doc.get("gender") if isinstance(doc, dict) else getattr(doc, "gender", None)
-    if not gender:
-        return doc.get("custom_leave_policy") if isinstance(doc, dict) else getattr(doc, "custom_leave_policy", None)
+    if gender:
+        settings = frappe.get_single("Orion Settings")
+        for row in settings.leave_policy_by_gender or []:
+            if row.gender == gender:
+                return row.leave_policy
 
-    settings = frappe.get_single("Orion Settings")
-    for row in settings.leave_policy_by_gender or []:
-        if row.gender == gender:
-            return row.leave_policy
-
-    return doc.get("custom_leave_policy") if isinstance(doc, dict) else getattr(doc, "custom_leave_policy", None)
+    return custom
 
 
 def _get_effective_period(date_of_joining):
@@ -280,6 +291,9 @@ def _create_and_submit_lpa(doc, leave_policy, effective_from, effective_to):
     lpa.insert(ignore_permissions=True)
     lpa.submit()
 
+    employee_name = doc.name if not isinstance(doc, dict) else doc.get("name")
+    frappe.db.set_value("Employee", employee_name, "custom_leave_policy", leave_policy)
+
 
 def auto_renew_leave_policy_assignments():
     employees = frappe.get_all(
@@ -305,12 +319,12 @@ def auto_renew_leave_policy_assignments():
 
 
 def _renew_single_employee_lpa(emp, leave_policy, effective_from, effective_to):
-    existing_lpa = frappe.db.exists("Leave Policy Assignment", {
+    existing_lpa = frappe.db.get_value("Leave Policy Assignment", {
         "employee": emp.name,
-        "effective_from": ["<=", effective_to],
-        "effective_to": [">=", effective_from],
-        "docstatus": ["in", [0, 1]]
-    })
+        "effective_from": effective_from,
+        "effective_to": effective_to,
+        "docstatus": 1
+    }, "name")
     if existing_lpa:
         return
 
@@ -334,6 +348,8 @@ def _renew_single_employee_lpa(emp, leave_policy, effective_from, effective_to):
     lpa.carry_forward = 0
     lpa.insert(ignore_permissions=True)
     lpa.submit()
+
+    frappe.db.set_value("Employee", emp.name, "custom_leave_policy", leave_policy)
 
 
 # ──────────────────────────────────────────────────────────────────────

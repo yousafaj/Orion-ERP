@@ -15,6 +15,7 @@ def _normalize(s: str) -> str:
 def validate_employee(doc, method):
     _validate_required_certificates(doc)
     _validate_leave_policy_for_gender(doc)
+    _validate_leave_policy_change(doc)
     sync_existing_certificates(doc)
     create_air_ticket_entitlement_from_employee(doc)
 
@@ -37,6 +38,32 @@ def _validate_leave_policy_for_gender(doc):
         frappe.throw(
             _("No Leave Policy configured for gender '{0}' in Orion Settings. Please add a Leave Policy for this gender before creating or updating employees.").format(gender),
             title=_("Leave Policy Not Configured for Gender")
+        )
+
+
+def _validate_leave_policy_change(doc):
+    if doc.is_new():
+        return
+
+    old_policy = frappe.db.get_value("Employee", doc.name, "custom_leave_policy")
+    if old_policy == doc.custom_leave_policy:
+        return
+
+    any_lpa = frappe.db.get_value("Leave Policy Assignment", {
+        "employee": doc.name,
+        "docstatus": 1
+    }, "name")
+
+    if any_lpa:
+        lpa_dates = frappe.db.get_value("Leave Policy Assignment", any_lpa, ["effective_from", "effective_to"], as_dict=True)
+        frappe.throw(
+            _("Leave Policy Assignment {0} already exists for {1} for the period {2} to {3}. Please cancel it before changing the leave policy.").format(
+                frappe.utils.get_link_to_form("Leave Policy Assignment", any_lpa),
+                frappe.bold(doc.employee_name or doc.name),
+                frappe.bold(str(lpa_dates.effective_from)),
+                frappe.bold(str(lpa_dates.effective_to))
+            ),
+            title=_("Existing Leave Policy Assignment Found")
         )
 
 

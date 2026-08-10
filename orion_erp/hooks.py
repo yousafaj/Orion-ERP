@@ -35,8 +35,9 @@ app_license = "mit"
 # website_theme_scss = "orion_erp/public/scss/website"
 
 # include js, css files in header of web form
-# webform_include_js = {"doctype": "public/js/doctype.js"}
+webform_include_js = {"Lead": ["public/js/web_form/table_multiselect.js", "public/js/web_form/overrides.js", "public/js/web_form/web_form_override.js"]}
 # webform_include_css = {"doctype": "public/css/doctype.css"}
+
 
 # include js in page
 # page_js = {"page" : "public/js/file.js"}
@@ -51,7 +52,9 @@ doctype_js = {
     "Driver": "public/js/driver.js",
     "Quotation": "public/js/quotation.js",
     "Leave Allocation": "public/js/leave_allocation.js",
-    "Rejoining Form": "public/js/rejoining_form.js"
+    "Rejoining Form": "public/js/rejoining_form.js",
+    "Web Form": "public/js/web_form/designer_override.js",
+    "Bank Statement Import": "public/js/bank_statement_import.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
@@ -186,9 +189,10 @@ permission_query_conditions = {
 # ---------------
 # Override standard doctype classes
 
-# override_doctype_class = {
-# 	"ToDo": "custom_app.overrides.CustomToDo"
-# }
+override_doctype_class = {
+	"Web Form": "orion_erp.orion_erp.overrides.web_form.CustomWebForm",
+	"Bank Statement Import": "orion_erp.orion_erp.overrides.bank_statement_import.CustomBankStatementImport",
+}
 # Document Events
 # ---------------
 # Hook on document methods and events
@@ -365,6 +369,7 @@ override_whitelisted_methods = {
 	"frappe.core.page.permission_manager.permission_manager.reset": "orion_erp.orion_erp.override.permission_manager.reset",
 	"frappe.core.page.permission_manager.permission_manager.get_users_with_role": "orion_erp.orion_erp.override.permission_manager.get_users_with_role",
 	"frappe.core.page.permission_manager.permission_manager.get_standard_permissions": "orion_erp.orion_erp.override.permission_manager.get_standard_permissions",
+	"frappe.website.doctype.web_form.web_form.get_form_data": "orion_erp.orion_erp.overrides.web_form.get_form_data",
 }
 #
 # each overriding function accepts a `data` argument;
