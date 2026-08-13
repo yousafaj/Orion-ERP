@@ -82,9 +82,6 @@ frappe.ui.form.on('Employee', {
         frm.set_query('custom_salary_structure', function() {
             return { filters: { docstatus: 1 } };
         });
-        if (frm.doc.custom_employee_category === "Non-Office") {
-            frm.set_value("final_confirmation_date", frm.doc.scheduled_confirmation_date);
-        }
     },
 
     scheduled_confirmation_date: function(frm) {
