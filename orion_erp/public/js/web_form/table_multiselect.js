@@ -33,6 +33,50 @@ frappe.ui.form.ControlTableMultiSelectWebForm = class ControlTableMultiSelectWeb
     make_input() {
         super.make_input();
         var me = this;
+
+        // Core ControlLink.make_input() wires up an "input" handler that always
+        // calls frappe.desk.search.search_link, which requires a logged-in session.
+        // That breaks this field on public (login_required=0) web forms. Replace it
+        // with a guest-safe search against our own allow_guest=True endpoint, scoped
+        // server-side to only the doctype this web form's Table MultiSelect actually uses.
+        this.$input.off("input");
+        this.$input.on(
+            "input",
+            frappe.utils.debounce(function (e) {
+                var doctype = me.get_options();
+                if (!doctype) return;
+
+                if (!me.$input.cache) me.$input.cache = {};
+                if (!me.$input.cache[doctype]) me.$input.cache[doctype] = {};
+
+                var term = e.target.value;
+
+                if (me.$input.cache[doctype][term] != null) {
+                    me.awesomplete.list = me.$input.cache[doctype][term];
+                }
+
+                frappe.call({
+                    type: "POST",
+                    method: "orion_erp.orion_erp.overrides.web_form.search_table_multiselect",
+                    no_spinner: true,
+                    args: {
+                        web_form_name: (frappe.web_form && frappe.web_form.name) || "",
+                        doctype: doctype,
+                        txt: term,
+                    },
+                    callback: function (r) {
+                        if (!window.Cypress && !me.$input.is(":focus")) return;
+                        var message = r.message || [];
+                        me.$input.cache[doctype][term] = message;
+                        me.awesomplete.list = message;
+                        message.forEach(function (item) {
+                            frappe.utils.add_link_title(doctype, item.value, item.label);
+                        });
+                    },
+                });
+            }, 300)
+        );
+
         this.$input_area.off("click", ".btn-remove");
         this.$input_area.on("click", ".btn-remove", function () {
             var $value = $(this).closest(".tb-selected-value");
@@ -72,7 +116,8 @@ frappe.ui.form.ControlTableMultiSelectWebForm = class ControlTableMultiSelectWeb
             return all_rows_except_last;
         }
         var me = this;
-        return frappe.xcall("frappe.client.validate_link", {
+        return frappe.xcall("orion_erp.orion_erp.overrides.web_form.validate_table_multiselect_link", {
+            web_form_name: (frappe.web_form && frappe.web_form.name) || "",
             doctype: link_field.options,
             docname: link_value,
         }).then(function (response) {
