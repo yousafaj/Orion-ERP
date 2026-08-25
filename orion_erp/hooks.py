@@ -35,7 +35,7 @@ app_license = "mit"
 # website_theme_scss = "orion_erp/public/scss/website"
 
 # include js, css files in header of web form
-webform_include_js = {"Lead": ["public/js/web_form/table_multiselect.js", "public/js/web_form/overrides.js", "public/js/web_form/web_form_override.js"]}
+webform_include_js = {"Lead": ["public/js/web_form/table_multiselect.js", "public/js/web_form/overrides.js", "public/js/web_form/web_form_override.js", "public/js/web_form/recaptcha.js"]}
 # webform_include_css = {"doctype": "public/css/doctype.css"}
 
 
@@ -358,6 +358,7 @@ override_whitelisted_methods = {
 	"frappe.core.page.permission_manager.permission_manager.get_users_with_role": "orion_erp.orion_erp.override.permission_manager.get_users_with_role",
 	"frappe.core.page.permission_manager.permission_manager.get_standard_permissions": "orion_erp.orion_erp.override.permission_manager.get_standard_permissions",
 	"frappe.website.doctype.web_form.web_form.get_form_data": "orion_erp.orion_erp.overrides.web_form.get_form_data",
+	"frappe.website.doctype.web_form.web_form.accept": "orion_erp.orion_erp.overrides.web_form.accept",
 }
 #
 # each overriding function accepts a `data` argument;
