@@ -11,11 +11,11 @@ frappe.ready(function () {
 	function mount_widget() {
 		var container = document.createElement("div");
 		container.id = "recaptcha-widget";
-		container.style.margin = "12px 0";
+		container.style.margin = "0 0 12px";
 
-		var submit_btn = document.querySelector(".web-form-footer .submit-btn, .submit-btn");
-		if (submit_btn && submit_btn.parentNode) {
-			submit_btn.parentNode.insertBefore(container, submit_btn);
+		var footer = document.querySelector(".web-form-footer");
+		if (footer && footer.parentNode) {
+			footer.parentNode.insertBefore(container, footer);
 		} else {
 			var wrapper = document.querySelector(".web-form-wrapper") || document.body;
 			wrapper.appendChild(container);
