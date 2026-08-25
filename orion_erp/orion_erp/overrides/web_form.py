@@ -1,8 +1,14 @@
+import json
+
+import requests
+
 import frappe
 from frappe import _
 from frappe.desk.form.meta import get_code_files_via_hooks
 from frappe.utils import cint
 from frappe.website.doctype.web_form.web_form import WebForm as BaseWebForm
+
+RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify"
 
 
 def _get_child_table_fields(doctype: str):
@@ -36,8 +42,14 @@ class CustomWebForm(BaseWebForm):
 
     def add_custom_context_and_script(self, context):
         super().add_custom_context_and_script(context)
+        self._add_recaptcha_context(context)
         if not self.is_standard:
             self._include_webform_js(context)
+
+    def _add_recaptcha_context(self, context):
+        protected_forms = frappe.conf.get("captcha_protected_web_forms") or []
+        context.recaptcha_required = 1 if self.name in protected_forms else 0
+        context.recaptcha_site_key = frappe.conf.get("recaptcha_site_key") or ""
 
     def _include_webform_js(self, context):
         script = context.get("script") or ""
@@ -111,6 +123,43 @@ def search_table_multiselect(web_form_name: str, doctype: str, txt: str = "", pa
     if show_title:
         return [{"value": r.value, "label": r.get("label"), "description": r.value} for r in results]
     return [{"value": r.value, "description": ""} for r in results]
+
+
+def _verify_recaptcha_token(token: str) -> bool:
+    secret = frappe.conf.get("recaptcha_secret_key")
+    if not secret or not token:
+        return False
+
+    try:
+        response = requests.post(
+            RECAPTCHA_VERIFY_URL,
+            data={"secret": secret, "response": token},
+            timeout=10,
+        )
+        return bool(response.ok and response.json().get("success"))
+    except requests.RequestException:
+        frappe.log_error(title="reCAPTCHA verification request failed")
+        return False
+
+
+@frappe.whitelist(allow_guest=True)
+def accept(web_form, data):
+    """Wraps the core web form submit handler to enforce CAPTCHA verification
+    for any web form listed in the captcha_protected_web_forms site config,
+    so a Lead can't be created without a passing reCAPTCHA token - regardless
+    of whether the visitor reached this endpoint through the embedded iframe
+    or by calling the Frappe site directly.
+    """
+    from frappe.website.doctype.web_form.web_form import accept as original_accept
+
+    protected_forms = frappe.conf.get("captcha_protected_web_forms") or []
+    if web_form in protected_forms:
+        parsed_data = frappe._dict(json.loads(data))
+        token = parsed_data.get("recaptcha_token")
+        if not _verify_recaptcha_token(token):
+            frappe.throw(_("CAPTCHA verification failed. Please try again."))
+
+    return original_accept(web_form, data)
 
 
 @frappe.whitelist(allow_guest=True)
