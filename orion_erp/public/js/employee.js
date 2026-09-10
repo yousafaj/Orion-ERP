@@ -85,9 +85,10 @@ frappe.ui.form.on('Employee', {
     },
 
     scheduled_confirmation_date: function(frm) {
-        if (frm.doc.custom_employee_category === "Non-Office") {
-            frm.set_value("final_confirmation_date", frm.doc.scheduled_confirmation_date);
-        }
+        // Probation Start Date (final_confirmation_date) must always follow the
+        // Date of Joining and never the Offer Letter Date (scheduled_confirmation_date).
+        // Re-assert it from Date of Joining so changing the Offer Letter Date has no effect.
+        set_confirmation_date(frm);
     },
 
     before_attach: function(frm) {
