@@ -1165,7 +1165,7 @@
    "columns": 0,
    "creation": "2026-04-09 09:19:29.493830",
    "default": null,
-   "depends_on": "eval:frappe.user.has_role(\"HR Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")",
+   "depends_on": "eval:frappe.user.has_role(\"HR Manager\") || frappe.user.has_role(\"Salary Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")",
    "description": null,
    "docstatus": 0,
    "dt": "Employee",
@@ -4173,7 +4173,7 @@
    "columns": 0,
    "creation": "2026-04-09 09:23:45.500555",
    "default": null,
-   "depends_on": "eval:frappe.user.has_role(\"HR Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")",
+   "depends_on": "eval:frappe.user.has_role(\"HR Manager\") || frappe.user.has_role(\"Salary Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")",
    "description": null,
    "docstatus": 0,
    "dt": "Employee",
@@ -7652,7 +7652,7 @@
    "property": "depends_on",
    "property_type": "Data",
    "row_name": null,
-   "value": "eval:frappe.user.has_role(\"HR Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")"
+   "value": "eval:frappe.user.has_role(\"HR Manager\") || frappe.user.has_role(\"Salary Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")"
   },
   {
    "_assign": null,
@@ -8572,7 +8572,7 @@
    "property": "depends_on",
    "property_type": "Data",
    "row_name": null,
-   "value": "eval:frappe.user.has_role(\"HR Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")"
+   "value": "eval:frappe.user.has_role(\"HR Manager\") || frappe.user.has_role(\"Salary Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")"
   },
   {
    "_assign": null,
@@ -8687,7 +8687,7 @@
    "property": "depends_on",
    "property_type": "Data",
    "row_name": null,
-   "value": "eval:frappe.user.has_role(\"HR Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")"
+   "value": "eval:frappe.user.has_role(\"HR Manager\") || frappe.user.has_role(\"Salary Manager\") || (frappe.user.has_role(\"HR User\") && doc.custom_employee_category==\"Non-Office\")"
   },
   {
    "_assign": null,
