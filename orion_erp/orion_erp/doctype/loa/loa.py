@@ -1,7 +1,8 @@
 # Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
+from frappe import _
 from frappe.model.document import Document
 
 from orion_erp.orion_erp.services.loa import auto_expire_loas
