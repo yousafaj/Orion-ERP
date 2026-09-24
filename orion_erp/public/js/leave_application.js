@@ -2,7 +2,7 @@ const APPROVAL_FLOW = [
 
     {
         approver_field: "leave_approver",
-        status_field: "status"
+        status_field: "custom_initial_approver_status"
     },
 
     {
@@ -25,6 +25,23 @@ const APPROVAL_FLOW = [
         status_field: "custom_status_approver5"
     }
 ];
+
+const HR_MANAGEMENT_OFFICE_DEPARTMENTS = new Set(
+    ["Human Resources", "Management"].flatMap(department =>
+        ["OEST", "OIFM", "OBR"].map(company => `${department} - ${company}`)
+    )
+);
+
+function get_approval_flow(doc) {
+    if (doc.custom_employee_category === "Non-Office") return APPROVAL_FLOW.slice(0, 4);
+    if (doc.custom_employee_category === "Office") {
+        if (HR_MANAGEMENT_OFFICE_DEPARTMENTS.has(doc.department)) {
+            return [APPROVAL_FLOW[0], APPROVAL_FLOW[2]];
+        }
+        return APPROVAL_FLOW.slice(0, 3);
+    }
+    return APPROVAL_FLOW;
+}
 
 let _cached_override_roles = null;
 let _cached_override_check = null;
@@ -310,7 +327,10 @@ frappe.ui.form.on("Leave Application", {
 
         handle_submit_button(frm);
 
-        if (frm.doc.custom_sent_for_approval && is_employee && !frm.is_new()) {
+        const is_assigned_approver = get_approval_flow(frm.doc).some(
+            row => frm.doc[row.approver_field] === current_user
+        );
+        if (frm.doc.custom_sent_for_approval && is_employee && !is_assigned_approver && !frm.is_new()) {
             frm.disable_save();
             frm.page.clear_primary_action();
 
@@ -322,10 +342,17 @@ frappe.ui.form.on("Leave Application", {
             frm.set_df_property("custom_medical_certificate", "read_only", 0);
         }
 
+        const active_flow = get_approval_flow(frm.doc);
+        APPROVAL_FLOW.filter(row => !active_flow.includes(row)).forEach(row => {
+            frm.toggle_display(row.approver_field, false);
+            frm.toggle_display(row.status_field, false);
+            frm.set_df_property(row.status_field, "read_only", 1);
+        });
+
         function get_previous_active_status(idx) {
             for (let i = idx - 1; i >= 0; i--) {
-                if (frm.doc[APPROVAL_FLOW[i].approver_field]) {
-                    return frm.doc[APPROVAL_FLOW[i].status_field];
+                if (frm.doc[active_flow[i].approver_field]) {
+                    return frm.doc[active_flow[i].status_field];
                 }
             }
             return null;
@@ -333,7 +360,7 @@ frappe.ui.form.on("Leave Application", {
 
         let is_override = is_leave_override_user(frm);
 
-        APPROVAL_FLOW.forEach((row, index) => {
+        active_flow.forEach((row, index) => {
 
             let approver =
                 frm.doc[row.approver_field];
@@ -341,7 +368,7 @@ frappe.ui.form.on("Leave Application", {
             let visible = false;
 
 
-            if (is_employee) {
+            if (is_employee && approver !== current_user) {
 
                 visible = true;
 
@@ -400,8 +427,7 @@ frappe.ui.form.on("Leave Application", {
 
             // Only current approver editable
             } else if (
-                approver === current_user &&
-                !is_employee
+                approver === current_user
             ) {
 
                 // First approver
@@ -424,8 +450,8 @@ frappe.ui.form.on("Leave Application", {
                 }
             }
 
-            // Employee always readonly
-            if (is_employee) {
+            // Employees cannot edit another approver's status.
+            if (is_employee && approver !== current_user) {
 
                 read_only = true;
             }
@@ -581,7 +607,7 @@ function validate_all_approvals(frm) {
 
     let pending_approvals = [];
 
-    APPROVAL_FLOW.forEach((row) => {
+    get_approval_flow(frm.doc).forEach((row) => {
 
         let approver =
             frm.doc[row.approver_field];
@@ -620,13 +646,19 @@ function handle_submit_button(frm) {
     let is_employee =
         frm.doc.custom_employee_user_id === current_user;
 
+    let is_initiator = is_employee || frm.doc.owner === current_user;
+
     let is_sent =
         frm.doc.custom_sent_for_approval || frm.doc.custom_approval_status !== "Open";
+
+    let is_assigned_approver = get_approval_flow(frm.doc).some(
+        row => frm.doc[row.approver_field] === current_user
+    );
 
     let can_submit = false;
 
     if (frm.doc.custom_approval_status === "Cancelled" || frm.doc.status === "Cancelled") {
-        _refresh_submit_button(frm, false, is_employee, is_sent);
+        _refresh_submit_button(frm, false, is_initiator, is_sent);
         return;
     }
 
@@ -634,7 +666,7 @@ function handle_submit_button(frm) {
         can_submit = true;
     }
 
-    let active_approvers = APPROVAL_FLOW.filter(
+    let active_approvers = get_approval_flow(frm.doc).filter(
         row => frm.doc[row.approver_field]
     );
 
@@ -695,7 +727,7 @@ function handle_submit_button(frm) {
         }
     }
 
-    _refresh_submit_button(frm, can_submit, is_employee, is_sent);
+    _refresh_submit_button(frm, can_submit, is_initiator && !(is_sent && is_assigned_approver), is_sent);
 }
 
 function _refresh_submit_button(frm, can_submit, is_employee, is_sent) {

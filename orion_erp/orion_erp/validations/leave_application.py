@@ -7,7 +7,7 @@ APPROVAL_FLOW = [
 
     {
         "approver_field": "leave_approver",
-        "status_field": "status"
+        "status_field": "custom_initial_approver_status"
     },
 
     {
@@ -30,6 +30,23 @@ APPROVAL_FLOW = [
         "status_field": "custom_status_approver5"
     }
 ]
+
+HR_MANAGEMENT_OFFICE_DEPARTMENTS = {
+    f"{department} - {company}"
+    for department in ("Human Resources", "Management")
+    for company in ("OEST", "OIFM", "OBR")
+}
+
+
+def get_approval_flow(doc):
+    category = doc.get("custom_employee_category")
+    if category == "Non-Office":
+        return APPROVAL_FLOW[:4]
+    if category == "Office":
+        if doc.get("department") in HR_MANAGEMENT_OFFICE_DEPARTMENTS:
+            return [APPROVAL_FLOW[0], APPROVAL_FLOW[2]]
+        return APPROVAL_FLOW[:3]
+    return APPROVAL_FLOW
 
 
 def is_leave_override_user(user=None):
@@ -72,7 +89,7 @@ def validate_leave_approval(doc, method=None):
     old_doc = doc.get_doc_before_save()
     if old_doc and old_doc.docstatus == 0 and doc.docstatus == 1:
         statuses = []
-        for row in APPROVAL_FLOW:
+        for row in get_approval_flow(doc):
             approver = doc.get(row["approver_field"])
             status = doc.get(row["status_field"])
             if approver:
@@ -90,6 +107,7 @@ def validate_leave_approval(doc, method=None):
             doc.custom_last_status_change = now_datetime()
         doc.custom_approval_status = "Open"
         doc.status = "Open"
+        doc.custom_initial_approver_status = "Open"
         doc.custom_status_approver1 = "Open"
         doc.custom_status_approver2 = "Open"
         doc.custom_status_approver4 = "Open"
@@ -109,7 +127,7 @@ def validate_leave_approval(doc, method=None):
     if doc.custom_sent_for_approval and doc.custom_employee_user_id == current_user:
         all_cancelled = all(
             doc.get(row["status_field"]) == "Cancelled"
-            for row in APPROVAL_FLOW
+            for row in get_approval_flow(doc)
             if doc.get(row["approver_field"])
         )
         if not all_cancelled:
@@ -117,7 +135,8 @@ def validate_leave_approval(doc, method=None):
                 _("You cannot modify this Leave Application as it has been sent for approval.")
             )
 
-    for idx, row in enumerate(APPROVAL_FLOW):
+    approval_flow = get_approval_flow(doc)
+    for idx, row in enumerate(approval_flow):
 
         approver = doc.get(
             row["approver_field"]
@@ -150,7 +169,7 @@ def validate_leave_approval(doc, method=None):
                     "Status Approver5",
                 ]
                 for prev_idx in range(idx):
-                    prev_row = APPROVAL_FLOW[prev_idx]
+                    prev_row = approval_flow[prev_idx]
                     prev_approver = doc.get(prev_row["approver_field"])
                     if prev_approver:
                         prev_status = doc.get(prev_row["status_field"])
@@ -175,7 +194,7 @@ def handle_leave_approval(doc, method=None):
 
     # Track status changes for auto-escalation
     if old_doc:
-        for row in APPROVAL_FLOW:
+        for row in get_approval_flow(doc):
             status_field = row["status_field"]
             if old_doc.get(status_field) != doc.get(status_field):
                 status_changed = True
@@ -187,7 +206,7 @@ def handle_leave_approval(doc, method=None):
 
     statuses = []
 
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(doc):
 
         approver = doc.get(
             row["approver_field"]
@@ -241,7 +260,7 @@ def handle_leave_approval(doc, method=None):
         doc.db_set("custom_last_status_change", now_datetime())
         doc.db_set("custom_reminder_sent", 0)
 
-        for row in APPROVAL_FLOW:
+        for row in get_approval_flow(doc):
             if doc.get(row["approver_field"]):
                 doc.db_set(row["status_field"], "Cancelled")
 
@@ -288,7 +307,8 @@ def send_next_approval_email(doc):
 
     last_changed_index = None
 
-    for index, row in enumerate(APPROVAL_FLOW):
+    approval_flow = get_approval_flow(doc)
+    for index, row in enumerate(approval_flow):
 
         status_field = row["status_field"]
 
@@ -308,8 +328,8 @@ def send_next_approval_email(doc):
     next_index = last_changed_index + 1
 
     next_approver = None
-    while next_index < len(APPROVAL_FLOW):
-        next_row = APPROVAL_FLOW[next_index]
+    while next_index < len(approval_flow):
+        next_row = approval_flow[next_index]
         next_approver = doc.get(next_row["approver_field"])
         if next_approver:
             break
@@ -676,6 +696,7 @@ def reset_status_on_amend(doc, method=None):
         return
 
     doc.status = "Open"
+    doc.custom_initial_approver_status = "Open"
     doc.custom_status_approver1 = "Open"
     doc.custom_status_approver2 = "Open"
     doc.custom_status_approver4 = "Open"
@@ -690,7 +711,7 @@ def update_leave_application_status(doc):
 
     active_flow = []
 
-    for flow_idx, row in enumerate(APPROVAL_FLOW):
+    for flow_idx, row in enumerate(get_approval_flow(doc)):
 
         approver = doc.get(row["approver_field"])
         status = doc.get(row["status_field"])
@@ -881,7 +902,7 @@ def _get_hr_user_emails():
 def _notify_rejected(doc, old_doc):
     if not old_doc:
         return
-    was_rejected = any(old_doc.get(row["status_field"]) == "Rejected" for row in APPROVAL_FLOW if doc.get(row["approver_field"]))
+    was_rejected = any(old_doc.get(row["status_field"]) == "Rejected" for row in get_approval_flow(doc) if doc.get(row["approver_field"]))
     if was_rejected:
         return
     employee_email = doc.get("custom_employee_user_id")
@@ -909,7 +930,7 @@ def _notify_rejected(doc, old_doc):
 def _notify_cancelled(doc, old_doc):
     if not old_doc:
         return
-    was_cancelled = any(old_doc.get(row["status_field"]) == "Cancelled" for row in APPROVAL_FLOW if doc.get(row["approver_field"]))
+    was_cancelled = any(old_doc.get(row["status_field"]) == "Cancelled" for row in get_approval_flow(doc) if doc.get(row["approver_field"]))
     if was_cancelled:
         return
 
@@ -919,7 +940,7 @@ def _notify_cancelled(doc, old_doc):
     if employee_email:
         recipients.add(employee_email)
 
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(doc):
         approver = doc.get(row["approver_field"])
         if approver:
             recipients.add(approver)
@@ -965,7 +986,7 @@ def _notify_override_status_change(doc, old_doc):
     override_user_name = frappe.db.get_value("User", current_user, "full_name") or current_user
 
     changed_fields = []
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(doc):
         old_val = old_doc.get(row["status_field"])
         new_val = doc.get(row["status_field"])
         if old_val != new_val:
@@ -979,7 +1000,7 @@ def _notify_override_status_change(doc, old_doc):
     if employee_email:
         recipients.add(employee_email)
 
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(doc):
         approver = doc.get(row["approver_field"])
         if approver:
             recipients.add(approver)
@@ -1178,7 +1199,7 @@ def send_for_approval(docname):
 
 def send_first_approval_email(doc):
     first_approver = None
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(doc):
         approver = doc.get(row["approver_field"])
         if approver:
             first_approver = approver
@@ -1606,6 +1627,7 @@ def create_leave_application_draft(employee, leave_type, company=None, employee_
     doc.company = company
     doc.employee_name = employee_name
     doc.status = "Open"
+    doc.custom_initial_approver_status = "Open"
     doc.custom_approval_status = "Open"
 
     frappe.flags.creating_leave_draft = True

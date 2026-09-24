@@ -82,6 +82,7 @@ def cancel_draft_leave(docname):
         frappe.throw(_("Leave cannot be cancelled after the start date has passed."))
 
     doc.db_set("status", "Cancelled")
+    doc.db_set("custom_initial_approver_status", "Cancelled")
     doc.db_set("custom_status_approver1", "Cancelled")
     doc.db_set("custom_status_approver2", "Cancelled")
     doc.db_set("custom_status_approver4", "Cancelled")
@@ -111,6 +112,9 @@ def cancel_draft_leave(docname):
 @frappe.whitelist()
 def send_for_approval(docname):
     doc = frappe.get_doc("Leave Application", docname)
+    doc.check_permission("write")
+    if frappe.session.user not in (doc.owner, doc.custom_employee_user_id) and not is_leave_override_user():
+        frappe.throw(_("Only the initiator or employee can send this leave application for approval."))
 
     if doc.docstatus != 0:
         frappe.throw(_("Only draft Leave Applications can be sent for approval."))
@@ -288,17 +292,24 @@ def create_leave_application_draft(employee, leave_type, company=None, employee_
 
     Bypasses mandatory field validation since the user may not have
     filled in dates/reason yet."""
+    if not frappe.has_permission("Leave Application", "create"):
+        frappe.throw(_("You do not have permission to create a Leave Application."), frappe.PermissionError)
     doc = frappe.new_doc("Leave Application")
     doc.employee = employee
+    from .initiators import validate_leave_initiator
+    validate_leave_initiator(doc)
     doc.leave_type = leave_type
     doc.company = company
     doc.employee_name = employee_name
     doc.status = "Open"
+    doc.custom_initial_approver_status = "Open"
     doc.custom_approval_status = "Open"
 
-    frappe.flags.creating_leave_draft = True
-    doc.insert(ignore_permissions=True, ignore_mandatory=True)
-    frappe.flags.creating_leave_draft = False
+    try:
+        frappe.flags.creating_leave_draft = True
+        doc.insert(ignore_permissions=True, ignore_mandatory=True)
+    finally:
+        frappe.flags.creating_leave_draft = False
 
     return doc.name
 

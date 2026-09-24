@@ -1,14 +1,7 @@
 import frappe
 from frappe import _
 from frappe.utils import flt, now_datetime
-
-APPROVAL_FLOW = [
-    {"approver_field": "leave_approver", "status_field": "status"},
-    {"approver_field": "custom_leave_approver_1", "status_field": "custom_status_approver1"},
-    {"approver_field": "custom_leave_approver_2", "status_field": "custom_status_approver2"},
-    {"approver_field": "custom_leave_approver_4", "status_field": "custom_status_approver4"},
-    {"approver_field": "custom_leave_approver_5", "status_field": "custom_status_approver5"},
-]
+from orion_erp.orion_erp.validations.leave_application.approvals import get_approval_flow
 
 
 def process_leave_escalations():
@@ -39,6 +32,9 @@ def process_leave_escalations():
             "custom_leave_approver_4",
             "custom_leave_approver_5",
             "status",
+            "custom_employee_category",
+            "department",
+            "custom_initial_approver_status",
             "custom_status_approver1",
             "custom_status_approver2",
             "custom_status_approver4",
@@ -122,7 +118,7 @@ def _process_single_leave(la, escalation_rules, escalation_users):
 
 
 def _get_pending_level(la):
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(la):
         approver_field = row["approver_field"]
         status_field = row["status_field"]
         approver = la.get(approver_field)

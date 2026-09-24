@@ -2,7 +2,7 @@ const APPROVAL_FLOW = [
 
     {
         approver_field: "leave_approver",
-        status_field: "status"
+        status_field: "custom_initial_approver_status"
     },
 
     {
@@ -25,6 +25,23 @@ const APPROVAL_FLOW = [
         status_field: "custom_status_approver5"
     }
 ];
+
+const HR_MANAGEMENT_OFFICE_DEPARTMENTS = new Set(
+    ["Human Resources", "Management"].flatMap(department =>
+        ["OEST", "OIFM", "OBR"].map(company => `${department} - ${company}`)
+    )
+);
+
+function get_approval_flow(doc) {
+    if (doc.custom_employee_category === "Non-Office") return APPROVAL_FLOW.slice(0, 4);
+    if (doc.custom_employee_category === "Office") {
+        if (HR_MANAGEMENT_OFFICE_DEPARTMENTS.has(doc.department)) {
+            return [APPROVAL_FLOW[0], APPROVAL_FLOW[2]];
+        }
+        return APPROVAL_FLOW.slice(0, 3);
+    }
+    return APPROVAL_FLOW;
+}
 
 let _cached_override_roles = null;
 let _cached_override_check = null;
@@ -55,7 +72,7 @@ function validate_all_approvals(frm) {
 
     let pending_approvals = [];
 
-    APPROVAL_FLOW.forEach((row) => {
+    get_approval_flow(frm.doc).forEach((row) => {
 
         let approver =
             frm.doc[row.approver_field];
@@ -108,7 +125,7 @@ function handle_submit_button(frm) {
         can_submit = true;
     }
 
-    let active_approvers = APPROVAL_FLOW.filter(
+    let active_approvers = get_approval_flow(frm.doc).filter(
         row => frm.doc[row.approver_field]
     );
 

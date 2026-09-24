@@ -208,6 +208,7 @@ override_doctype_class = {
 doc_events = {
     "Leave Application":{
          "validate":[
+              "orion_erp.orion_erp.validations.leave_application.validate_leave_initiator",
               "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
               "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
               "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",

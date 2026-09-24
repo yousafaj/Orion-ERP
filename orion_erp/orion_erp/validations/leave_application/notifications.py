@@ -93,8 +93,8 @@ def _get_hr_user_emails():
 def _notify_rejected(doc, old_doc):
     if not old_doc:
         return
-    from .approvals import APPROVAL_FLOW
-    was_rejected = any(old_doc.get(row["status_field"]) == "Rejected" for row in APPROVAL_FLOW if doc.get(row["approver_field"]))
+    from .approvals import get_approval_flow
+    was_rejected = any(old_doc.get(row["status_field"]) == "Rejected" for row in get_approval_flow(doc) if doc.get(row["approver_field"]))
     if was_rejected:
         return
     employee_email = doc.get("custom_employee_user_id")
@@ -122,8 +122,8 @@ def _notify_rejected(doc, old_doc):
 def _notify_cancelled(doc, old_doc):
     if not old_doc:
         return
-    from .approvals import APPROVAL_FLOW
-    was_cancelled = any(old_doc.get(row["status_field"]) == "Cancelled" for row in APPROVAL_FLOW if doc.get(row["approver_field"]))
+    from .approvals import get_approval_flow
+    was_cancelled = any(old_doc.get(row["status_field"]) == "Cancelled" for row in get_approval_flow(doc) if doc.get(row["approver_field"]))
     if was_cancelled:
         return
 
@@ -133,7 +133,7 @@ def _notify_cancelled(doc, old_doc):
     if employee_email:
         recipients.add(employee_email)
 
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(doc):
         approver = doc.get(row["approver_field"])
         if approver:
             recipients.add(approver)
@@ -175,13 +175,13 @@ def _notify_override_status_change(doc, old_doc):
     if not old_doc:
         return
 
-    from .approvals import APPROVAL_FLOW
+    from .approvals import get_approval_flow
 
     current_user = frappe.session.user
     override_user_name = frappe.db.get_value("User", current_user, "full_name") or current_user
 
     changed_fields = []
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(doc):
         old_val = old_doc.get(row["status_field"])
         new_val = doc.get(row["status_field"])
         if old_val != new_val:
@@ -195,7 +195,7 @@ def _notify_override_status_change(doc, old_doc):
     if employee_email:
         recipients.add(employee_email)
 
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(doc):
         approver = doc.get(row["approver_field"])
         if approver:
             recipients.add(approver)
@@ -247,7 +247,7 @@ def _notify_override_status_change(doc, old_doc):
 
 
 def send_next_approval_email(doc):
-    from .approvals import APPROVAL_FLOW
+    from .approvals import get_approval_flow
 
     old_doc = doc.get_doc_before_save()
 
@@ -256,7 +256,8 @@ def send_next_approval_email(doc):
 
     last_changed_index = None
 
-    for index, row in enumerate(APPROVAL_FLOW):
+    approval_flow = get_approval_flow(doc)
+    for index, row in enumerate(approval_flow):
 
         status_field = row["status_field"]
 
@@ -276,8 +277,8 @@ def send_next_approval_email(doc):
     next_index = last_changed_index + 1
 
     next_approver = None
-    while next_index < len(APPROVAL_FLOW):
-        next_row = APPROVAL_FLOW[next_index]
+    while next_index < len(approval_flow):
+        next_row = approval_flow[next_index]
         next_approver = doc.get(next_row["approver_field"])
         if next_approver:
             break
@@ -390,10 +391,10 @@ def send_next_approval_email(doc):
 
 
 def send_first_approval_email(doc):
-    from .approvals import APPROVAL_FLOW
+    from .approvals import get_approval_flow
 
     first_approver = None
-    for row in APPROVAL_FLOW:
+    for row in get_approval_flow(doc):
         approver = doc.get(row["approver_field"])
         if approver:
             first_approver = approver
