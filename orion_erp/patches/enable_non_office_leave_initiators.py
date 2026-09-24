@@ -1,6 +1,7 @@
 """Give Operations creation access while keeping their existing approval grants."""
 
 import frappe
+from frappe.permissions import add_user_permission
 
 
 def execute():
@@ -49,7 +50,7 @@ def execute():
             continue
         for company in companies:
             for doctype in ("Employee", "Leave Application"):
-                frappe.add_user_permission(
+                add_user_permission(
                     "Company", company, user, ignore_permissions=True, applicable_for=doctype
                 )
 
