@@ -61,3 +61,14 @@ This append-only log provides a readable history of Workshop development. Git co
 - **Tests performed:** Python compilation, JSON parsing and Git whitespace validation passed locally; a Frappe integration test covers combined due-date and odometer calculation.
 - **Rollback:** Revert the commit; use the pre-migration backup if already deployed.
 - **Status:** Committed; not deployed
+
+## 2026-09-25 16:39 GST (+04:00) — Migration ordering safeguard
+
+- **Category:** Fix / Migration
+- **Commit:** `b1de8d74146c7363043fe8b3585bef963efdd238`
+- **Files:** Workshop setup and application hooks
+- **Purpose:** Run idempotent Workshop prerequisites before schema synchronization and verify them again afterward.
+- **Site impact:** Not deployed or migrated.
+- **Tests performed:** Python compilation and Git whitespace validation passed locally.
+- **Rollback:** Revert the commit; use the pre-migration backup if already deployed.
+- **Status:** Committed; not deployed
