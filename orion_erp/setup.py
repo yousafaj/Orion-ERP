@@ -54,6 +54,7 @@ def after_migrate():
     fix_orion_fleet_cards()
     setup_custom_html_blocks()
     setup_rental_management_workspace()
+    sync_rental_number_cards()
     setup_hr_manager_dashboard_roles()
     setup_hr_user_dashboard_roles()
     embed_current_month_leave_block()
@@ -232,3 +233,33 @@ def setup_rental_management_workspace():
     else:
         ws = frappe.get_doc(values)
         ws.insert(ignore_permissions=True)
+
+
+def sync_rental_number_cards():
+    """Correct cards created before the Employee-based rental workflow.
+
+    Frappe can retain the site's newer database copy of a standard Number Card
+    when its source JSON has an older modified timestamp. Synchronize the few
+    fields this release owns so existing sites use the intended card method.
+    """
+    cards = {
+        "With Client Drivers": {
+            "type": "Custom",
+            "method": "orion_erp.orion_erp.validations.number_cards.drivers_on_client_rentals",
+            "document_type": "Vehicle Movement",
+            "filters_json": "[]",
+            "show_percentage_stats": 0,
+        },
+        "Idle Vehicles Vehicles": {
+            "label": "Idle Vehicles",
+            "show_percentage_stats": 0,
+        },
+    }
+    for name, desired in cards.items():
+        if not frappe.db.exists("Number Card", name):
+            continue
+        current = frappe.get_doc("Number Card", name)
+        changes = {field: value for field, value in desired.items() if current.get(field) != value}
+        if changes:
+            frappe.db.set_value("Number Card", name, changes)
+            frappe.clear_document_cache("Number Card", name)
