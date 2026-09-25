@@ -136,6 +136,8 @@ after_install = "orion_erp.passport_management.install.after_install"
 # before_uninstall = "orion_erp.uninstall.before_uninstall"
 # after_uninstall = "orion_erp.uninstall.after_uninstall"
 
+before_migrate = ["orion_erp.workshop.setup.before_migrate"]
+
 after_migrate = [
     "orion_erp.setup.after_migrate",
     "orion_erp.workshop.setup.after_migrate",

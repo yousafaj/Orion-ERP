@@ -10,6 +10,10 @@ WORKSHOP_ROLES = (
 )
 
 
+def before_migrate():
+    ensure_workshop_roles()
+
+
 def after_migrate():
     ensure_workshop_roles()
 
