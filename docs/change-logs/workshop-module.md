@@ -72,3 +72,14 @@ This append-only log provides a readable history of Workshop development. Git co
 - **Tests performed:** Python compilation and Git whitespace validation passed locally.
 - **Rollback:** Revert the commit; use the pre-migration backup if already deployed.
 - **Status:** Committed; not deployed
+
+## 2026-09-25 22:39 GST (+04:00) — Staging integration preparation
+
+- **Category:** Integration / Staging safety
+- **Merge commit:** `6640e0416ea49c3cd97c4d44023d2b88aeabe589`
+- **Parents:** Current Rental Management staging branch and Workshop feature branch
+- **Purpose:** Preserve the existing Rental Management staging work while adding the Workshop module on a separate integration branch.
+- **Site impact:** A fresh staging backup was completed successfully; the integration branch was merged but not yet deployed or migrated when this entry was recorded.
+- **Tests performed:** Merge completed without code conflicts. Python compilation, JSON parsing and Git whitespace validation passed locally. GitHub CI reached application setup but could not install the existing optional S3 integration because the CI bench does not fetch that dependency; the syntax and conflict checks passed.
+- **Rollback:** Return staging to its previous Rental Management branch and use the verified pre-migration backup if database restoration is required.
+- **Status:** Integration branch merged; deployment pending
