@@ -113,3 +113,21 @@ This append-only log provides a readable history of Workshop development. Git co
 - **Tests performed:** Python compilation and a Frappe integration test covering all three Workshop roles.
 - **Rollback:** Revert this permission commit and migrate staging. Existing Vehicle records are unaffected.
 - **Status:** Prepared for staging deployment
+
+
+---
+
+## 2026-09-25 23:38 GST (+04:00) — Vehicle read-only permission deployed and verified
+
+- **Category:** Permissions / Migration / Test
+- **Pull request:** `#112`
+- **Branch:** `feature/staging-workshop-integration-20260925`
+- **Deployed commit:** `08511f119a61eda47ba07bca7a34e649d292c12a`
+- **Purpose:** Give Workshop Manager, Workshop Supervisor and Workshop Team sufficient access to find and open existing Vehicle masters without permitting master-data changes.
+- **Backup:** A fresh staging backup completed successfully before deployment.
+- **Deployment:** Frappe Cloud deployment succeeded with zero issues in 8 minutes 41 seconds. An in-place site migration then completed successfully in 21 seconds.
+- **Verification:** Exactly one Vehicle Custom DocPerm row exists for each Workshop role at permission level 0. Each row has `read = 1` and `select = 1`; write, create, delete, submit, cancel, amend, report, export, import, share, print and email are all `0`.
+- **Data impact:** Permission metadata only. No Vehicle, Employee, Asset or Workshop business records were created, changed or deleted.
+- **Production impact:** None. Production, `main` and `develop` remain unchanged.
+- **Rollback:** Revert pull request `#112`, redeploy the isolated staging integration branch and run site migration. The pre-deployment staging backup remains available if recovery is required.
+- **Status:** Deployed and verified on staging; signed-in role UAT remains pending
