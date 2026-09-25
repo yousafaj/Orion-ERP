@@ -99,3 +99,17 @@ This append-only log provides a readable history of Workshop development. Git co
 - **Known limitation:** The repository CI environment does not fetch the already-installed S3 Attachment dependency, so its application-install step remains an infrastructure limitation unrelated to the successful Frappe Cloud staging migration.
 - **Rollback:** Restore the pre-deployment staging branch and use the verified backup only if site recovery is required.
 - **Status:** Deployed and schema-verified on staging; functional UAT remains pending
+
+---
+
+## 2026-09-25 23:20 GST (+04:00) — Vehicle master least-privilege correction
+
+- **Category:** Permissions / Test
+- **Branch:** `fix/workshop-vehicle-read-permissions-20260925`
+- **Purpose:** Allow Workshop Manager, Workshop Supervisor and Workshop Team to locate and open existing Vehicle records without permitting them to change the shared Vehicle master.
+- **Permission design:** Vehicle `read` and `select` only. Write, create, delete, submit, cancel, amend, report, export, import, share, print and email permissions remain disabled for these roles.
+- **Master-data impact:** None. Vehicle remains the authoritative shared master; no Vehicle, Employee or Asset records are created or duplicated.
+- **Site impact:** Source change only when recorded; staging deployment and verification remain pending.
+- **Tests performed:** Python compilation and a Frappe integration test covering all three Workshop roles.
+- **Rollback:** Revert this permission commit and migrate staging. Existing Vehicle records are unaffected.
+- **Status:** Prepared for staging deployment
