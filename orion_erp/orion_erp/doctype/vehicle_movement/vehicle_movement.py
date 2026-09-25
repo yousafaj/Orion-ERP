@@ -37,8 +37,24 @@ class VehicleMovement(Document):
         # Customer auto-fills from the project but stays editable.
         if not self.customer and self.project_to:
             self.customer = frappe.db.get_value("Project", self.project_to, "customer")
+        self._validate_operational_driver()
         self._check_double_booking()
         self._warn_missing_cicpa()
+
+    def _validate_operational_driver(self):
+        if not self.driver:
+            return
+        employee = frappe.db.get_value(
+            "Employee", self.driver,
+            ["status", "custom_employee_category", "designation"], as_dict=True,
+        )
+        if (
+            not employee
+            or employee.status != "Active"
+            or employee.custom_employee_category != "Non-Office"
+            or "driver" not in (employee.designation or "").lower()
+        ):
+            frappe.throw(_("Select an active Non-Office Employee with a driver designation."))
 
     def _check_double_booking(self):
         """A vehicle/driver can only be on one active rental at a time."""
@@ -67,9 +83,13 @@ class VehicleMovement(Document):
             frappe.msgprint(
                 _("Vehicle {0} has no active CICPA pass.").format(self.vehicle), indicator="orange", alert=True
             )
-        if self.driver and not _has_active_cicpa("Driver", self.driver):
+        if self.driver:
+            # CICPA.driver still links to the retired Driver master. A pass cannot
+            # be verified against Employee until the CICPA workflow is migrated.
             frappe.msgprint(
-                _("Driver {0} has no active CICPA pass.").format(self.driver), indicator="orange", alert=True
+                _("Verify the assigned employee's CICPA pass separately; employee passes are not linked to this form yet."),
+                indicator="orange",
+                alert=True,
             )
 
     # -- Lifecycle ---------------------------------------------------------
@@ -88,8 +108,8 @@ class VehicleMovement(Document):
                 "custom_project": self.project_to,
             },
         )
-        if self.driver:
-            frappe.db.set_value("Driver", self.driver, "custom_state", "With Client")
+        # Employee is the driver master. Assignment state is derived from active
+        # Vehicle Movements; HR's Employee status must not be overwritten.
 
     def on_cancel(self):
         self._release()
@@ -101,8 +121,6 @@ class VehicleMovement(Document):
                 self.vehicle,
                 {"custom_state": "Idle", "custom_current_customer": None, "custom_project": None},
             )
-        if self.driver:
-            frappe.db.set_value("Driver", self.driver, "custom_state", "Idle")
 
 
 def _has_active_cicpa(cicpa_type, name):
@@ -112,6 +130,32 @@ def _has_active_cicpa(cicpa_type, name):
             "CICPA", {"cicpa_type": cicpa_type, field: name, "cicpa_status": "Active", "docstatus": 1}
         )
     )
+
+
+@frappe.whitelist()
+def active_client_rentals():
+    """Rows for the rental workspace, limited by the viewer's document permissions."""
+    movements = frappe.get_list(
+        "Vehicle Movement",
+        filters={"docstatus": 1, "rental_status": "Active", "invoiceable": 1},
+        fields=["name", "vehicle", "customer", "driver", "movement_date"],
+        order_by="movement_date desc",
+        limit_page_length=25,
+    )
+    drivers = {row.driver for row in movements if row.driver}
+    names = {
+        name: frappe.db.get_value("Employee", name, "employee_name")
+        for name in drivers
+        if frappe.has_permission("Employee", "read", doc=name)
+    }
+    return [
+        {
+            "name": row.name, "vehicle": row.vehicle, "customer": row.customer,
+            "driver": row.driver if row.driver in names else "",
+            "driver_name": names.get(row.driver, ""), "movement_date": row.movement_date,
+        }
+        for row in movements
+    ]
 
 
 @frappe.whitelist()

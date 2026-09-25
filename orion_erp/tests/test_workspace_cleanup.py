@@ -1,6 +1,6 @@
 # Copyright (c) 2026, Orion ERP and Contributors
 # See license.txt
-"""Workspace cleanup: the legacy 'Rental Management' delete patch + CICPA cards on Orion Fleet."""
+"""Workspace migration: retain Rental Management and keep Fleet compliance cards."""
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -10,7 +10,7 @@ from orion_erp.setup import ORION_FLEET_CARDS
 
 
 class TestWorkspaceCleanup(FrappeTestCase):
-    def test_remove_rental_management_workspace_is_idempotent(self):
+    def test_historical_patch_preserves_rental_management_workspace(self):
         if not frappe.db.exists("Workspace", "Rental Management"):
             frappe.get_doc(
                 {
@@ -25,9 +25,10 @@ class TestWorkspaceCleanup(FrappeTestCase):
         self.assertTrue(frappe.db.exists("Workspace", "Rental Management"))
 
         remove_rm_workspace()
-        self.assertFalse(frappe.db.exists("Workspace", "Rental Management"))
+        self.assertTrue(frappe.db.exists("Workspace", "Rental Management"))
 
-        remove_rm_workspace()  # already gone → must not raise (idempotent)
+        remove_rm_workspace()
+        self.assertTrue(frappe.db.exists("Workspace", "Rental Management"))
 
     def test_cicpa_cards_are_in_orion_fleet_list(self):
         # The CICPA expiry cards (moved off the deleted RM workspace) must stay in the canonical

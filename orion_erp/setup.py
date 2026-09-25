@@ -18,7 +18,6 @@ ORION_FLEET_CARDS = [
     "Internal Use Vehicles",
     "Workshop Vehicles",
     "With Client Drivers",
-    "Idle Drivers",
 ]
 
 DASHBOARD_FILES = {
@@ -43,6 +42,7 @@ DASHBOARD_FILES = {
     "monthly_accrual_status.js": "Monthly Leave Accrual Run Status",
     "current_month_leave_apps.js": "Current Month Leave Applications",
     "rejoining_overdue.js": "Rejoining Overdue",
+    "active_client_rentals.js": "Active Client Rentals",
 }
 
 DASHBOARDS_DIR = os.path.join(os.path.dirname(__file__), "orion_erp", "dashboards")
@@ -53,6 +53,7 @@ def after_migrate():
     setup_cicpa_workspace_widgets()
     fix_orion_fleet_cards()
     setup_custom_html_blocks()
+    setup_rental_management_workspace()
     setup_hr_manager_dashboard_roles()
     setup_hr_user_dashboard_roles()
     embed_current_month_leave_block()
@@ -210,3 +211,24 @@ def fix_orion_fleet_cards():
     for c in cards:
         ws.append("number_cards", {"number_card_name": c})
     ws.save(ignore_permissions=True)
+
+
+def setup_rental_management_workspace():
+    """Keep the staging rental landing page synchronized with the app source."""
+    import json
+
+    path = os.path.join(
+        os.path.dirname(__file__), "orion_erp", "workspace", "rental_management", "rental_management.json"
+    )
+    with open(path) as source:
+        values = json.load(source)
+    name = "Rental Management"
+    if frappe.db.exists("Workspace", name):
+        ws = frappe.get_doc("Workspace", name)
+        ws.content = values["content"]
+        for field in ("links", "number_cards", "custom_blocks"):
+            ws.set(field, values[field])
+        ws.save(ignore_permissions=True)
+    else:
+        ws = frappe.get_doc(values)
+        ws.insert(ignore_permissions=True)

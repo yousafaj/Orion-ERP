@@ -4,6 +4,15 @@
 const VM = "orion_erp.orion_erp.doctype.vehicle_movement.vehicle_movement";
 
 frappe.ui.form.on("Vehicle Movement", {
+	setup(frm) {
+		frm.set_query("driver", () => ({
+			filters: [
+				["Employee", "status", "=", "Active"],
+				["Employee", "custom_employee_category", "=", "Non-Office"],
+				["Employee", "designation", "like", "%Driver%"],
+			],
+		}));
+	},
 	project_to(frm) {
 		// Auto-fill Customer from the project (editable).
 		if (!frm.doc.project_to || frm.doc.customer) return;

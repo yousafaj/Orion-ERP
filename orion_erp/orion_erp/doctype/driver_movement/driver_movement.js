@@ -70,7 +70,7 @@ frappe.ui.form.on("Driver Movement", {
 	refresh(frm) {
 		frm.dashboard.clear_comment();
 		frm.dashboard.add_comment(
-			__("Driver Movement is deprecated — assign drivers directly on the Vehicle Movement (Rent Type = 'With Driver')."),
+			__("Driver Movement is deprecated — assign an Operational Driver on Vehicle Mobilization."),
 			"yellow",
 			true
 		);

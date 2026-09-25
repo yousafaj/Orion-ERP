@@ -61,9 +61,10 @@
   {
    "fieldname": "driver",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Driver",
-   "options": "Driver",
-   "description": "Optional — the driver assigned with this vehicle."
+   "options": "Employee",
+   "description": "Optional — select an active Non-Office employee with a driver designation."
   },
   {
    "default": "1",

@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"hdr_bill\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Billing</span>\",\"col\":12}},{\"id\":\"nc_uninv\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Un-invoiced Months\",\"col\":3}},{\"id\":\"nc_loaq\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"LOA Quota Remaining\",\"col\":3}},{\"id\":\"hdr_exp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Expiry Alerts</span>\",\"col\":12}},{\"id\":\"nc_rent\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Vehicles Rent Ending (30d)\",\"col\":3}},{\"id\":\"nc_c30\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Expire in 30 Days\",\"col\":3}},{\"id\":\"nc_cexp\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Expired Certificates\",\"col\":3}},{\"id\":\"hdr_fleet\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Fleet Status</span>\",\"col\":12}},{\"id\":\"nc_wcv\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"With Client Vehicles\",\"col\":3}},{\"id\":\"nc_idv\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Idle Vehicles Vehicles\",\"col\":3}},{\"id\":\"nc_int\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Internal Use Vehicles\",\"col\":3}},{\"id\":\"nc_wsv\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Workshop Vehicles\",\"col\":3}},{\"id\":\"nc_wcd\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"With Client Drivers\",\"col\":3}},{\"id\":\"nc_idd\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Idle Drivers\",\"col\":3}},{\"id\":\"hdr_rec\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Records</span>\",\"col\":12}},{\"id\":\"card_rec\",\"type\":\"card\",\"data\":{\"card_name\":\"Records\",\"col\":4}},{\"id\":\"card_chg\",\"type\":\"card\",\"data\":{\"card_name\":\"Charges\",\"col\":4}}]",
+ "content": "[{\"id\":\"hdr_bill\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Billing</span>\",\"col\":12}},{\"id\":\"nc_uninv\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Un-invoiced Months\",\"col\":3}},{\"id\":\"nc_loaq\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"LOA Quota Remaining\",\"col\":3}},{\"id\":\"hdr_exp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Expiry Alerts</span>\",\"col\":12}},{\"id\":\"nc_rent\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Vehicles Rent Ending (30d)\",\"col\":3}},{\"id\":\"nc_c30\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Expire in 30 Days\",\"col\":3}},{\"id\":\"nc_cexp\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Expired Certificates\",\"col\":3}},{\"id\":\"hdr_fleet\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Fleet Status</span>\",\"col\":12}},{\"id\":\"nc_wcv\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"With Client Vehicles\",\"col\":3}},{\"id\":\"nc_idv\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Idle Vehicles Vehicles\",\"col\":3}},{\"id\":\"nc_int\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Internal Use Vehicles\",\"col\":3}},{\"id\":\"nc_wsv\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Workshop Vehicles\",\"col\":3}},{\"id\":\"nc_wcd\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"With Client Drivers\",\"col\":3}},{\"id\":\"hdr_rec\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Records</span>\",\"col\":12}},{\"id\":\"card_rec\",\"type\":\"card\",\"data\":{\"card_name\":\"Records\",\"col\":4}},{\"id\":\"card_chg\",\"type\":\"card\",\"data\":{\"card_name\":\"Charges\",\"col\":4}}]",
  "creation": "2026-06-03 10:00:00.000000",
  "docstatus": 0,
  "doctype": "Workspace",
@@ -13,7 +13,7 @@
  "links": [
   {"hidden": 0, "is_query_report": 0, "label": "Records", "link_count": 0, "onboard": 0, "type": "Card Break"},
   {"hidden": 0, "is_query_report": 0, "label": "Vehicles", "link_count": 0, "link_to": "Vehicle", "link_type": "DocType", "onboard": 0, "type": "Link"},
-  {"hidden": 0, "is_query_report": 0, "label": "Drivers", "link_count": 0, "link_to": "Driver", "link_type": "DocType", "onboard": 0, "type": "Link"},
+  {"hidden": 0, "is_query_report": 1, "label": "Operational Drivers", "link_count": 0, "link_to": "Operational Drivers", "link_type": "Report", "onboard": 0, "type": "Link"},
   {"hidden": 0, "is_query_report": 0, "label": "Vehicle Movement", "link_count": 0, "link_to": "Vehicle Movement", "link_type": "DocType", "onboard": 0, "type": "Link"},
   {"hidden": 0, "is_query_report": 0, "label": "Monthly Billing", "link_count": 0, "link_to": "Monthly Billing", "link_type": "DocType", "onboard": 0, "type": "Link"},
   {"hidden": 0, "is_query_report": 0, "label": "LOAs", "link_count": 0, "link_to": "LOA", "link_type": "DocType", "onboard": 0, "type": "Link"},
@@ -36,8 +36,7 @@
   {"number_card_name": "Idle Vehicles Vehicles"},
   {"number_card_name": "Internal Use Vehicles"},
   {"number_card_name": "Workshop Vehicles"},
-  {"number_card_name": "With Client Drivers"},
-  {"number_card_name": "Idle Drivers"}
+  {"number_card_name": "With Client Drivers"}
  ],
  "owner": "Administrator",
  "parent_page": "",

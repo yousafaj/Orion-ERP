@@ -202,7 +202,12 @@ class MonthlyBilling(Document):
                     "vehicle": r.vehicle,
                     "rental": r.name,
                     "rent_type": "With Driver" if r.driver else "Without Driver",
-                    "drivers": r.driver or "",
+                    "drivers": (
+                        "{0} ({1})".format(
+                            frappe.db.get_value("Employee", r.driver, "employee_name") or r.driver,
+                            r.driver,
+                        ) if r.driver else ""
+                    ),
                     "period_from": max(getdate(r.movement_date), getdate(m_start)),
                     "period_to": min(
                         getdate(r.demobilize_date) if r.demobilize_date else getdate(m_end),

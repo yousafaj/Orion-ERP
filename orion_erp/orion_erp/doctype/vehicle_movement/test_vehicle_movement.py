@@ -12,7 +12,7 @@ from orion_erp.orion_erp.doctype.vehicle_movement.vehicle_movement import (
 )
 from orion_erp.tests.fixtures import (
     create_customer,
-    create_driver,
+    create_employee,
     create_project,
     create_vehicle,
     create_vehicle_movement,
@@ -45,12 +45,27 @@ class TestVehicleMovement(FrappeTestCase):
         vehicle.reload()
         self.assertEqual(vehicle.custom_state, "Internal Use")
 
-    def test_with_driver_sets_driver_state(self):
+    def test_operational_employee_driver_is_assigned_without_changing_hr_status(self):
         vehicle = create_vehicle()
-        driver = create_driver()
-        create_vehicle_movement(vehicle=vehicle.name, driver=driver.name)
+        driver = create_employee(custom_employee_category="Non-Office", designation="Heavy Bus Driver")
+        vm = create_vehicle_movement(vehicle=vehicle.name, driver=driver.name)
         driver.reload()
-        self.assertEqual(driver.custom_state, "With Client")
+        self.assertEqual(vm.driver, driver.name)
+        self.assertEqual(driver.status, "Active")
+        demobilize(vm.name, nowdate())
+        driver.reload()
+        self.assertEqual(driver.status, "Active")
+
+    def test_driver_cannot_be_on_two_active_rentals(self):
+        driver = create_employee(custom_employee_category="Non-Office", designation="Light Vehicle Driver")
+        create_vehicle_movement(driver=driver.name)
+        with self.assertRaises(frappe.ValidationError):
+            create_vehicle_movement(driver=driver.name)
+
+    def test_non_operational_employee_cannot_be_assigned_as_driver(self):
+        employee = create_employee(custom_employee_category="Office", designation="Accountant")
+        with self.assertRaises(frappe.ValidationError):
+            create_vehicle_movement(driver=employee.name)
 
     def test_double_booking_vehicle_blocked(self):
         vehicle = create_vehicle()

@@ -2,6 +2,27 @@ import frappe
 from frappe.utils import nowdate, add_days
 from frappe import _
 
+
+@frappe.whitelist()
+def drivers_on_client_rentals():
+    """Count distinct Employee drivers on submitted active billable rentals.
+
+    get_list applies the current user's document permissions; an Employee's HR
+    status is not an assignment state. The old Driver doctype is not used.
+    """
+    rows = frappe.get_list(
+        "Vehicle Movement",
+        filters={"docstatus": 1, "rental_status": "Active", "invoiceable": 1, "driver": ["is", "set"]},
+        fields=["driver"],
+        limit_page_length=10000,
+    )
+    return {
+        "value": len({row.driver for row in rows}),
+        "fieldtype": "Int",
+        "route": ["List", "Vehicle Movement"],
+        "route_options": {"docstatus": 1, "rental_status": "Active", "invoiceable": 1},
+    }
+
 # Reusable
 def get_expiring_count(start_date, end_date, employee_only=False, customer_only=False):
     filters = {
