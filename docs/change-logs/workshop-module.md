@@ -83,3 +83,19 @@ This append-only log provides a readable history of Workshop development. Git co
 - **Tests performed:** Merge completed without code conflicts. Python compilation, JSON parsing and Git whitespace validation passed locally. GitHub CI reached application setup but could not install the existing optional S3 integration because the CI bench does not fetch that dependency; the syntax and conflict checks passed.
 - **Rollback:** Return staging to its previous Rental Management branch and use the verified pre-migration backup if database restoration is required.
 - **Status:** Integration branch merged; deployment pending
+
+---
+
+## 2026-09-25 23:06 GST (+04:00) — Staging deployment and verification
+
+- **Category:** Migration / Permissions / Test
+- **Branch:** `feature/staging-workshop-integration-20260925`
+- **Deployed commit:** `25853f27f0476114c7f46432b31b88f575b16163`
+- **Purpose:** Deploy the isolated integration branch to staging and verify the Workshop schema without creating operational records.
+- **Site impact:** Staging deployment and migration completed successfully with zero platform issues. Production, `develop` and `main` were not changed.
+- **Verification:** Workshop Request, Workshop Job Card, Vehicle Maintenance Plan and Workshop Inspection Template are available in the Workshop module. Workshop Manager, Workshop Supervisor and Workshop Team exist and are enabled.
+- **Data impact:** No Workshop requests, job cards, maintenance plans or inspection templates were created. Existing Vehicle and Employee masters remain authoritative and are linked by the Workshop schema; Asset remains optional.
+- **Backup:** A fresh staging database-and-files backup was completed before deployment.
+- **Known limitation:** The repository CI environment does not fetch the already-installed S3 Attachment dependency, so its application-install step remains an infrastructure limitation unrelated to the successful Frappe Cloud staging migration.
+- **Rollback:** Restore the pre-deployment staging branch and use the verified backup only if site recovery is required.
+- **Status:** Deployed and schema-verified on staging; functional UAT remains pending
