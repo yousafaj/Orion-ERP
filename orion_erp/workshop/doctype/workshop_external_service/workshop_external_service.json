@@ -1,0 +1,26 @@
+{
+ "actions": [],
+ "creation": "2026-09-25 16:17:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": ["supplier", "description", "purchase_order", "purchase_invoice", "amount"],
+ "fields": [
+  {"fieldname": "supplier", "fieldtype": "Link", "in_list_view": 1, "label": "Supplier", "options": "Supplier"},
+  {"fieldname": "description", "fieldtype": "Small Text", "in_list_view": 1, "label": "Service Description", "reqd": 1},
+  {"fieldname": "purchase_order", "fieldtype": "Link", "label": "Purchase Order", "options": "Purchase Order"},
+  {"fieldname": "purchase_invoice", "fieldtype": "Link", "label": "Purchase Invoice", "options": "Purchase Invoice"},
+  {"default": "0", "fieldname": "amount", "fieldtype": "Currency", "in_list_view": 1, "label": "Amount", "non_negative": 1}
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-25 16:17:00.000000",
+ "modified_by": "Administrator",
+ "module": "Workshop",
+ "name": "Workshop External Service",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

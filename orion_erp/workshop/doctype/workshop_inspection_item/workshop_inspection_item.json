@@ -1,0 +1,26 @@
+{
+ "actions": [],
+ "creation": "2026-09-25 16:17:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": ["checkpoint", "result", "remarks", "inspected_by", "inspected_on"],
+ "fields": [
+  {"fieldname": "checkpoint", "fieldtype": "Data", "in_list_view": 1, "label": "Checkpoint", "reqd": 1},
+  {"default": "Not Inspected", "fieldname": "result", "fieldtype": "Select", "in_list_view": 1, "label": "Result", "options": "Not Inspected\nPass\nFail\nNot Applicable", "reqd": 1},
+  {"fieldname": "remarks", "fieldtype": "Small Text", "label": "Remarks"},
+  {"fieldname": "inspected_by", "fieldtype": "Link", "label": "Inspected By", "options": "Employee"},
+  {"fieldname": "inspected_on", "fieldtype": "Datetime", "label": "Inspected On"}
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-25 16:17:00.000000",
+ "modified_by": "Administrator",
+ "module": "Workshop",
+ "name": "Workshop Inspection Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
