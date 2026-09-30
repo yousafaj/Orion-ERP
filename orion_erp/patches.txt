@@ -21,3 +21,4 @@ orion_erp.patches.add_table_multiselect_to_wf_field
 orion_erp.patches.set_leave_policy_on_employee_from_gender
 orion_erp.patches.migrate_health_insurance_attachment
 orion_erp.patches.enable_non_office_leave_initiators
+orion_erp.patches.add_projected_leave_balance_fields

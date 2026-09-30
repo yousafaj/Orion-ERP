@@ -492,56 +492,33 @@ def add_eligibility_warning(doc, title, message):
 
 
 def validate_annual_leave_avail(doc, method=None):
-    if doc.docstatus == 1:
+    """Assess service at leave start; annual leave has no blanket one-year gate."""
+    if not doc.employee or not doc.leave_type or not doc.from_date:
         return
-
     settings = frappe.get_single("Orion Settings")
-    configured_types = [
-        row.leave_type
-        for row in (getattr(settings, "leave_types_requiring_one_year_service", None) or [])
-        if row.leave_type
-    ]
-
-    if not configured_types or doc.leave_type not in configured_types:
+    annual_types = {row.leave_type for row in settings.get("leave_types_for_accrual") or []}
+    configured_types = {row.leave_type for row in settings.get("leave_types_requiring_one_year_service") or []}
+    if doc.leave_type not in annual_types | configured_types:
         return
-
     employee_doj = frappe.db.get_value("Employee", doc.employee, "date_of_joining")
     if not employee_doj:
         return
-
-    doj = getdate(employee_doj)
-    today = getdate()
-
-    if doj > today:
-        add_eligibility_warning(
-            doc,
-            "Leave Eligibility",
-            "Employee has not yet joined. Recruitment date is {0}.".format(employee_doj)
-        )
+    completed_months = get_completed_months(getdate(employee_doj), getdate(doc.from_date))
+    # Remove only this validation's old warning; preserve other eligibility flags.
+    warnings = (doc.get("custom_eligibility_warnings") or "").splitlines()
+    warnings = [line for line in warnings if not (
+        "You must complete 1 year of service to apply for" in line
+        or line.startswith("Annual leave before six months")
+    )]
+    if doc.leave_type in annual_types:
+        if completed_months < 6:
+            warnings.append("Annual leave before six months of service requires HR and management review. Saving this request does not grant leave.")
+        doc.custom_eligibility_warnings = "\n".join(warnings)
         return
-
-    completed_months = get_completed_months(doj, today)
-
-    balance = frappe.db.sql("""
-        SELECT COALESCE(SUM(leaves), 0)
-        FROM `tabLeave Ledger Entry`
-        WHERE employee = %s
-          AND leave_type = %s
-          AND docstatus = 1
-          AND is_expired = 0
-    """, (doc.employee, doc.leave_type))[0][0] or 0
-
-    balance = flt(balance)
-
+    doc.custom_eligibility_warnings = "\n".join(warnings)
     if completed_months < 12:
-        add_eligibility_warning(
-            doc,
-            "Leave Eligibility",
-            "You must complete 1 year of service to apply for {0} days {1}. "
-            "Your current accrued balance is {2} days.".format(
-                doc.total_leave_days, doc.leave_type, balance
-            )
-        )
+        add_eligibility_warning(doc, "Leave Eligibility",
+            "You must complete 1 year of service to apply for {0}.".format(doc.leave_type))
 
 
 def get_completed_months(doj, ref_date):
@@ -1316,64 +1293,28 @@ def send_first_approval_email(doc):
 @frappe.validate_and_sanitize_search_inputs
 def get_leave_types_for_employee(doctype, txt, searchfield, start, page_len, filters):
     employee = filters.get("employee") if filters else None
+    reference_date = getdate((filters or {}).get("from_date"))
     if not employee:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    doj = frappe.db.get_value("Employee", employee, "date_of_joining")
-    if not doj:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    completed_months = get_completed_months(getdate(doj), getdate())
-
-    # Employee within 6 months → show only Orion Settings allowed types
-    if completed_months < 6:
-        allowed_types = frappe.get_all(
-            "Leave Type Details",
-            filters={"parent": "Orion Settings", "parentfield": "leave_types_within_six_months"},
-            pluck="leave_type"
-        )
-
-        if not allowed_types:
-            return frappe.db.sql("""
-                SELECT name FROM `tabLeave Type`
-                WHERE name LIKE %(txt)s
-                LIMIT %(start)s, %(page_len)s
-            """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name IN %(allowed_types)s
-              AND name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"allowed_types": allowed_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    # Employee 6+ months → show only allocated leave types
-    allocated_types = frappe.db.sql("""
-        SELECT DISTINCT leave_type
-        FROM `tabLeave Allocation`
-        WHERE employee = %(employee)s
-          AND docstatus = 1
-          AND expired = 0
-          AND CURDATE() BETWEEN from_date AND to_date
-    """, {"employee": employee}, pluck="leave_type")
-
-    if not allocated_types:
         return []
-
+    from hrms.hr.doctype.leave_application.leave_application import validate_leave_access
+    validate_leave_access(employee)
+    # Allocation and leave-specific validation decide eligibility. Service length
+    # must not hide unrelated allocated leave or unpaid leave from new employees.
     return frappe.db.sql("""
-        SELECT name FROM `tabLeave Type`
-        WHERE name IN %(allocated_types)s
-          AND name LIKE %(txt)s
-        LIMIT %(start)s, %(page_len)s
-    """, {"allocated_types": allocated_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
+        SELECT lt.name FROM `tabLeave Type` lt
+        WHERE lt.name LIKE %(txt)s AND (
+            lt.is_lwp = 1
+            OR EXISTS (SELECT 1 FROM `tabLeave Allocation` la
+                WHERE la.employee = %(employee)s AND la.leave_type = lt.name
+                  AND la.docstatus = 1 AND la.expired = 0
+                  AND %(date)s BETWEEN la.from_date AND la.to_date)
+            OR EXISTS (SELECT 1 FROM `tabLeave Type Details` allowed
+                WHERE allowed.parent = 'Orion Settings'
+                  AND allowed.parentfield = 'leave_types_within_six_months'
+                  AND allowed.leave_type = lt.name)
+        ) ORDER BY lt.name LIMIT %(start)s, %(page_len)s
+    """, {"employee": employee, "date": reference_date, "txt": f"%{txt}%",
+            "start": start, "page_len": page_len})
 
 
 def _sandwich_applies_for_employee(employee):
