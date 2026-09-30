@@ -36,6 +36,18 @@ def balance_summary(employee, leave_type, from_date, to_date, application=None, 
         employee, leave_type, start, end,
         consider_all_leaves_in_the_allocation_period=True, for_consumption=True,
     )
+    # Reserve commitments before the final allocation-calendar cap. Subtracting
+    # pending days from an already capped balance falsely rejects valid requests
+    # near expiry. Preserve the native separate carry-forward expiry cap.
+    eligible = flt(native.get("leave_balance"))
+    native_allocation = standard.get_leave_allocation_records(employee, start, leave_type).get(leave_type)
+    if native_allocation and native_allocation.unused_leaves:
+        cf_expiry = standard.get_allocation_expiry_for_cf_leaves(
+            employee, leave_type, end, native_allocation.from_date)
+        if cf_expiry and start <= getdate(cf_expiry):
+            cf_taken = standard.get_new_and_cf_leaves_taken(native_allocation, cf_expiry)[1]
+            cf_remaining = max(0, flt(native_allocation.unused_leaves) + flt(cf_taken))
+            eligible -= cf_remaining - min(cf_remaining, date_diff(cf_expiry, start) + 1)
     current = standard.get_leave_balance_on(employee, leave_type, today, today)
     # A submitted request already has its own debit. Do not charge it twice on
     # subsequent validation (including permitted attachment updates).
@@ -67,7 +79,7 @@ def balance_summary(employee, leave_type, from_date, to_date, application=None, 
                               getdate(allocation.from_date), getdate(allocation.to_date))
     # Preserve native expiry/carry-forward restrictions. Regular new credits are
     # usable up to allocation expiry; expiring carry-forward remains native.
-    available = min(flt(native.get("leave_balance_for_consumption")) + own_debit + forecast - reserved,
+    available = min(eligible + own_debit + forecast - reserved,
                     date_diff(allocation.to_date, start) + 1)
     return frappe._dict(current_balance=flt(current, 2), projected_accrual=forecast,
                         pending_reserved=flt(reserved, 2), projected_balance=flt(available, 2))

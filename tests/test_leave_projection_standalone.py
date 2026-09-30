@@ -99,7 +99,11 @@ class BalanceTests(unittest.TestCase):
         standard.LeaveApplication = Native
         standard.InsufficientLeaveBalanceError = Rejected
         self.native_balance = 34.5
-        standard.get_leave_balance_on = lambda *args, **kwargs: Row(leave_balance_for_consumption=self.native_balance) if kwargs.get("for_consumption") else 34.5
+        standard.get_leave_balance_on = lambda *args, **kwargs: Row(leave_balance=self.native_balance, leave_balance_for_consumption=self.native_balance) if kwargs.get("for_consumption") else 34.5
+        self.native_allocation = Row(from_date=date(2022, 3, 22), unused_leaves=0)
+        standard.get_leave_allocation_records = lambda *args: {"ANNUAL": self.native_allocation}
+        standard.get_allocation_expiry_for_cf_leaves = lambda *args: date(2026, 12, 2)
+        standard.get_new_and_cf_leaves_taken = lambda *args: (0, 0)
         standard.get_number_of_leave_days = lambda *args: 40
         standard.validate_leave_access = lambda *args: None
         package = types.ModuleType("hrms.hr.doctype.leave_application")
@@ -136,6 +140,16 @@ class BalanceTests(unittest.TestCase):
         self.allocations = []
         with self.assertRaises(Rejected):
             self.summary()
+
+    def test_reserve_before_allocation_calendar_cap(self):
+        self.allocations[0].to_date = date(2026, 12, 5)
+        self.pending = [Row(name="OTHER", total_leave_days=4)]
+        summary = self.controller.balance_summary("EMP", "ANNUAL", "2026-12-01", "2026-12-05")
+        self.assertEqual(summary.projected_balance, 5)
+
+    def test_carry_forward_expiry_cap_preserved(self):
+        self.native_allocation.unused_leaves = 10
+        self.assertEqual(self.summary().projected_balance, 31.5)
 
     def doc(self, leave_type="ANNUAL", status="Open"):
         doc = self.controller.OrionLeaveApplication()
