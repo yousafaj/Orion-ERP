@@ -89,8 +89,19 @@ class OrionLeaveApplication(standard.LeaveApplication):
     def validate_balance_leaves(self):
         if not self.leave_type or not uses_projected_balance(self.leave_type):
             return super().validate_balance_leaves()
-        if self.status in ("Rejected", "Cancelled") or self.docstatus == 2:
+        if self.docstatus == 2:
             return
+        if not self.is_new():
+            # Orion records rejection/cancellation in active approver fields
+            # during save. These transitions must remain possible even when
+            # entitlement has subsequently decreased. Approval permissions are
+            # still enforced by validate_leave_approval.
+            from orion_erp.orion_erp.validations.leave_application import get_approval_flow
+            terminating = any(self.get(row["approver_field"])
+                              and self.get(row["status_field"]) in ("Rejected", "Cancelled")
+                              for row in get_approval_flow(self))
+            if self.status in ("Rejected", "Cancelled") or terminating:
+                return
         if not self.from_date or not self.to_date:
             return
         self.total_leave_days = standard.get_number_of_leave_days(
@@ -106,7 +117,7 @@ class OrionLeaveApplication(standard.LeaveApplication):
         self.custom_pending_leave_reserved = summary.pending_reserved
         self.leave_balance = summary.projected_balance
         self.custom_leave_balance_after = flt(summary.projected_balance - self.total_leave_days, 2)
-        if self.status not in ("Rejected", "Cancelled") and self.docstatus != 2:
+        if self.is_new() or self.status not in ("Rejected", "Cancelled"):
             if flt(self.total_leave_days, 2) > summary.projected_balance:
                 frappe.throw(_("Insufficient projected leave balance on {0}: {1} days available, {2} days requested. Pending requests reserve {3} days.").format(
                     self.from_date, summary.projected_balance, self.total_leave_days, summary.pending_reserved),

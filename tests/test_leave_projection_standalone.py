@@ -156,6 +156,8 @@ class BalanceTests(unittest.TestCase):
         for field, value in dict(employee="EMP", leave_type=leave_type, status=status, docstatus=0,
                 from_date="2026-12-01", to_date="2027-01-09", half_day=0, half_day_date=None, name="SELF").items():
             setattr(doc, field, value)
+        doc.is_new = lambda: True
+        doc.get = lambda key: getattr(doc, key, None)
         return doc
 
     def test_excess_blocked_even_when_native_type_allows_negative(self):
@@ -173,7 +175,19 @@ class BalanceTests(unittest.TestCase):
 
     def test_rejection_not_blocked_by_expired_allocation(self):
         self.allocations = []
-        self.doc(status="Rejected").validate_balance_leaves()
+        validations = load("validations", "orion_erp/orion_erp/validations/leave_application.py")
+        with patch.dict(sys.modules, {"orion_erp.orion_erp.validations.leave_application": validations}):
+            doc = self.doc(status="Rejected")
+            doc.is_new = lambda: False
+            doc.validate_balance_leaves()
+            doc.status = "Open"
+            doc.leave_approver = "MANAGER"
+            doc.custom_initial_approver_status = "Cancelled"
+            doc.validate_balance_leaves()
+
+    def test_new_rejected_status_cannot_bypass_balance_guard(self):
+        with self.assertRaises(Rejected):
+            self.doc(status="Rejected").validate_balance_leaves()
 
     def test_under_one_year_annual_request_has_no_blanket_warning(self):
         validations = load("validations", "orion_erp/orion_erp/validations/leave_application.py")
