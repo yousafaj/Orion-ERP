@@ -52,10 +52,12 @@ def balance_summary(employee, leave_type, from_date, to_date, application=None, 
         "Leave Application", filters={"employee": employee, "leave_type": leave_type,
             "docstatus": 0, "status": ["in", ["Open", "Approved"]],
             "from_date": ["<=", allocation.to_date], "to_date": [">=", allocation.from_date]},
-        fields=["name", "total_leave_days", "workflow_state"],
+        fields=["name", "total_leave_days", "workflow_state", "custom_approval_status"],
     )
     reserved = sum(flt(row.total_leave_days) for row in pending
-                   if row.name != application and row.workflow_state not in ("Rejected", "Cancelled"))
+                   if row.name != application
+                   and row.workflow_state not in ("Rejected", "Cancelled")
+                   and row.custom_approval_status not in ("Rejected", "Cancelled"))
     leave_doc = frappe.get_cached_doc("Leave Type", leave_type)
     joining = getdate(frappe.db.get_value("Employee", employee, "date_of_joining"))
     rules = [dict(from_months=cint(row.from_months), to_months=cint(row.to_months),

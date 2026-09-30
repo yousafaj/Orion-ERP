@@ -123,7 +123,8 @@ class BalanceTests(unittest.TestCase):
 
     def test_pending_reserved_self_and_rejected_excluded(self):
         self.pending = [Row(name="OTHER", total_leave_days=4), Row(name="SELF", total_leave_days=6),
-                        Row(name="REJECTED", total_leave_days=9, workflow_state="Rejected")]
+                        Row(name="REJECTED", total_leave_days=9, workflow_state="Rejected"),
+                        Row(name="ORION-REJECTED", total_leave_days=10, custom_approval_status="Rejected")]
         self.assertEqual(self.summary("SELF").projected_balance, 35.5)
 
     def test_submitted_request_not_charged_twice(self):
