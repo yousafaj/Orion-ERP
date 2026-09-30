@@ -190,7 +190,7 @@ class BalanceTests(unittest.TestCase):
             self.doc(status="Rejected").validate_balance_leaves()
 
     def test_under_one_year_annual_request_has_no_blanket_warning(self):
-        validations = load("validations", "orion_erp/orion_erp/validations/leave_application.py")
+        validations = load("eligibility", "orion_erp/orion_erp/validations/leave_application/eligibility.py")
         self.frappe.db.get_value = lambda *args: date(2025, 10, 27)
         doc = Row(employee="EMP", leave_type="ANNUAL", from_date="2026-09-24",
                   custom_eligibility_warnings="You must complete 1 year of service to apply for ANNUAL.\nOther review")

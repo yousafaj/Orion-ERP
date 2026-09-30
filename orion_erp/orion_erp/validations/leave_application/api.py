@@ -143,72 +143,35 @@ def send_for_approval(docname):
 
 # =========================================================
 # LEAVE TYPE FILTER
-# < 6 months → Orion Settings allowed types (ignore allocations)
-# >= 6 months → only allocated leave types
+# Allocated, unpaid and explicitly permitted leave types at leave start
 # =========================================================
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_leave_types_for_employee(doctype, txt, searchfield, start, page_len, filters):
     employee = filters.get("employee") if filters else None
+    reference_date = getdate((filters or {}).get("from_date"))
     if not employee:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    doj = frappe.db.get_value("Employee", employee, "date_of_joining")
-    if not doj:
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    completed_months = get_completed_months(getdate(doj), getdate())
-
-    # Employee within 6 months → show only Orion Settings allowed types
-    if completed_months < 6:
-        allowed_types = frappe.get_all(
-            "Leave Type Details",
-            filters={"parent": "Orion Settings", "parentfield": "leave_types_within_six_months"},
-            pluck="leave_type"
-        )
-
-        if not allowed_types:
-            return frappe.db.sql("""
-                SELECT name FROM `tabLeave Type`
-                WHERE name LIKE %(txt)s
-                LIMIT %(start)s, %(page_len)s
-            """, {"txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-        return frappe.db.sql("""
-            SELECT name FROM `tabLeave Type`
-            WHERE name IN %(allowed_types)s
-              AND name LIKE %(txt)s
-            LIMIT %(start)s, %(page_len)s
-        """, {"allowed_types": allowed_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
-
-    # Employee 6+ months → show only allocated leave types
-    allocated_types = frappe.db.sql("""
-        SELECT DISTINCT leave_type
-        FROM `tabLeave Allocation`
-        WHERE employee = %(employee)s
-          AND docstatus = 1
-          AND expired = 0
-          AND CURDATE() BETWEEN from_date AND to_date
-    """, {"employee": employee}, pluck="leave_type")
-
-    if not allocated_types:
         return []
-
+    from hrms.hr.doctype.leave_application.leave_application import validate_leave_access
+    validate_leave_access(employee)
+    # Allocation and leave-specific validation decide eligibility. Service length
+    # must not hide unrelated allocated leave or unpaid leave from new employees.
     return frappe.db.sql("""
-        SELECT name FROM `tabLeave Type`
-        WHERE name IN %(allocated_types)s
-          AND name LIKE %(txt)s
-        LIMIT %(start)s, %(page_len)s
-    """, {"allocated_types": allocated_types, "txt": f"%{txt}%", "start": start, "page_len": page_len})
+        SELECT lt.name FROM `tabLeave Type` lt
+        WHERE lt.name LIKE %(txt)s AND (
+            lt.is_lwp = 1
+            OR EXISTS (SELECT 1 FROM `tabLeave Allocation` la
+                WHERE la.employee = %(employee)s AND la.leave_type = lt.name
+                  AND la.docstatus = 1 AND la.expired = 0
+                  AND %(date)s BETWEEN la.from_date AND la.to_date)
+            OR EXISTS (SELECT 1 FROM `tabLeave Type Details` allowed
+                WHERE allowed.parent = 'Orion Settings'
+                  AND allowed.parentfield = 'leave_types_within_six_months'
+                  AND allowed.leave_type = lt.name)
+        ) ORDER BY lt.name LIMIT %(start)s, %(page_len)s
+    """, {"employee": employee, "date": reference_date, "txt": f"%{txt}%",
+            "start": start, "page_len": page_len})
 
 
 # ---------------------------------------------------------------------------

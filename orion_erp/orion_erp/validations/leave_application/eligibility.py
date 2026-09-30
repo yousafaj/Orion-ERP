@@ -13,56 +13,33 @@ def add_eligibility_warning(doc, title, message):
 
 
 def validate_annual_leave_avail(doc, method=None):
-    if doc.docstatus == 1:
+    """Assess service at leave start; annual leave has no blanket one-year gate."""
+    if not doc.employee or not doc.leave_type or not doc.from_date:
         return
-
     settings = frappe.get_single("Orion Settings")
-    configured_types = [
-        row.leave_type
-        for row in (getattr(settings, "leave_types_requiring_one_year_service", None) or [])
-        if row.leave_type
-    ]
-
-    if not configured_types or doc.leave_type not in configured_types:
+    annual_types = {row.leave_type for row in settings.get("leave_types_for_accrual") or []}
+    configured_types = {row.leave_type for row in settings.get("leave_types_requiring_one_year_service") or []}
+    if doc.leave_type not in annual_types | configured_types:
         return
-
     employee_doj = frappe.db.get_value("Employee", doc.employee, "date_of_joining")
     if not employee_doj:
         return
-
-    doj = getdate(employee_doj)
-    today = getdate()
-
-    if doj > today:
-        add_eligibility_warning(
-            doc,
-            "Leave Eligibility",
-            "Employee has not yet joined. Recruitment date is {0}.".format(employee_doj)
-        )
+    completed_months = get_completed_months(getdate(employee_doj), getdate(doc.from_date))
+    # Remove only this validation's old warning; preserve other eligibility flags.
+    warnings = (doc.get("custom_eligibility_warnings") or "").splitlines()
+    warnings = [line for line in warnings if not (
+        "You must complete 1 year of service to apply for" in line
+        or line.startswith("Annual leave before six months")
+    )]
+    if doc.leave_type in annual_types:
+        if completed_months < 6:
+            warnings.append("Annual leave before six months of service requires HR and management review. Saving this request does not grant leave.")
+        doc.custom_eligibility_warnings = "\n".join(warnings)
         return
-
-    completed_months = get_completed_months(doj, today)
-
-    balance = frappe.db.sql("""
-        SELECT COALESCE(SUM(leaves), 0)
-        FROM `tabLeave Ledger Entry`
-        WHERE employee = %s
-          AND leave_type = %s
-          AND docstatus = 1
-          AND is_expired = 0
-    """, (doc.employee, doc.leave_type))[0][0] or 0
-
-    balance = flt(balance)
-
+    doc.custom_eligibility_warnings = "\n".join(warnings)
     if completed_months < 12:
-        add_eligibility_warning(
-            doc,
-            "Leave Eligibility",
-            "You must complete 1 year of service to apply for {0} days {1}. "
-            "Your current accrued balance is {2} days.".format(
-                doc.total_leave_days, doc.leave_type, balance
-            )
-        )
+        add_eligibility_warning(doc, "Leave Eligibility",
+            "You must complete 1 year of service to apply for {0}.".format(doc.leave_type))
 
 
 def get_completed_months(doj, ref_date):
