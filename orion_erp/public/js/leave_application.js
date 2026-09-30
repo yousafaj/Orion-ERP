@@ -273,7 +273,7 @@ frappe.ui.form.on("Leave Application", {
         frm.set_query("leave_type", function() {
             return {
                 query: "orion_erp.orion_erp.validations.leave_application.get_leave_types_for_employee",
-                filters: { employee: frm.doc.employee }
+                filters: { employee: frm.doc.employee, from_date: frm.doc.from_date }
             };
         });
     },
@@ -311,7 +311,7 @@ frappe.ui.form.on("Leave Application", {
         frm.set_query("leave_type", function() {
             return {
                 query: "orion_erp.orion_erp.validations.leave_application.get_leave_types_for_employee",
-                filters: { employee: frm.doc.employee }
+                filters: { employee: frm.doc.employee, from_date: frm.doc.from_date }
             };
         });
 
@@ -923,4 +923,53 @@ function set_leave_balance_after(frm) {
     } else {
         frm.set_value("custom_leave_balance_after", 0);
     }
+}
+
+// Replace the native balance event so its asynchronous response cannot overwrite
+// the forecast. Retain native handlers for other leave types.
+const native_leave_balance_handlers = [...frappe.ui.form.get_event_handler_list("Leave Application", "get_leave_balance")];
+frappe.ui.form.off("Leave Application", "get_leave_balance");
+frappe.ui.form.on("Leave Application", {
+    get_leave_balance: refresh_projected_leave_balance,
+    refresh: refresh_projected_leave_balance
+});
+
+function refresh_projected_leave_balance(frm) {
+    const fields = ["custom_current_leave_balance", "custom_projected_leave_accrual", "custom_pending_leave_reserved"];
+    if (!frm.doc.employee || !frm.doc.leave_type || !frm.doc.from_date || !frm.doc.to_date) {
+        fields.forEach(field => frm.toggle_display(field, false));
+        return;
+    }
+    const args = {
+        employee: frm.doc.employee,
+        leave_type: frm.doc.leave_type,
+        from_date: frm.doc.from_date,
+        to_date: frm.doc.to_date,
+        application: frm.is_new() ? null : frm.doc.name
+    };
+    return frappe.call({
+        method: "orion_erp.orion_erp.overrides.leave_application.get_projected_leave_balance",
+        args,
+        callback(r) {
+            if (Object.keys(args).some(key => key !== "application" && frm.doc[key] !== args[key])) return;
+            if (r.exc) return;
+            fields.forEach(field => frm.toggle_display(field, !!r.message));
+            if (!r.message) {
+                frm.set_df_property("leave_balance", "label", __("Leave Balance"));
+                frm.set_df_property("leave_balance", "description", "");
+                return native_leave_balance_handlers.reduce(
+                    (previous, handler) => previous.then(() => handler(frm)), Promise.resolve());
+            }
+            frm.set_df_property("leave_balance", "label", __("Projected Leave Balance at Leave Start"));
+            frm.set_df_property("leave_balance", "description", __("Includes expected accrual; approved and other pending requests are deducted. Actual accrual remains subject to normal posting."));
+            Object.assign(frm.doc, {
+                leave_balance: r.message.projected_balance,
+                custom_current_leave_balance: r.message.current_balance,
+                custom_projected_leave_accrual: r.message.projected_accrual,
+                custom_pending_leave_reserved: r.message.pending_reserved,
+                custom_leave_balance_after: flt(r.message.projected_balance) - flt(frm.doc.total_leave_days)
+            });
+            frm.refresh_fields(["leave_balance", ...fields, "custom_leave_balance_after"]);
+        }
+    });
 }
