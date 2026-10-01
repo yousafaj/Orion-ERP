@@ -2,9 +2,9 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint, date_diff, flt, getdate
+from frappe.utils import add_days, cint, date_diff, flt, getdate
 from hrms.hr.doctype.leave_application import leave_application as standard
-from orion_erp.orion_erp.services.leave_projection import project_accrual
+from orion_erp.orion_erp.services.leave_projection import anniversary, completed_months, project_accrual
 
 
 def uses_projected_balance(leave_type):
@@ -26,6 +26,8 @@ def balance_summary(employee, leave_type, from_date, to_date, application=None, 
                  "from_date": ["<=", start], "to_date": [">=", end]},
         fields=["name", "from_date", "to_date"], order_by="from_date desc",
     )
+    if not allocations and start > today:
+        return next_year_balance(employee, leave_type, start, end, application, lock)
     if len(allocations) != 1:
         frappe.throw(_("A single submitted leave allocation must cover this request. Ask HR to check the allocation dates; split requests that cross allocation periods."))
     allocation = allocations[0]
@@ -85,7 +87,79 @@ def balance_summary(employee, leave_type, from_date, to_date, application=None, 
                         pending_reserved=flt(reserved, 2), projected_balance=flt(available, 2))
 
 
+def next_year_balance(employee, leave_type, start, end, application=None, lock=False):
+    """Forecast the next service year without pre-posting credits or carry-forward.
+
+    An existing current allocation establishes entitlement. Preserve its expiry,
+    configured carry-forward ceiling and commitments in both years. The final
+    completed service month's credit belongs to the closing year, even though
+    it is posted on the first day of the following year.
+    """
+    today = getdate()
+    current = frappe.get_all("Leave Allocation",
+        filters={"employee": employee, "leave_type": leave_type, "docstatus": 1,
+                 "from_date": ["<=", today], "to_date": [">=", today]},
+        fields=["name", "from_date", "to_date"])
+    if len(current) != 1:
+        frappe.throw(_("No current annual leave entitlement is available. Ask HR to check the employee's allocation."))
+    source = current[0]
+    joining = getdate(frappe.db.get_value("Employee", employee, "date_of_joining"))
+    next_start = getdate(add_days(source.to_date, 1))
+    month = completed_months(joining, next_start)
+    next_end = getdate(add_days(anniversary(joining, month + 12), -1))
+    if month < 12 or month % 12 or anniversary(joining, month) != next_start or not (next_start <= start <= end <= next_end):
+        frappe.throw(_("The requested dates are outside the next annual leave year. Ask HR to check the allocation dates."))
+    existing = frappe.get_all("Leave Allocation",
+        filters={"employee": employee, "leave_type": leave_type, "docstatus": 1,
+                 "from_date": ["<=", next_end], "to_date": [">=", next_start]}, fields=["name"])
+    if existing:
+        frappe.throw(_("An allocation already exists in the requested year but does not cover the selected dates. Ask HR to check its dates."))
+    if lock:
+        frappe.db.sql("SELECT name FROM `tabLeave Allocation` WHERE name=%s FOR UPDATE", source.name)
+    leave_doc = frappe.get_cached_doc("Leave Type", leave_type)
+    rules = [dict(from_months=cint(r.from_months), to_months=cint(r.to_months), days_per_month=flt(r.days_per_month))
+             for r in leave_doc.get("custom_annual_leave_accrual_rules") or []]
+    closing = balance_summary(employee, leave_type, source.to_date, source.to_date, application)
+    # Recalculate raw closing entitlement: the native calendar cap would reduce
+    # a year-end snapshot to one day, which is not the carry-forward balance.
+    raw = standard.get_leave_balance_on(employee, leave_type, source.to_date, source.to_date,
+        consider_all_leaves_in_the_allocation_period=True, for_consumption=True)
+    closing_credit = project_accrual(joining, today, next_start, rules, getdate(source.from_date), next_start)
+    own = 0.0
+    if application:
+        entries = frappe.get_all("Leave Ledger Entry", filters={"transaction_type": "Leave Application",
+            "transaction_name": application, "employee": employee, "leave_type": leave_type, "docstatus": 1},
+            fields=["leaves", "from_date", "to_date"])
+        own = -sum(flt(r.leaves) for r in entries
+                   if getdate(r.from_date) >= next_start and getdate(r.to_date) <= next_end)
+    carry_limit = flt(leave_doc.maximum_carry_forwarded_leaves)
+    carry = min(max(0, flt(raw.get("leave_balance")) + closing_credit - closing.pending_reserved), carry_limit) if leave_doc.is_carry_forward else 0.0
+    expiry_days = cint(leave_doc.expire_carry_forwarded_leaves_after_days)
+    if expiry_days:
+        expiry = getdate(add_days(next_start, expiry_days - 1))
+        carry = 0.0 if start > expiry else min(carry, date_diff(expiry, start) + 1)
+    credit = project_accrual(joining, next_start, start, rules, next_start, next_end)
+    taken = flt(standard.get_leaves_for_period(employee, leave_type, next_start, next_end))
+    pending = frappe.get_all("Leave Application", filters={"employee": employee, "leave_type": leave_type,
+        "docstatus": 0, "status": ["in", ["Open", "Approved"]],
+        "from_date": ["<=", next_end], "to_date": [">=", next_start]},
+        fields=["name", "total_leave_days", "workflow_state", "custom_approval_status"])
+    reserved = sum(flt(r.total_leave_days) for r in pending if r.name != application
+        and r.workflow_state not in ("Rejected", "Cancelled") and r.custom_approval_status not in ("Rejected", "Cancelled"))
+    available = min(carry + credit + taken + own - reserved, date_diff(next_end, start) + 1)
+    return frappe._dict(current_balance=closing.current_balance, projected_accrual=flt(closing_credit + credit, 2),
+        pending_reserved=flt(reserved, 2), projected_balance=flt(available, 2),
+        projected_carry_forward=flt(carry, 2), carry_forward_limit=carry_limit)
+
+
 class OrionLeaveApplication(standard.LeaveApplication):
+    def validate_dates_across_allocation(self):
+        if uses_projected_balance(self.leave_type):
+            # The projected validator checks current or next-year entitlement.
+            # Native date, half-day and backdated-access checks still run.
+            return
+        return super().validate_dates_across_allocation()
+
     def validate_balance_leaves(self):
         if not self.leave_type or not uses_projected_balance(self.leave_type):
             return super().validate_balance_leaves()

@@ -1,12 +1,27 @@
 """Pure date arithmetic for prospective accrual; never posts leave credits."""
 
 import calendar
+import re
 from datetime import date
 
 
 def anniversary(joining, month):
     year, month_index = divmod(joining.year * 12 + joining.month - 1 + month, 12)
     return date(year, month_index + 1, min(joining.day, calendar.monthrange(year, month_index + 1)[1]))
+
+
+def completed_months(joining, as_of):
+    months = max(0, (as_of.year - joining.year) * 12 + as_of.month - joining.month)
+    return max(0, months - (anniversary(joining, months) > as_of))
+
+
+def accrual_baseline(description, joining, modified):
+    """Treat legacy imported totals as already earned, never credit them again."""
+    recorded = re.search(r"Accrual Baseline Month (\d+)", description or "")
+    if recorded:
+        return int(recorded.group(1))
+    markers = [int(m) for m in re.findall(r"(?:^|\n)Month (\d+) \|", description or "")]
+    return max(markers) if markers else completed_months(joining, modified)
 
 
 def project_accrual(joining, today, leave_start, rules, period_start, period_end):

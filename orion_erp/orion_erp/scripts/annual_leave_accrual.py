@@ -8,6 +8,9 @@ from hrms.hr.doctype.leave_ledger_entry.leave_ledger_entry import (
 from orion_erp.orion_erp.scripts.excess_leave_notification import (
     notify_excess_leaves,
 )
+from orion_erp.orion_erp.services.leave_projection import (
+    accrual_baseline, completed_months,
+)
 
 
 def get_configured_leave_types():
@@ -75,50 +78,76 @@ def execute_monthly_accrual():
     if not leave_types:
         return
 
-    today = getdate()
-
     employees = frappe.get_all(
         "Employee",
         filters={
             "status": "Active",
-            "date_of_joining": ["<=", today]
+            "date_of_joining": ["<=", getdate()]
         },
         fields=["name", "date_of_joining"]
     )
 
-    for leave_type in leave_types:
-        rules = get_rules_from_leave_type(leave_type)
+    for emp in employees:
+        frappe.db.savepoint("monthly_accrual_employee")
+        try:
+            reconcile_employee_accrual(emp.name, leave_types)
+        except Exception:
+            frappe.db.rollback(save_point="monthly_accrual_employee")
+            frappe.log_error(frappe.get_traceback(), f"Monthly Accrual Failed - {emp.name}")
 
+
+def reconcile_employee_accrual(employee, leave_types=None):
+    """Retry completed service months after late attendance, exactly once.
+
+    Existing imported totals get a persistent baseline. Retry only the current
+    and preceding service year; do not reconstruct historical imported balances.
+    The employee lock also serializes attendance-import and daily-scheduler jobs.
+    """
+    frappe.db.sql("SELECT name FROM `tabEmployee` WHERE name=%s FOR UPDATE", employee)
+    emp = frappe.db.get_value("Employee", employee, ["date_of_joining", "status"], as_dict=True)
+    if not emp or emp.status != "Active" or not emp.date_of_joining:
+        return
+    doj, today = getdate(emp.date_of_joining), getdate()
+    completed = completed_months(doj, today)
+    first_month = max(1, (((completed - 1) // 12) - 1) * 12 + 1)
+    for leave_type in leave_types or get_configured_leave_types():
+        rules = get_rules_from_leave_type(leave_type)
         if not rules:
             continue
-
-        for emp in employees:
-            try:
-                doj = getdate(emp.date_of_joining)
-
-                completed_months = get_completed_months(doj, today)
-
-                if completed_months < 1:
+        allocations = frappe.get_all("Leave Allocation",
+            filters={"employee": employee, "leave_type": leave_type, "docstatus": 1},
+            fields=["name", "from_date", "to_date", "description", "modified", "expired"])
+        for allocation in allocations:
+            if "Accrual Baseline Month " not in (allocation.description or ""):
+                baseline = accrual_baseline(allocation.description, doj, getdate(allocation.modified))
+                allocation.description = (allocation.description or "") + f"\nAccrual Baseline Month {baseline}"
+                frappe.db.set_value("Leave Allocation", allocation.name, "description", allocation.description)
+        for month in range(first_month, completed + 1):
+            start, end = get_year_start(doj, month), get_year_end(doj, month)
+            covering = [a for a in allocations if getdate(a.from_date) <= end and getdate(a.to_date) >= start]
+            if len(covering) > 1:
+                frappe.throw(f"Overlapping annual leave allocations for {employee}; HR must reconcile them.")
+            if covering:
+                allocation = covering[0]
+                if allocation.expired or month <= accrual_baseline(allocation.description, doj, today):
                     continue
+            elif getdate(end) < today:
+                # Do not reopen a closed historical year without a baseline.
+                continue
+            process_employee(employee, doj, month, rules, leave_type)
 
-                anniversary_date = add_months(doj, completed_months)
 
-                if anniversary_date != today:
-                    continue
-
-                process_employee(
-                    emp.name,
-                    doj,
-                    completed_months,
-                    rules,
-                    leave_type
-                )
-
-            except Exception:
-                frappe.log_error(
-                    frappe.get_traceback(),
-                    f"Monthly Accrual Failed - {emp.name} - {leave_type}"
-                )
+def attendance_accrual_updated(doc, method=None):
+    if doc.docstatus != 1 or not doc.employee:
+        return
+    queued = getattr(frappe.local, "orion_accrual_queued", None)
+    if queued is None:
+        queued = frappe.local.orion_accrual_queued = set()
+    if doc.employee in queued:
+        return
+    queued.add(doc.employee)
+    frappe.enqueue("orion_erp.orion_erp.scripts.annual_leave_accrual.reconcile_employee_accrual",
+                   employee=doc.employee, enqueue_after_commit=True)
 
 
 def process_employee(employee, doj, month_num, rules, leave_type):
@@ -143,7 +172,7 @@ def process_employee(employee, doj, month_num, rules, leave_type):
         """SELECT name FROM `tabLeave Allocation`
         WHERE employee = %s AND leave_type = %s AND docstatus = 1
         AND description LIKE %s""",
-        (employee, leave_type, f"%{description}%"),
+        (employee, leave_type, f"%Month {month_num} | Allocated:%"),
         pluck=True
     )
 
@@ -225,7 +254,7 @@ def process_employee(employee, doj, month_num, rules, leave_type):
     allocation.from_date = year_start
     allocation.to_date = year_end
     allocation.new_leaves_allocated = flt(rate, 2)
-    allocation.description = description
+    allocation.description = f"Accrual Baseline Month {((month_num - 1) // 12) * 12}\n{description}"
 
     allocation.flags.ignore_permissions = True
     allocation.insert(ignore_permissions=True)
@@ -264,15 +293,7 @@ def get_rate_for_month(month_num, rules):
 
 
 def get_completed_months(from_date, to_date):
-    months = (
-        (to_date.year - from_date.year) * 12
-        + (to_date.month - from_date.month)
-    )
-
-    if to_date.day < from_date.day:
-        months -= 1
-
-    return max(months, 0)
+    return completed_months(from_date, to_date)
 
 
 def get_year_start(doj, month_num):

@@ -961,7 +961,9 @@ function refresh_projected_leave_balance(frm) {
                     (previous, handler) => previous.then(() => handler(frm)), Promise.resolve());
             }
             frm.set_df_property("leave_balance", "label", __("Projected Leave Balance at Leave Start"));
-            frm.set_df_property("leave_balance", "description", __("Includes expected accrual; approved and other pending requests are deducted. Actual accrual remains subject to normal posting."));
+            frm.set_df_property("leave_balance", "description", r.message.projected_carry_forward !== undefined
+                ? __("Next annual leave year: {0} days projected carry-forward, limited to {1} days by the current policy. Expected new accrual and other pending requests are included; no future credits have been posted.", [r.message.projected_carry_forward, r.message.carry_forward_limit])
+                : __("Includes expected accrual; approved and other pending requests are deducted. Actual accrual remains subject to normal posting."));
             Object.assign(frm.doc, {
                 leave_balance: r.message.projected_balance,
                 custom_current_leave_balance: r.message.current_balance,

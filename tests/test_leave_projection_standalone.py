@@ -6,7 +6,7 @@ import importlib.util
 import sys
 import types
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -40,6 +40,13 @@ def throw(message, **kwargs):
 
 
 class ForecastTests(unittest.TestCase):
+    def test_late_import_checkpoint_and_leap_anniversary(self):
+        joining = date(2025, 10, 27)
+        self.assertEqual(projection.accrual_baseline("Month 10 | Allocated: 2.5 days", joining, date(2026, 8, 27)), 10)
+        self.assertEqual(projection.accrual_baseline("Month 10 | Allocated: 2.5 days\nAccrual Baseline Month 10\nMonth 11 | Allocated: 2.5 days", joining, date(2026, 10, 1)), 10)
+        self.assertEqual(projection.accrual_baseline("Imported opening balance", joining, date(2026, 9, 30)), 11)
+        self.assertEqual(projection.completed_months(date(2024, 1, 31), date(2024, 2, 29)), 1)
+
     def forecast(self, joining, today, start, end=date(2027, 3, 22)):
         return projection.project_accrual(joining, today, start, RULES, joining, end)
 
@@ -75,7 +82,7 @@ class BalanceTests(unittest.TestCase):
         utils.cint = lambda value: int(value or 0)
         utils.date_diff = lambda end, start: (utils.getdate(end) - utils.getdate(start)).days
         utils.now_datetime = lambda: None
-        utils.add_days = lambda *args: None
+        utils.add_days = lambda value, days: utils.getdate(value) + timedelta(days=days)
         utils.add_months = lambda *args: None
         frappe._ = lambda value: value
         frappe._dict = Row
@@ -85,7 +92,7 @@ class BalanceTests(unittest.TestCase):
         frappe.db = Row(get_value=lambda *args: date(2022, 3, 22), sql=lambda *args: [])
         self.settings = Row(leave_types_for_accrual=[Row(leave_type="ANNUAL")],
                             leave_types_requiring_one_year_service=[Row(leave_type="ANNUAL")])
-        frappe.get_cached_doc = lambda doctype, *args: self.settings if doctype == "Orion Settings" else Row(custom_annual_leave_accrual_rules=[Row(r) for r in RULES])
+        frappe.get_cached_doc = lambda doctype, *args: self.settings if doctype == "Orion Settings" else Row(custom_annual_leave_accrual_rules=[Row(r) for r in RULES], is_carry_forward=1, maximum_carry_forwarded_leaves=15, expire_carry_forwarded_leaves_after_days=0)
         frappe.get_single = lambda *args: self.settings
         self.pending = []
         self.entries = []
@@ -106,6 +113,7 @@ class BalanceTests(unittest.TestCase):
         standard.get_new_and_cf_leaves_taken = lambda *args: (0, 0)
         standard.get_number_of_leave_days = lambda *args: 40
         standard.validate_leave_access = lambda *args: None
+        standard.get_leaves_for_period = lambda *args: 0
         package = types.ModuleType("hrms.hr.doctype.leave_application")
         package.leave_application = standard
         self.modules = patch.dict(sys.modules, {"frappe": frappe, "frappe.utils": utils,
@@ -140,6 +148,51 @@ class BalanceTests(unittest.TestCase):
         self.allocations = []
         with self.assertRaises(Rejected):
             self.summary()
+
+    def next_year_fixture(self):
+        source = Row(name="ALLOC", from_date=date(2025, 10, 27), to_date=date(2026, 10, 26))
+        self.frappe.db.get_value = lambda *args: date(2025, 10, 27)
+        self.native_balance = 25
+        original = self.frappe.get_all
+        def get_all(doctype, **kwargs):
+            if doctype != "Leave Allocation":
+                return original(doctype, **kwargs)
+            filters = kwargs["filters"]
+            return [source] if filters["to_date"][1] <= source.to_date else []
+        self.frappe.get_all = get_all
+
+    def test_november_uses_next_year_forecast_with_existing_carry_limit(self):
+        self.next_year_fixture()
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2026-11-01", "2026-11-30")
+        self.assertEqual(result.projected_balance, 15)
+        self.assertEqual(result.projected_accrual, 2.5)
+        self.assertEqual(result.projected_carry_forward, 15)
+
+    def test_next_year_credit_on_monthly_anniversary_not_first_day(self):
+        self.next_year_fixture()
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2026-11-27", "2026-11-30")
+        self.assertEqual(result.projected_balance, 17.5)
+
+    def test_next_year_future_debits_are_reserved_and_own_debit_restored(self):
+        self.next_year_fixture()
+        self.controller.standard.get_leaves_for_period = lambda *args: -6
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2026-11-01", "2026-11-30")
+        self.assertEqual(result.projected_balance, 9)
+        self.entries = [Row(leaves=-6, from_date="2026-11-01", to_date="2026-11-06")]
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2026-11-01", "2026-11-30", "SELF")
+        self.assertEqual(result.projected_balance, 15)
+
+    def test_uncapped_policy_does_not_round_up_27_point_5_to_30(self):
+        self.next_year_fixture()
+        original = self.frappe.get_cached_doc
+        def get_doc(doctype, *args):
+            result = original(doctype, *args)
+            if doctype == "Leave Type":
+                result.maximum_carry_forwarded_leaves = 250
+            return result
+        self.frappe.get_cached_doc = get_doc
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2026-11-01", "2026-11-30")
+        self.assertEqual(result.projected_balance, 27.5)
 
     def test_reserve_before_allocation_calendar_cap(self):
         self.allocations[0].to_date = date(2026, 12, 5)

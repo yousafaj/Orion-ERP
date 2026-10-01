@@ -212,6 +212,10 @@ override_doctype_class = {
 # }
 
 doc_events = {
+    "Attendance": {
+        "on_submit": "orion_erp.orion_erp.scripts.annual_leave_accrual.attendance_accrual_updated",
+        "on_update_after_submit": "orion_erp.orion_erp.scripts.annual_leave_accrual.attendance_accrual_updated",
+    },
     "Leave Application":{
          "validate":[
               "orion_erp.orion_erp.validations.leave_application.validate_leave_initiator",
