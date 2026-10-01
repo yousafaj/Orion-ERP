@@ -165,12 +165,21 @@ def get_leave_types_for_employee(doctype, txt, searchfield, start, page_len, fil
                 WHERE la.employee = %(employee)s AND la.leave_type = lt.name
                   AND la.docstatus = 1 AND la.expired = 0
                   AND %(date)s BETWEEN la.from_date AND la.to_date)
+            OR EXISTS (SELECT 1 FROM `tabLeave Type Details` accrual
+                JOIN `tabLeave Allocation` current_la ON current_la.leave_type = accrual.leave_type
+                WHERE accrual.parent = 'Orion Settings'
+                  AND accrual.parentfield = 'leave_types_for_accrual'
+                  AND accrual.leave_type = lt.name AND current_la.employee = %(employee)s
+                  AND current_la.docstatus = 1 AND current_la.expired = 0
+                  AND %(today)s BETWEEN current_la.from_date AND current_la.to_date
+                  AND %(date)s > current_la.to_date
+                  AND %(date)s <= DATE_ADD(current_la.to_date, INTERVAL 1 YEAR))
             OR EXISTS (SELECT 1 FROM `tabLeave Type Details` allowed
                 WHERE allowed.parent = 'Orion Settings'
                   AND allowed.parentfield = 'leave_types_within_six_months'
                   AND allowed.leave_type = lt.name)
         ) ORDER BY lt.name LIMIT %(start)s, %(page_len)s
-    """, {"employee": employee, "date": reference_date, "txt": f"%{txt}%",
+    """, {"employee": employee, "date": reference_date, "today": getdate(), "txt": f"%{txt}%",
             "start": start, "page_len": page_len})
 
 
