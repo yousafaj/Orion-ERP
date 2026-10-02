@@ -62,12 +62,12 @@ class VehicleMovement(Document):
             value = self.get(field)
             if not value:
                 continue
-            other = frappe.db.get_value(
-                "Vehicle Movement",
-                {field: value, "rental_status": "Active", "docstatus": 1, "name": ["!=", self.name or ""]},
-                ["name", "project_to"],
-                as_dict=True,
-            )
+            master = "Vehicle" if field == "vehicle" else "Employee"
+            frappe.db.sql(f"SELECT name FROM `tab{master}` WHERE name=%s FOR UPDATE", (value,))
+            rows = frappe.db.sql(f"""SELECT name, project_to FROM `tabVehicle Movement`
+                WHERE `{field}`=%s AND rental_status='Active' AND docstatus=1
+                AND name!=%s LIMIT 1 FOR UPDATE""", (value, self.name or ""), as_dict=True)
+            other = rows[0] if rows else None
             if other:
                 frappe.throw(
                     _("{0} {1} is already on an active movement {2} (project {3}). Demobilize it from there first.").format(
@@ -207,3 +207,4 @@ def back_in_service(name, to_date):
         "Vehicle", doc.vehicle, "custom_state", "With Client" if doc.invoiceable else "Internal Use"
     )
     return doc.name
+

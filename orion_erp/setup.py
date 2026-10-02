@@ -61,6 +61,7 @@ def after_migrate():
     embed_rejoining_overdue_block()
     remove_standalone_current_month_workspace()
     create_employee_categories()
+    setup_driver_movement_permissions()
 
 
 EMPLOYEE_CATEGORIES = ["Office", "Non-Office"]
@@ -263,3 +264,17 @@ def sync_rental_number_cards():
         if changes:
             frappe.db.set_value("Number Card", name, changes)
             frappe.clear_document_cache("Number Card", name)
+
+
+
+def setup_driver_movement_permissions():
+    from frappe.permissions import add_permission, update_permission_property
+    for role in ("System Manager", "Operation Team", "Rental Management"):
+        if not frappe.db.exists("Role", role):
+            continue
+        add_permission("Driver Movement", role, permlevel=0)
+        for action in ("read", "write", "create", "submit", "select", "report"):
+            update_permission_property("Driver Movement", role, 0, action, 1)
+        for action in ("cancel", "amend", "delete", "import"):
+            update_permission_property("Driver Movement", role, 0, action, 0)
+    frappe.clear_cache(doctype="Driver Movement")
