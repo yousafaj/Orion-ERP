@@ -192,7 +192,7 @@ def next_year_balance(employee, leave_type, start, end, application=None, lock=F
             current_period_balance=current_part.projected_balance,
             next_period_requested=flt(days_in_period(employee, leave_type, request, next_start, next_end), 2),
             next_period_balance=flt(available, 2), next_period_start=str(next_start),
-            projected_balance=flt(current_part.projected_balance + available, 2),
+            projected_balance=flt(min(current_part.projected_balance, current_days) + available, 2),
             pending_reserved=flt(current_part.pending_reserved + reserved, 2))
     return result
 

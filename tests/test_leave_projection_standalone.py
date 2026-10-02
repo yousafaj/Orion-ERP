@@ -256,7 +256,10 @@ class BalanceTests(unittest.TestCase):
             half_day=1, half_day_date="2027-01-13")
         self.assertEqual(result.current_period_requested, 1)
         self.assertEqual(result.next_period_requested, 14.5)
-        self.cross_doc(half_day=1, half_day_date="2027-01-12").validate_balance_leaves()
+        doc = self.cross_doc(half_day=1, half_day_date="2027-01-12")
+        doc.validate_balance_leaves()
+        self.assertEqual(doc.leave_balance, 19.5)
+        self.assertEqual(doc.custom_leave_balance_after, 0)
 
     def test_holidays_are_counted_by_native_helper_in_each_period(self):
         self.cross_year_fixture()
