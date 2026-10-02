@@ -15,7 +15,9 @@ Separate ledger posting uses the same half-day split and retains the guard
 against non-consecutive allocations.
 
 The form explains both portions, the next-year balance and the carry-forward
-limit. No future allocation or earned credit is posted early and no policy
+limit. For a request spanning years, the accrual label states that the forecast
+runs through the annual transition, including the closing-month credit, rather
+than implying that every credit is due before the request starts. No future allocation or earned credit is posted early and no policy
 limit is changed. Overlapping allocations and requests beyond the following
 service year remain blocked for HR review.
 
