@@ -111,7 +111,7 @@ class BalanceTests(unittest.TestCase):
         standard.get_leave_allocation_records = lambda *args: {"ANNUAL": self.native_allocation}
         standard.get_allocation_expiry_for_cf_leaves = lambda *args: date(2026, 12, 2)
         standard.get_new_and_cf_leaves_taken = lambda *args: (0, 0)
-        standard.get_number_of_leave_days = lambda *args: 40
+        standard.get_number_of_leave_days = lambda employee, leave_type, start, end, half_day=0, half_day_date=None, **kwargs: (utils.getdate(end) - utils.getdate(start)).days + 1 - (0.5 if half_day else 0)
         standard.validate_leave_access = lambda *args: None
         standard.get_leaves_for_period = lambda *args: 0
         package = types.ModuleType("hrms.hr.doctype.leave_application")
@@ -134,14 +134,14 @@ class BalanceTests(unittest.TestCase):
         self.assertEqual(summary.projected_balance, 39.5)
 
     def test_pending_reserved_self_and_rejected_excluded(self):
-        self.pending = [Row(name="OTHER", total_leave_days=4), Row(name="SELF", total_leave_days=6),
+        self.pending = [Row(name="OTHER", total_leave_days=4, from_date="2026-12-01", to_date="2026-12-04"), Row(name="SELF", total_leave_days=6, from_date="2026-12-05", to_date="2026-12-10"),
                         Row(name="REJECTED", total_leave_days=9, workflow_state="Rejected"),
                         Row(name="ORION-REJECTED", total_leave_days=10, custom_approval_status="Rejected")]
         self.assertEqual(self.summary("SELF").projected_balance, 35.5)
 
     def test_submitted_request_not_charged_twice(self):
         self.native_balance = 24.5
-        self.entries = [Row(leaves=-10)]
+        self.entries = [Row(leaves=-10, from_date="2026-12-01", to_date="2026-12-10")]
         self.assertEqual(self.summary("SELF").projected_balance, 39.5)
 
     def test_missing_or_cross_period_allocation_fails(self):
@@ -182,6 +182,133 @@ class BalanceTests(unittest.TestCase):
         result = self.controller.balance_summary("EMP", "ANNUAL", "2026-11-01", "2026-11-30", "SELF")
         self.assertEqual(result.projected_balance, 15)
 
+    def cross_year_fixture(self):
+        source = Row(name="ALLOC", from_date=date(2026, 1, 13), to_date=date(2027, 1, 12))
+        self.frappe.db.get_value = lambda *args: date(2026, 1, 13)
+        self.native_balance = 15
+        def get_all(doctype, **kwargs):
+            if doctype == "Leave Allocation":
+                filters = kwargs["filters"]
+                return [source] if (source.from_date <= filters["from_date"][1]
+                    and source.to_date >= filters["to_date"][1]) else []
+            return {"Leave Application": self.pending, "Leave Ledger Entry": self.entries}[doctype]
+        self.frappe.get_all = get_all
+
+    def cross_doc(self, end="2027-01-27", half_day=0, half_day_date=None):
+        doc = self.doc()
+        doc.from_date, doc.to_date = "2027-01-08", end
+        doc.half_day, doc.half_day_date = half_day, half_day_date
+        return doc
+
+    def test_cross_year_twenty_days_passes_with_fifteen_day_carry_limit(self):
+        self.cross_year_fixture()
+        doc = self.cross_doc()
+        doc.validate_balance_leaves()
+        self.assertEqual(doc.total_leave_days, 20)
+        self.assertEqual(doc.leave_balance, 20)
+        self.assertEqual(doc.custom_leave_balance_after, 0)
+
+    def test_cross_year_extra_day_reports_next_year_shortfall(self):
+        self.cross_year_fixture()
+        with self.assertRaisesRegex(Rejected, "from 2027-01-13: 15.0 days available, 16.0 days requested"):
+            self.cross_doc("2027-01-28").validate_balance_leaves()
+
+    def test_cross_year_cannot_borrow_next_year_balance_for_closing_year(self):
+        self.cross_year_fixture()
+        self.native_balance = -6.5  # start balance 1; year-end credit raises it to 3.5
+        with self.assertRaisesRegex(Rejected, "closing leave year"):
+            self.cross_doc("2027-01-13").validate_balance_leaves()
+
+    def test_current_portion_consumed_before_carry_ceiling(self):
+        self.cross_year_fixture()
+        self.native_balance = 3  # 13 at closing, less the request's first 5
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2027-01-08", "2027-01-20")
+        self.assertEqual(result.projected_carry_forward, 8)
+        self.assertEqual(result.projected_balance, 13)
+
+    def test_cross_year_pending_request_reserved_only_in_its_own_periods(self):
+        self.cross_year_fixture()
+        self.pending = [Row(name="OTHER", from_date="2027-01-10", to_date="2027-01-14",
+                            half_day=0, total_leave_days=5)]
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2027-01-08", "2027-01-27")
+        self.assertEqual(result.pending_reserved, 5)
+        self.assertEqual(result.projected_carry_forward, 15)
+        self.assertEqual(result.next_period_balance, 13)
+
+    def test_submitted_cross_year_request_restores_each_own_debit_once(self):
+        self.cross_year_fixture()
+        self.native_balance = 10  # native current balance already charged the first 5
+        self.entries = [Row(leaves=-5, from_date="2027-01-08", to_date="2027-01-12"),
+                        Row(leaves=-15, from_date="2027-01-13", to_date="2027-01-27")]
+        self.controller.standard.get_leaves_for_period = lambda *args: -15
+        self.cross_doc().validate_balance_leaves()
+
+    def test_unsplit_own_ledger_is_clipped_without_double_restore(self):
+        self.cross_year_fixture()
+        self.native_balance = 10
+        self.entries = [Row(leaves=-20, from_date="2027-01-08", to_date="2027-01-27")]
+        self.controller.standard.get_leaves_for_period = lambda *args: -15
+        self.cross_doc().validate_balance_leaves()
+
+    def test_half_day_only_charged_in_the_matching_year(self):
+        self.cross_year_fixture()
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2027-01-12", "2027-01-27",
+            half_day=1, half_day_date="2027-01-13")
+        self.assertEqual(result.current_period_requested, 1)
+        self.assertEqual(result.next_period_requested, 14.5)
+        doc = self.cross_doc(half_day=1, half_day_date="2027-01-12")
+        doc.validate_balance_leaves()
+        self.assertEqual(doc.leave_balance, 19.5)
+        self.assertEqual(doc.custom_leave_balance_after, 0)
+
+    def test_holidays_are_counted_by_native_helper_in_each_period(self):
+        self.cross_year_fixture()
+        native = self.controller.standard.get_number_of_leave_days
+        def count(employee, leave_type, start, end, *args, **kwargs):
+            days = native(employee, leave_type, start, end, *args, **kwargs)
+            return days - (getdate(start) <= date(2027, 1, 14) <= getdate(end))
+        getdate = sys.modules["frappe.utils"].getdate
+        self.controller.standard.get_number_of_leave_days = count
+        doc = self.cross_doc("2027-01-28")
+        doc.validate_balance_leaves()
+        self.assertEqual(doc.total_leave_days, 20)
+
+    def test_cross_year_carry_expiry_remains_enforced(self):
+        self.cross_year_fixture()
+        original = self.frappe.get_cached_doc
+        def get_doc(doctype, *args):
+            doc = original(doctype, *args)
+            if doctype == "Leave Type":
+                doc.expire_carry_forwarded_leaves_after_days = 10
+            return doc
+        self.frappe.get_cached_doc = get_doc
+        with self.assertRaisesRegex(Rejected, "10.0 days available"):
+            self.cross_doc().validate_balance_leaves()
+
+    def test_request_beyond_next_service_year_still_fails(self):
+        self.cross_year_fixture()
+        with self.assertRaisesRegex(Rejected, "outside the next annual leave year"):
+            self.cross_doc("2028-01-13").validate_balance_leaves()
+
+    def test_posting_splits_half_day_without_undercharging_other_year(self):
+        self.cross_year_fixture()
+        self.frappe.flags = Row(in_patch=False)
+        entries = []
+        self.controller.standard.get_holiday_list_for_employee = lambda *args, **kwargs: "HOLIDAYS"
+        self.controller.standard.create_leave_ledger_entry = lambda doc, args, submit: entries.append(args)
+        doc = self.cross_doc(half_day=1, half_day_date="2027-01-13")
+        doc.from_date = "2027-01-12"
+        doc.create_separate_ledger_entries(Row(to_date=date(2027, 1, 12)), None, True, False)
+        self.assertEqual([entry["leaves"] for entry in entries], [-1, -14.5])
+        self.assertEqual(entries[0]["to_date"], date(2027, 1, 12))
+        self.assertEqual(entries[1]["from_date"], date(2027, 1, 13))
+
+    def test_posting_preserves_non_consecutive_allocation_guard(self):
+        self.cross_year_fixture()
+        with self.assertRaisesRegex(Rejected, "non-consecutive"):
+            self.cross_doc().create_separate_ledger_entries(
+                Row(to_date=date(2027, 1, 12)), Row(from_date=date(2027, 1, 14)), True, False)
+
     def test_uncapped_policy_does_not_round_up_27_point_5_to_30(self):
         self.next_year_fixture()
         original = self.frappe.get_cached_doc
@@ -196,7 +323,7 @@ class BalanceTests(unittest.TestCase):
 
     def test_reserve_before_allocation_calendar_cap(self):
         self.allocations[0].to_date = date(2026, 12, 5)
-        self.pending = [Row(name="OTHER", total_leave_days=4)]
+        self.pending = [Row(name="OTHER", total_leave_days=4, from_date="2026-12-01", to_date="2026-12-04")]
         summary = self.controller.balance_summary("EMP", "ANNUAL", "2026-12-01", "2026-12-05")
         self.assertEqual(summary.projected_balance, 5)
 

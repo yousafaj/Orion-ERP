@@ -931,7 +931,9 @@ const native_leave_balance_handlers = [...frappe.ui.form.get_event_handler_list(
 frappe.ui.form.off("Leave Application", "get_leave_balance");
 frappe.ui.form.on("Leave Application", {
     get_leave_balance: refresh_projected_leave_balance,
-    refresh: refresh_projected_leave_balance
+    refresh: refresh_projected_leave_balance,
+    half_day: refresh_projected_leave_balance,
+    half_day_date: refresh_projected_leave_balance
 });
 
 function refresh_projected_leave_balance(frm) {
@@ -945,7 +947,9 @@ function refresh_projected_leave_balance(frm) {
         leave_type: frm.doc.leave_type,
         from_date: frm.doc.from_date,
         to_date: frm.doc.to_date,
-        application: frm.is_new() ? null : frm.doc.name
+        application: frm.is_new() ? null : frm.doc.name,
+        half_day: frm.doc.half_day,
+        half_day_date: frm.doc.half_day_date
     };
     return frappe.call({
         method: "orion_erp.orion_erp.overrides.leave_application.get_projected_leave_balance",
@@ -960,8 +964,11 @@ function refresh_projected_leave_balance(frm) {
                 return native_leave_balance_handlers.reduce(
                     (previous, handler) => previous.then(() => handler(frm)), Promise.resolve());
             }
-            frm.set_df_property("leave_balance", "label", __("Projected Leave Balance at Leave Start"));
-            frm.set_df_property("leave_balance", "description", r.message.projected_carry_forward !== undefined
+            frm.set_df_property("leave_balance", "label", r.message.next_period_start
+                ? __("Projected Leave Balance for Selected Dates") : __("Projected Leave Balance at Leave Start"));
+            frm.set_df_property("leave_balance", "description", r.message.next_period_start
+                ? __("This request crosses the annual leave year on {0}: {1} days requested before it and {2} after it. The next-year portion has {3} days available, including {4} days projected carry-forward (policy limit: {5}). Each portion must have sufficient balance.", [r.message.next_period_start, r.message.current_period_requested, r.message.next_period_requested, r.message.next_period_balance, r.message.projected_carry_forward, r.message.carry_forward_limit])
+                : r.message.projected_carry_forward !== undefined
                 ? __("Next annual leave year: {0} days projected carry-forward, limited to {1} days by the current policy. Expected new accrual and other pending requests are included; no future credits have been posted.", [r.message.projected_carry_forward, r.message.carry_forward_limit])
                 : __("Includes expected accrual; approved and other pending requests are deducted. Actual accrual remains subject to normal posting."));
             Object.assign(frm.doc, {
