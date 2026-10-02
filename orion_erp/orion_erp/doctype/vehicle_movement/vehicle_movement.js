@@ -25,6 +25,21 @@ frappe.ui.form.on("Vehicle Movement", {
 		if (frm.doc.docstatus !== 1) return;
 
 		if (frm.doc.rental_status === "Active") {
+            if (frm.perm.some((p) => p.write)) {
+                frm.add_custom_button(__("Change Driver"), () => {
+                    frappe.prompt([
+                        {fieldname: "driver", label: __("Replacement Driver"), fieldtype: "Link", options: "Employee",
+                            get_query: () => ({filters: {status: "Active", custom_employee_category: "Non-Office", designation: ["like", "%Driver%"]}})},
+                        {fieldname: "effective_date", label: __("Effective Date"), fieldtype: "Date", reqd: 1, default: frappe.datetime.get_today()},
+                        {fieldname: "reason", label: __("Reason"), fieldtype: "Small Text", reqd: 1}
+                    ], (values) => frappe.call({
+                        method: "orion_erp.orion_erp.services.driver_assignment.change_driver",
+                        args: {...values, name: frm.doc.name, previous_driver: frm.doc.driver || ""},
+                        freeze: true, callback: () => frm.reload_doc()
+                    }), __("Change Driver (leave replacement empty to remove)"), __("Confirm"));
+                });
+            }
+            frm.add_custom_button(__("Driver History"), () => frappe.set_route("List", "Driver Movement", {vehicle_movement: frm.doc.name, docstatus: 1}));
 			const in_workshop = (frm.doc.off_hire || []).some((r) => !r.to_date);
 
 			frm.add_custom_button(__("Demobilize"), () => {
@@ -56,3 +71,4 @@ function prompt_date(frm, title, method, arg) {
 		__("Confirm")
 	);
 }
+

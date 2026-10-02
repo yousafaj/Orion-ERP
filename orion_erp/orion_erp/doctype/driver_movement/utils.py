@@ -1,18 +1,9 @@
-# Driver Movement is deprecated — driver assignment now lives on Vehicle Movement
-# (a single optional Driver field). The old shift-assignment engine (assign/release/
-# reverse_driver_shift + Shift Assignment creation) has been removed; only the
-# available-drivers helper remains for the legacy form.
-
 import frappe
 
 
-@frappe.whitelist()
-def get_available_drivers(mobilization_status: str):
-    drivers = frappe.get_all("Driver", fields=["name", "custom_state"])
-    result = []
-    for driver in drivers:
-        if mobilization_status == "Mobilize" and driver.custom_state == "Idle":
-            result.append({"name": driver.name, "label": f"{driver.name} — Idle"})
-        elif mobilization_status == "Demobilize" and driver.custom_state == "With Client":
-            result.append({"name": driver.name, "label": f"{driver.name} — With Client"})
-    return result
+def get_available_drivers(mobilization_status=None):
+    """Compatibility helper using the permission-aware operational Employee master."""
+    employees = frappe.get_list("Employee", filters={"status": "Active",
+        "custom_employee_category": "Non-Office", "designation": ["like", "%Driver%"]},
+        fields=["name", "employee_name"], limit_page_length=1000)
+    return [{"name": e.name, "label": e.employee_name} for e in employees]

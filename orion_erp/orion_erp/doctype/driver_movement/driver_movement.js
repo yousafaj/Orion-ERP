@@ -1,81 +1,21 @@
-// Copyright (c) 2025, osama.ahmed@deliverydevs.com and contributors
-// For license information, please see license.txt
-
 frappe.ui.form.on("Driver Movement", {
-
-     driver(frm) {
-        if (frm.doc.driver) {
-            frappe.db.get_doc("Driver", frm.doc.driver).then(driver_doc => {
-                if (driver_doc.employee) {
-                    frappe.db.get_doc("Employee", driver_doc.employee).then(employee_doc => {
-                        frm.set_value("employment_type", employee_doc.employment_type);
-                    });
-                }
-            });
-        }
+    setup(frm) {
+        frm.set_query("vehicle_movement", () => ({filters: {docstatus: 1, rental_status: "Active"}}));
+        frm.set_query("driver", () => ({filters: [
+            ["Employee", "status", "=", "Active"],
+            ["Employee", "custom_employee_category", "=", "Non-Office"],
+            ["Employee", "designation", "like", "%Driver%"]
+        ]}));
     },
-
-    // mobilization_status(frm) {
-    //     if (frm.doc.mobilization_status) {
-    //         console.log("new mobilization_status",frm.doc.mobilization_status);
-    //         frm.set_query("driver", () => {
-    //             if (frm.doc.mobilization_status === "Mobilize") {
-    //                 return {
-    //                     filters: {
-    //                         custom_state: "Idle",
-    //                         status: "Active"
-    //                     }
-    //                 };
-    //             } else if (frm.doc.mobilization_status === "Demobilize") {
-    //                 return {
-    //                     filters: {
-    //                         custom_state: "With Client",
-    //                         status: "Active"
-    //                     }
-    //                 };
-    //             }
-    //         });
-    //     }
-    // },
-
-    mobilization_status(frm) {
-    if (frm.doc.mobilization_status) {
-        frappe.call({
-            method: "orion_erp.orion_erp.doctype.driver_movement.utils.get_available_drivers",
-            args: {
-                mobilization_status: frm.doc.mobilization_status
-            },
-            callback: function(r) {
-                if (r.message) {
-                    const options = r.message.map(driver => ({
-                        value: driver.name,
-                        label: driver.label
-                    }));
-
-                    frm.set_query("driver", () => {
-                        return {
-                            filters: [
-                                ["name", "in", options.map(d => d.value)]
-                            ]
-                        };
-                    });
-
-                }
-            }
+    vehicle_movement(frm) {
+        if (!frm.doc.vehicle_movement) return;
+        frappe.db.get_value("Vehicle Movement", frm.doc.vehicle_movement,
+            ["vehicle", "driver", "project_to"]).then((r) => {
+            if (r.message) frm.set_value({vehicle: r.message.vehicle,
+                previous_driver: r.message.driver || "", project: r.message.project_to || ""});
         });
+    },
+    mobilization_status(frm) {
+        if (frm.doc.mobilization_status === "Demobilize") frm.set_value("driver", "");
     }
-},
-
-
-	refresh(frm) {
-		frm.dashboard.clear_comment();
-		frm.dashboard.add_comment(
-			__("Driver Movement is deprecated — assign an Operational Driver on Vehicle Mobilization."),
-			"yellow",
-			true
-		);
-		if (frm.is_new()) {
-			frm.disable_save();
-		}
-	},
 });

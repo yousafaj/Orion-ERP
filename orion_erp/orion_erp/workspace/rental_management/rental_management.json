@@ -23,6 +23,13 @@
   },
   {
    "type": "Link",
+   "label": "Driver Changes",
+   "link_to": "Driver Movement",
+   "link_type": "DocType",
+   "is_query_report": 0
+  },
+  {
+   "type": "Link",
    "label": "Monthly Billing",
    "link_to": "Monthly Billing",
    "link_type": "DocType",
