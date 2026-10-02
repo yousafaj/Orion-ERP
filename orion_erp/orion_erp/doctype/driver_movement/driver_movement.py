@@ -15,8 +15,8 @@ class DriverMovement(Document):
                 frappe.throw(_("Select a submitted active vehicle movement."))
             self.vehicle = movement.vehicle
             self.project = movement.project_to
-            if self.is_new():
-                self.previous_driver = movement.driver
+            if (self.previous_driver or "") != (movement.driver or ""):
+                frappe.throw(_("The assigned driver has changed. Reload the movement and try again."))
         else:
             validate_change(self, movement)
 

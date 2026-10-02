@@ -55,4 +55,16 @@ class ChangeTests(unittest.TestCase):
  def test_reason_and_api_permission(self):
   self.c.reason=' ';self.reject();frappe.has_permission.return_value=False
   with self.assertRaises(PermissionError):a.change_driver('VM-TEST',driver='NEW',previous_driver='OLD',reason='Test')
+ def test_new_draft_preserves_expected_assignment(self):
+  model=types.ModuleType('frappe.model');document=types.ModuleType('frappe.model.document');document.Document=object
+  sys.modules['frappe.model']=model;sys.modules['frappe.model.document']=document
+  sys.modules['orion_erp.orion_erp.services.driver_assignment']=a
+  path=Path(__file__).parents[1]/'orion_erp/orion_erp/doctype/driver_movement/driver_movement.py'
+  spec=importlib.util.spec_from_file_location('driver_controller',path)
+  controller=importlib.util.module_from_spec(spec);spec.loader.exec_module(controller)
+  draft=controller.DriverMovement();draft.vehicle_movement='VM-TEST';draft.docstatus=0;draft.previous_driver='STALE'
+  with self.assertRaises(ValidationError):draft.validate()
+  self.assertEqual(draft.previous_driver,'STALE')
+  draft.previous_driver='OLD';draft.validate();self.assertEqual(draft.previous_driver,'OLD')
 if __name__=='__main__':unittest.main()
+
