@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, cint, date_diff, flt, getdate
 from hrms.hr.doctype.leave_application import leave_application as standard
-from orion_erp.orion_erp.services.leave_projection import anniversary, completed_months, project_accrual
+from orion_erp.orion_erp.services.leave_projection import anniversary, completed_months, project_accrual, carry_forward_amount
 
 
 def uses_projected_balance(leave_type):
@@ -172,8 +172,8 @@ def next_year_balance(employee, leave_type, start, end, application=None, lock=F
     own = own_debit_in_period(employee, leave_type, application,
         next_start, next_end, half_day, half_day_date)
     carry_limit = flt(leave_doc.maximum_carry_forwarded_leaves)
-    carry = min(max(0, flt(raw.get("leave_balance")) + own_closing + closing_credit
-                    - closing_reserved - current_days), carry_limit) if leave_doc.is_carry_forward else 0.0
+    carry = carry_forward_amount(flt(raw.get("leave_balance")) + own_closing + closing_credit
+                    - closing_reserved - current_days, carry_limit) if leave_doc.is_carry_forward else 0.0
     effective_start = max(start, next_start)
     expiry_days = cint(leave_doc.expire_carry_forwarded_leaves_after_days)
     if expiry_days:
@@ -263,8 +263,10 @@ class OrionLeaveApplication(standard.LeaveApplication):
                     summary.next_period_start, summary.current_period_balance, summary.current_period_requested),
                     exc=standard.InsufficientLeaveBalanceError, title=_("Insufficient Leave Balance"))
             if summary.get("next_period_requested", 0) > summary.get("next_period_balance", 0):
-                frappe.throw(_("Insufficient projected leave balance from {0}: {1} days available, {2} days requested in the next leave year. The carry-forward policy limit is {3} days.").format(
-                    summary.next_period_start, summary.next_period_balance, summary.next_period_requested, summary.carry_forward_limit),
+                policy = (_("The carry-forward policy limit is {0} days.").format(summary.carry_forward_limit)
+                          if summary.carry_forward_limit else _("Unused accrued leave carries forward in full."))
+                frappe.throw(_("Insufficient projected leave balance from {0}: {1} days available, {2} days requested in the next leave year. {3}").format(
+                    summary.next_period_start, summary.next_period_balance, summary.next_period_requested, policy),
                     exc=standard.InsufficientLeaveBalanceError, title=_("Insufficient Leave Balance"))
             if flt(self.total_leave_days, 2) > summary.projected_balance:
                 frappe.throw(_("Insufficient projected leave balance on {0}: {1} days available, {2} days requested. Pending requests reserve {3} days.").format(

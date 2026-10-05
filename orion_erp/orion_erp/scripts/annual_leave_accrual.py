@@ -9,7 +9,7 @@ from orion_erp.orion_erp.scripts.excess_leave_notification import (
     notify_excess_leaves,
 )
 from orion_erp.orion_erp.services.leave_projection import (
-    accrual_baseline, completed_months,
+    accrual_baseline, completed_months, carry_forward_amount,
 )
 
 
@@ -345,7 +345,7 @@ def execute_carry_forward():
             leave_type_doc.maximum_carry_forwarded_leaves or 0
         )
 
-        if not max_carry:
+        if not leave_type_doc.is_carry_forward:
             continue
 
         for emp in employees:
@@ -391,10 +391,7 @@ def execute_carry_forward():
                 )
                 continue
 
-            carry_forward = min(
-                balance,
-                max_carry
-            )
+            carry_forward = carry_forward_amount(balance, max_carry)
 
             cf_from = add_months(doj, completed_months)
 
@@ -467,12 +464,9 @@ def create_carry_forward(
         )
     )
 
-    carry_forward = min(
-        balance,
-        max_carry
-    )
+    carry_forward = carry_forward_amount(balance, max_carry)
 
-    excess = max(0, balance - max_carry)
+    excess = max(0, balance - carry_forward)
 
     if carry_forward <= 0:
         return None, 0
@@ -480,7 +474,7 @@ def create_carry_forward(
     description = (
         f"Carry Forward Year {completed_months // 12} "
         f"| Carry Forward: {carry_forward} days "
-        f"(Balance: {balance}, Max: {max_carry})"
+        f"(Balance: {balance}, Max: {max_carry if max_carry else 'Unlimited'})"
     )
 
     existing = frappe.db.sql(

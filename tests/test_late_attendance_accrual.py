@@ -100,3 +100,40 @@ class LateAttendanceTests(unittest.TestCase):
         self.run_accrual()
         self.assertEqual(self.allocation.total_leaves_allocated, 22.5)
         self.assertEqual(self.ledgers, [])
+
+
+class CarryForwardTests(unittest.TestCase):
+    def setUp(self):
+        LateAttendanceTests.setUp(self)
+
+    def prepare_rollover(self, enabled=True, maximum=0):
+        self.created = []
+        self.frappe = sys.modules["frappe"]
+        self.frappe.get_all = lambda *args, **kwargs: [Row(name="EMP", date_of_joining=date(2025, 9, 30))]
+        self.frappe.get_cached_doc = lambda *args: Row(is_carry_forward=enabled, maximum_carry_forwarded_leaves=maximum)
+        self.accrual.get_configured_leave_types = lambda: ["ANNUAL"]
+        self.accrual.get_leave_balance_on = lambda *args: 40
+        self.accrual.expire_previous_allocation = lambda *args: None
+        self.accrual.create_carry_forward = lambda *args: (self.created.append(args) or ("NEW", 0))
+        self.accrual.execute_carry_forward()
+
+    def test_scheduler_runs_unlimited_carry_forward(self):
+        self.prepare_rollover()
+        self.assertEqual(len(self.created), 1)
+        self.assertEqual(self.created[0][3], 0)
+
+    def test_scheduler_respects_disabled_carry_forward(self):
+        self.prepare_rollover(enabled=False)
+        self.assertEqual(self.created, [])
+
+    def test_posting_carries_full_balance_without_excess(self):
+        created = Row(flags=Row(), insert=lambda **kwargs: None, submit=lambda: None, name="NEW")
+        self.accrual.get_leave_balance_on = lambda *args: 40
+        self.accrual.expire_previous_allocation = lambda *args: None
+        self.accrual.frappe.db.sql = lambda *args, **kwargs: []
+        self.accrual.frappe.db.exists = lambda *args: None
+        self.accrual.frappe.new_doc = lambda *args: created
+        name, excess = self.accrual.create_carry_forward("EMP", date(2025, 10, 27), 12, 0, "ANNUAL")
+        self.assertEqual((name, excess), ("NEW", 0))
+        self.assertEqual(created.new_leaves_allocated, 40)
+        self.assertIn("Max: Unlimited", created.description)
