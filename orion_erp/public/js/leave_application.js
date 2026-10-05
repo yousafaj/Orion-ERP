@@ -966,10 +966,13 @@ function refresh_projected_leave_balance(frm) {
             }
             frm.set_df_property("leave_balance", "label", r.message.next_period_start
                 ? __("Projected Leave Balance for Selected Dates") : __("Projected Leave Balance at Leave Start"));
+            const carryPolicy = r.message.carry_forward_limit
+                ? __("Carry-forward policy limit: {0} days.", [r.message.carry_forward_limit])
+                : __("Unused accrued leave carries forward in full.");
             frm.set_df_property("leave_balance", "description", r.message.next_period_start
-                ? __("This request crosses the annual leave year on {0}: {1} days requested before it and {2} after it. The next-year portion has {3} days available, including {4} days projected carry-forward (policy limit: {5}). Each portion must have sufficient balance.", [r.message.next_period_start, r.message.current_period_requested, r.message.next_period_requested, r.message.next_period_balance, r.message.projected_carry_forward, r.message.carry_forward_limit])
+                ? __("This request crosses the annual leave year on {0}: {1} days requested before it and {2} after it. The next-year portion has {3} days available, including {4} days projected carry-forward. {5} Each portion must have sufficient balance.", [r.message.next_period_start, r.message.current_period_requested, r.message.next_period_requested, r.message.next_period_balance, r.message.projected_carry_forward, carryPolicy])
                 : r.message.projected_carry_forward !== undefined
-                ? __("Next annual leave year: {0} days projected carry-forward, limited to {1} days by the current policy. Expected new accrual and other pending requests are included; no future credits have been posted.", [r.message.projected_carry_forward, r.message.carry_forward_limit])
+                ? __("Next annual leave year: {0} days projected carry-forward. {1} Expected new accrual and other pending requests are included; no future credits have been posted.", [r.message.projected_carry_forward, carryPolicy])
                 : __("Includes expected accrual; approved and other pending requests are deducted. Actual accrual remains subject to normal posting."));
             frm.set_df_property("custom_projected_leave_accrual", "label", r.message.next_period_start
                 ? __("Expected Accrual Through Leave-Year Transition") : __("Expected Accrual Before Leave Starts"));

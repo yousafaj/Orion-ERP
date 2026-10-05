@@ -40,6 +40,11 @@ def throw(message, **kwargs):
 
 
 class ForecastTests(unittest.TestCase):
+    def test_carry_forward_ceiling_and_negative_balance(self):
+        self.assertEqual(projection.carry_forward_amount(40, 15), 15)
+        self.assertEqual(projection.carry_forward_amount(40, 0), 40)
+        self.assertEqual(projection.carry_forward_amount(-5, 0), 0)
+
     def test_late_import_checkpoint_and_leap_anniversary(self):
         joining = date(2025, 10, 27)
         self.assertEqual(projection.accrual_baseline("Month 10 | Allocated: 2.5 days", joining, date(2026, 8, 27)), 10)
@@ -308,6 +313,47 @@ class BalanceTests(unittest.TestCase):
         with self.assertRaisesRegex(Rejected, "non-consecutive"):
             self.cross_doc().create_separate_ledger_entries(
                 Row(to_date=date(2027, 1, 12)), Row(from_date=date(2027, 1, 14)), True, False)
+
+    def unlimited_policy(self):
+        original = self.frappe.get_cached_doc
+        def get_doc(doctype, *args):
+            result = original(doctype, *args)
+            if doctype == "Leave Type":
+                result.maximum_carry_forwarded_leaves = 0
+            return result
+        self.frappe.get_cached_doc = get_doc
+
+    def test_zero_limit_carries_full_balance_and_reserves_pending(self):
+        self.next_year_fixture()
+        self.unlimited_policy()
+        self.pending = [Row(name="OTHER", from_date="2026-11-01", to_date="2026-11-12", half_day=0)]
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2026-10-28", "2026-11-28")
+        self.assertEqual(result.projected_carry_forward, 27.5)
+        self.assertEqual(result.pending_reserved, 12)
+        self.assertEqual(result.projected_balance, 15.5)
+        result = self.controller.balance_summary("EMP", "ANNUAL", "2026-10-28", "2026-11-28", "OTHER")
+        self.assertEqual(result.projected_balance, 27.5)
+
+    def test_zero_limit_allows_previously_capped_cross_year_request(self):
+        self.cross_year_fixture()
+        self.unlimited_policy()
+        doc = self.cross_doc("2027-01-28")
+        doc.validate_balance_leaves()
+        self.assertEqual(doc.total_leave_days, 21)
+        self.assertEqual(doc.leave_balance, 25)
+        self.assertEqual(doc.custom_leave_balance_after, 4)
+
+    def test_zero_limit_does_not_enable_disabled_carry_forward(self):
+        self.next_year_fixture()
+        self.unlimited_policy()
+        original = self.frappe.get_cached_doc
+        def get_doc(doctype, *args):
+            result = original(doctype, *args)
+            if doctype == "Leave Type":
+                result.is_carry_forward = 0
+            return result
+        self.frappe.get_cached_doc = get_doc
+        self.assertEqual(self.controller.balance_summary("EMP", "ANNUAL", "2026-11-01", "2026-11-30").projected_balance, 0)
 
     def test_uncapped_policy_does_not_round_up_27_point_5_to_30(self):
         self.next_year_fixture()

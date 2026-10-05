@@ -5,6 +5,13 @@ import re
 from datetime import date
 
 
+def carry_forward_amount(balance, maximum):
+    """Match HRMS: zero means no ceiling; never carry a negative balance."""
+    available = max(0.0, float(balance or 0))
+    ceiling = float(maximum or 0)
+    return min(available, ceiling) if ceiling > 0 else available
+
+
 def anniversary(joining, month):
     year, month_index = divmod(joining.year * 12 + joining.month - 1 + month, 12)
     return date(year, month_index + 1, min(joining.day, calendar.monthrange(year, month_index + 1)[1]))
