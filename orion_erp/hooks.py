@@ -195,6 +195,7 @@ permission_query_conditions = {
 # Override standard doctype classes
 
 override_doctype_class = {
+    "Leave Allocation": "orion_erp.orion_erp.overrides.leave_allocation.OrionLeaveAllocation",
     "Leave Application": "orion_erp.orion_erp.overrides.leave_application.OrionLeaveApplication",
 	"Web Form": "orion_erp.orion_erp.overrides.web_form.CustomWebForm",
 	"Bank Statement Import": "orion_erp.orion_erp.overrides.bank_statement_import.CustomBankStatementImport",
