@@ -1,6 +1,8 @@
 """Late certificate updates must preserve approved leave and enforce file scope."""
 
 import sys
+import json
+from pathlib import Path
 import types
 import unittest
 from unittest.mock import Mock, patch
@@ -133,6 +135,16 @@ class PreviewTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.controller.get_projected_leave_balance("EMP", "ANNUAL", "2026-11-12", "2026-11-30", display_only=1)
         self.assertFalse(self.frappe.flags.mute_messages)
+
+
+class CertificatePackagingTests(unittest.TestCase):
+    def test_customization_sync_preserves_late_certificate_updates(self):
+        root = Path(__file__).resolve().parents[1]
+        customization = json.loads((root / "orion_erp/orion_erp/custom/leave_application.json").read_text())
+        fields = {field["fieldname"]: field for field in customization["custom_fields"]}
+        for name in ("custom_medical_certificate", "custom_medical_certificate_status"):
+            self.assertEqual(fields[name]["allow_on_submit"], 1)
+        self.assertEqual(fields["custom_medical_certificate_status"]["read_only"], 1)
 
 
 class CertificateValidationTests(unittest.TestCase):
