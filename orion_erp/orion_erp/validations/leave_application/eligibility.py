@@ -74,19 +74,6 @@ def validate_medical_certificate(doc, method=None):
     # For List View / Reports
     doc.custom_medical_certificate_status = "Pending"
 
-    hrs_text = ""
-    if leave_type.custom_medical_certificate_required_by:
-        hrs_text = _(
-            " The certificate should be submitted within {0} hours."
-        ).format(leave_type.custom_medical_certificate_required_by)
-
-    frappe.msgprint(
-        title=_("Medical Certificate Required"),
-        indicator="orange",
-        msg=_(
-            "A medical certificate is required for the selected leave type and has not yet been attached."
-        ) + hrs_text
-    )
 
 def validate_paternity_leave(doc, method=None):
     settings = frappe.get_single("Orion Settings")
