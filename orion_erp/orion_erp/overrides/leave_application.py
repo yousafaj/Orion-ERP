@@ -276,7 +276,7 @@ class OrionLeaveApplication(standard.LeaveApplication):
 
 @frappe.whitelist()
 def get_projected_leave_balance(employee, leave_type, from_date, to_date, application=None,
-                                half_day=0, half_day_date=None):
+                                half_day=0, half_day_date=None, display_only=0):
     standard.validate_leave_access(employee)
     if not uses_projected_balance(leave_type):
         return None
@@ -287,5 +287,18 @@ def get_projected_leave_balance(employee, leave_type, from_date, to_date, applic
             frappe.throw(_("Leave application does not match the employee and leave type."))
     else:
         application = None
-    return balance_summary(employee, leave_type, from_date, to_date, application,
-                           half_day=half_day, half_day_date=half_day_date)
+    if not cint(display_only):
+        return balance_summary(employee, leave_type, from_date, to_date, application,
+                               half_day=half_day, half_day_date=half_day_date)
+    # A forecast requested for display may finish after the user changes type.
+    # Return its validation warning as data so the browser can discard a stale
+    # response before displaying it. Save/submit validation remains strict.
+    previous_mute = frappe.flags.mute_messages
+    frappe.flags.mute_messages = True
+    try:
+        return balance_summary(employee, leave_type, from_date, to_date, application,
+                               half_day=half_day, half_day_date=half_day_date)
+    except frappe.ValidationError as error:
+        return frappe._dict(projection_error=str(error))
+    finally:
+        frappe.flags.mute_messages = previous_mute

@@ -70,46 +70,6 @@ function is_leave_override_user(frm) {
 
 
 frappe.ui.form.on("Leave Application", {
-    before_save(frm) {
-        if (!frm.doc.custom_medical_certificate && frm.doc.leave_type) {
-            frappe.call({
-                method: "frappe.client.get_value",
-                args: {
-                    doctype: "Leave Type",
-                    filters: {
-                        name: frm.doc.leave_type
-                    },
-                    fieldname: [
-                        "custom_medical_certificate_required",
-                        "custom_medical_certificate_required_by"
-                    ]
-                },
-                callback: function (r) {
-                    if (
-                        !r.message ||
-                        !r.message.custom_medical_certificate_required
-                    ) {
-                        return;
-                    }
-
-                    let hrs = r.message.custom_medical_certificate_required_by;
-
-                    let msg = __("Medical certificate is required for this leave type and has not been attached.");
-
-                    if (hrs) {
-                        msg += __(" It must be submitted within {0} hrs.", [hrs]);
-                    }
-
-                    frappe.msgprint({
-                        title: __("Medical Certificate Required"),
-                        indicator: "orange",
-                        message: msg
-                    });
-                }
-            });
-        }
-    },
-
     leave_type(frm) {
         if (!frm.doc.leave_type) {
             $(".medical-cert-flag").remove();
@@ -171,27 +131,7 @@ frappe.ui.form.on("Leave Application", {
                     hrs
                 );
 
-                if (
-                    required &&
-                    !frm.doc.custom_medical_certificate
-                ) {
-                    let msg = __(
-                        "Medical certificate is required for this leave type."
-                    );
 
-                    if (hrs) {
-                        msg += __(
-                            " It must be submitted within {0} hrs.",
-                            [hrs]
-                        );
-                    }
-
-                    frappe.msgprint({
-                        title: __("Medical Certificate Required"),
-                        indicator: "orange",
-                        message: msg
-                    });
-                }
             }
         });
     },
@@ -306,6 +246,7 @@ frappe.ui.form.on("Leave Application", {
         apply_custom_status_indicator(frm);
 
         handle_medical_certificate_flag(frm);
+        add_medical_certificate_selection(frm);
         handle_eligibility_warnings_badge(frm);
 
         frm.set_query("leave_type", function() {
@@ -953,10 +894,15 @@ function refresh_projected_leave_balance(frm) {
     };
     return frappe.call({
         method: "orion_erp.orion_erp.overrides.leave_application.get_projected_leave_balance",
-        args,
+        args: { ...args, display_only: 1 },
         callback(r) {
             if (Object.keys(args).some(key => key !== "application" && frm.doc[key] !== args[key])) return;
             if (r.exc) return;
+            if (r.message && r.message.projection_error) {
+                fields.forEach(field => frm.toggle_display(field, false));
+                frm.set_df_property("leave_balance", "description", r.message.projection_error);
+                return;
+            }
             fields.forEach(field => frm.toggle_display(field, !!r.message));
             if (!r.message) {
                 frm.set_df_property("leave_balance", "label", __("Leave Balance"));
@@ -987,6 +933,43 @@ function refresh_projected_leave_balance(frm) {
                 custom_leave_balance_after: flt(r.message.projected_balance) - flt(frm.doc.total_leave_days)
             });
             frm.refresh_fields(["leave_balance", ...fields, "custom_leave_balance_after"]);
+        }
+    });
+}
+
+
+function add_medical_certificate_selection(frm) {
+    if (frm.is_new() || frm.doc.docstatus === 2 || !frm.doc.leave_type) return;
+    const leave_type = frm.doc.leave_type;
+    frappe.call({
+        method: "frappe.client.get_value",
+        args: { doctype: "Leave Type", filters: { name: leave_type },
+            fieldname: "custom_medical_certificate_required" },
+        callback(r) {
+            if (frm.doc.leave_type !== leave_type || !r.message ||
+                !r.message.custom_medical_certificate_required) return;
+            frm.add_custom_button(__("Select Medical Certificate"), () => {
+                const dialog = new frappe.ui.Dialog({
+                    title: __("Select Medical Certificate"),
+                    fields: [{ fieldname: "file_name", fieldtype: "Link", options: "File",
+                        label: __("Existing Attachment"), reqd: 1,
+                        get_query: () => ({ filters: { attached_to_doctype: "Leave Application",
+                            attached_to_name: frm.doc.name } }) }],
+                    primary_action_label: __("Use as Medical Certificate"),
+                    primary_action(values) {
+                        frappe.call({
+                            method: "orion_erp.orion_erp.services.medical_certificate.select_medical_certificate",
+                            args: { application: frm.doc.name, file_name: values.file_name },
+                            callback(r) {
+                                if (r.exc) return;
+                                dialog.hide();
+                                frm.reload_doc();
+                            }
+                        });
+                    }
+                });
+                dialog.show();
+            });
         }
     });
 }

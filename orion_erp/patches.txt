@@ -23,3 +23,4 @@ orion_erp.patches.migrate_health_insurance_attachment
 orion_erp.patches.enable_non_office_leave_initiators
 orion_erp.patches.add_projected_leave_balance_fields
 orion_erp.patches.catch_up_late_attendance_accrual
+orion_erp.patches.allow_late_medical_certificate_status
