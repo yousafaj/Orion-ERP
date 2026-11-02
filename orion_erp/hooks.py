@@ -54,7 +54,7 @@ doctype_js = {
     "Leave Allocation": "public/js/leave_allocation.js",
     "Rejoining Form": "public/js/rejoining_form.js",
     "Web Form": "public/js/web_form/designer_override.js",
-    "Bank Statement Import": "public/js/bank_statement_import.js"
+    "Bank Statement Import": "public/js/bank_statement_import.js",
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
@@ -313,7 +313,13 @@ doc_events = {
     "File": {
         "on_update": "orion_erp.orion_erp.validations.leave_application.update_medical_certificate_status_on_file_attach",
         "on_trash": "orion_erp.orion_erp.validations.leave_application.reset_medical_certificate_status_on_file_trash"
-    }
+    },
+    "Sales Invoice": {
+        "before_cancel": "orion_erp.orion_erp.validations.vat_filed.block_cancel_if_vat_filed",
+    },
+    "Purchase Invoice": {
+        "before_cancel": "orion_erp.orion_erp.validations.vat_filed.block_cancel_if_vat_filed",
+    },
 }
 
 # Scheduled Tasks
