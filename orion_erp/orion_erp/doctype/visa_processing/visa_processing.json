@@ -1,0 +1,357 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "VISA-.YYYY.-.#####",
+ "creation": "2026-11-03 08:36:23.792319",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "job_applicant",
+  "candidate_name",
+  "last_updated_by",
+  "date_of_selection",
+  "visa_status",
+  "processing_requirement",
+  "column_break_jqgv",
+  "job_trade",
+  "nationality",
+  "allocation",
+  "salary",
+  "status",
+  "rejection_reason",
+  "section_break_foyf",
+  "temporary_work_permit_applied",
+  "temporary_work_permit_expiry",
+  "column_break_nhnp",
+  "notes",
+  "section_break_tqxz",
+  "joining_status",
+  "offer_letter",
+  "column_break_opvb",
+  "joining_date",
+  "documents",
+  "section_break_whpn",
+  "visa_cancelled_date",
+  "change_status_approval",
+  "change_status_approval_date",
+  "current_passport_location",
+  "adnoc_medical",
+  "reason_for_unfit",
+  "visa_application",
+  "status_change",
+  "visa_stamping",
+  "site_mobilization",
+  "column_break_ebta",
+  "skill_type",
+  "contract_signature",
+  "labour_application",
+  "visa_medical",
+  "medical_insurance",
+  "training_card",
+  "remarks",
+  "salary_start_date",
+  "section_break_jpwg",
+  "certificates",
+  "section_break_swcb",
+  "job_offer_terms"
+ ],
+ "fields": [
+  {
+   "fieldname": "last_updated_by",
+   "fieldtype": "Date",
+   "label": "Last Updated By"
+  },
+  {
+   "fieldname": "date_of_selection",
+   "fieldtype": "Date",
+   "label": "Date of Selection"
+  },
+  {
+   "fieldname": "column_break_jqgv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "job_trade",
+   "fieldtype": "Select",
+   "label": "Job Trade",
+   "options": "\nHEAVY BUS DRIVER\nLIGHT VEHICLE DRIVER"
+  },
+  {
+   "fieldname": "nationality",
+   "fieldtype": "Link",
+   "label": "Nationality",
+   "options": "Nationality"
+  },
+  {
+   "fieldname": "allocation",
+   "fieldtype": "Data",
+   "label": "Allocation"
+  },
+  {
+   "fieldname": "salary",
+   "fieldtype": "Data",
+   "label": "Salary"
+  },
+  {
+   "fieldname": "section_break_tqxz",
+   "fieldtype": "Section Break",
+   "label": "Joining Details"
+  },
+  {
+   "fieldname": "joining_status",
+   "fieldtype": "Data",
+   "label": "Joining Status"
+  },
+  {
+   "fieldname": "offer_letter",
+   "fieldtype": "Select",
+   "label": "Offer Letter",
+   "options": "\npending\nAccepted\nNot Issued\nIssued but not Accepted Yet"
+  },
+  {
+   "fieldname": "column_break_opvb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "joining_date",
+   "fieldtype": "Date",
+   "label": "Joining Date"
+  },
+  {
+   "fieldname": "documents",
+   "fieldtype": "Select",
+   "label": "Documents",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:doc.processing_requirement == \"Work Permit + Visa Processing\"",
+   "fieldname": "section_break_whpn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "adnoc_medical",
+   "fieldtype": "Select",
+   "label": "Adnoc Medical",
+   "options": "\nFit to Work\nRemedical - Fit to work\nNA\nPending\nUnfit\nRemedical"
+  },
+  {
+   "fieldname": "column_break_ebta",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "contract_signature",
+   "fieldtype": "Select",
+   "label": "Contract Signature",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "visa_application",
+   "fieldtype": "Select",
+   "label": "Visa Application",
+   "options": "\nYes\nNo\nRejected"
+  },
+  {
+   "fieldname": "labour_application",
+   "fieldtype": "Select",
+   "label": "Labour Application",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "status_change",
+   "fieldtype": "Select",
+   "label": "Status Change",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "visa_medical",
+   "fieldtype": "Select",
+   "label": "Visa Medical",
+   "options": "\nYes\nNo\nFailed"
+  },
+  {
+   "fieldname": "medical_insurance",
+   "fieldtype": "Select",
+   "label": "Medical Insurance ",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "visa_stamping",
+   "fieldtype": "Select",
+   "label": "Visa Stamping",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "training_card",
+   "fieldtype": "Select",
+   "label": "Training Card",
+   "options": "\nYes\nNo\nPending"
+  },
+  {
+   "fieldname": "site_mobilization",
+   "fieldtype": "Date",
+   "label": "Site Mobilization"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "candidate_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Candidate Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "job_applicant",
+   "fieldtype": "Link",
+   "label": "Job Applicant",
+   "options": "Job Applicant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_jpwg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "certificates",
+   "fieldtype": "Table",
+   "label": "Certificates",
+   "options": "Employee cdt"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nApproved\nRejected\nIn Progress",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.status == \"Rejected\"",
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "mandatory_depends_on": "eval:doc.status == \"Rejected\""
+  },
+  {
+   "depends_on": "eval:doc.adnoc_medical==\"Unfit\"",
+   "fieldname": "reason_for_unfit",
+   "fieldtype": "Data",
+   "label": "Reason for Unfit Adnoc Medical"
+  },
+  {
+   "fieldname": "current_passport_location",
+   "fieldtype": "Select",
+   "label": "Current Passport Location",
+   "options": "\nIn\nOut\nWith Previous Employer\nEmployee"
+  },
+  {
+   "fieldname": "visa_status",
+   "fieldtype": "Select",
+   "label": "Visa Status",
+   "options": "\nVisit Visa\nTourist Visa\nEmployment Visa\nFamily Visa\nGolden Visa\nFreelance Visa\nStudent Visa\nResidence Visa\nVisa Under Process\nVisa Expired\nCancelled Visa\nVisa Not Available",
+   "reqd": 1
+  },
+  {
+   "fieldname": "processing_requirement",
+   "fieldtype": "Select",
+   "label": "Processing Requirement",
+   "options": "\nWork Permit Only\nWork Permit + Visa Processing",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_foyf",
+   "fieldtype": "Section Break",
+   "label": "Work Permit Information"
+  },
+  {
+   "fieldname": "temporary_work_permit_applied",
+   "fieldtype": "Select",
+   "label": "Temporary Work Permit Applied",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "temporary_work_permit_expiry",
+   "fieldtype": "Select",
+   "label": "Temporary Work Permit Expiry",
+   "options": "6 months\n1 year\n2 year"
+  },
+  {
+   "fieldname": "column_break_nhnp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "visa_cancelled_date",
+   "fieldtype": "Date",
+   "label": "Visa Cancelled Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "skill_type",
+   "fieldtype": "Select",
+   "label": "Skill Type",
+   "options": "Skilled\nUnskilled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "change_status_approval_date",
+   "fieldtype": "Date",
+   "label": "Change Status Approval Date"
+  },
+  {
+   "fieldname": "change_status_approval",
+   "fieldtype": "Select",
+   "label": "Change Status Approval",
+   "options": "Pending\nApproved\nRejected\nNot Required"
+  },
+  {
+   "fieldname": "section_break_swcb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "job_offer_terms",
+   "fieldtype": "Table",
+   "label": "Job Offer Terms",
+   "options": "Job Offer Term"
+  },
+  {
+   "fieldname": "salary_start_date",
+   "fieldtype": "Date",
+   "label": "Salary Start Date"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-04 15:45:25.584204",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Visa Processing",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

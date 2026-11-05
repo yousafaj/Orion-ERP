@@ -58,9 +58,14 @@ doctype_js = {
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
-doctype_list_js = {"Employee": "public/js/employee_list.js",
+doctype_list_js = {
+                   "Employee": "public/js/employee_list.js",
                    "Leave Application": "public/js/leave_application_list.js",
-                   "Rejoining Form": "public/js/rejoining_form_list.js"}
+                   "Rejoining Form": "public/js/rejoining_form_list.js",
+                   "Interview": "public/js/interview_list.js"
+
+                   
+                   }
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -119,7 +124,15 @@ fixtures = [
         "filters": [
             ["name", "in", ["Saturday", "Sunday"]]
         ]
-    }
+    },
+    #  {
+    #     "doctype": "Property Setter",
+    #     "filters": [
+    #         ["doc_type", "=", "Job Offer"],
+    #         ["field_name", "=", "status"],
+    #         ["property", "=", "options"]
+    #     ]
+    # }
 ]
 
 # Installation
@@ -320,6 +333,11 @@ doc_events = {
     "Purchase Invoice": {
         "before_cancel": "orion_erp.orion_erp.validations.vat_filed.block_cancel_if_vat_filed",
     },
+    "Job Offer":{
+        "on_update": "orion_erp.orion_erp.validations.job_offer_hooks.job_offer_on_update",
+        "validate": "orion_erp.orion_erp.validations.job_offer_hooks.validate_job_offer_workflow",
+
+    }
 }
 
 # Scheduled Tasks
@@ -355,7 +373,11 @@ scheduler_events = {
         "orion_erp.orion_erp.services.employee.auto_renew_leave_policy_assignments",
         "orion_erp.orion_erp.scripts.hajj_umrah_allocation.allocate_hajj_umrah_yearly_for_all",
         "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_monthly_accrual",
-        "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_carry_forward"
+        "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_carry_forward",
+        "orion_erp.orion_erp.doctype.visa_processing.visa_processing.send_icp_fine_notifications",
+        "orion_erp.orion_erp.doctype.visa_processing.visa_processing.send_medical_insurance_fine_notifications",
+
+
 	],
 	"daily_long": [
 	    "orion_erp.passport_management.tasks.send_expiry_reminders"
