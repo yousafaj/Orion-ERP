@@ -10,6 +10,7 @@
   "candidate_name",
   "last_updated_by",
   "date_of_selection",
+  "staff_category",
   "visa_status",
   "processing_requirement",
   "column_break_jqgv",
@@ -324,12 +325,19 @@
    "fieldname": "salary_start_date",
    "fieldtype": "Date",
    "label": "Salary Start Date"
+  },
+  {
+   "fetch_from": "job_applicant.custom_staff_category",
+   "fieldname": "staff_category",
+   "fieldtype": "Data",
+   "label": "Staff Category",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-04 15:45:25.584204",
+ "modified": "2026-11-05 10:26:11.633344",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Visa Processing",

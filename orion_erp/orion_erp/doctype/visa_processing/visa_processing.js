@@ -69,6 +69,29 @@
 frappe.ui.form.on("Visa Processing", {
 	refresh: function(frm) {
 
+
+        if (frm.doc.change_status_approval === "Approved" && frm.doc.staff_category === "Non Office Staff" && !frm.is_new()) {
+
+            frm.add_custom_button(__('Send to Operations'), function() {
+                frappe.confirm(__('Send the details and driving license copy to the Operations department?'), function() {
+                    frappe.call({
+                        method: 'orion_erp.orion_erp.doctype.visa_processing.visa_processing.send_to_operations',
+                        args: { docname: frm.doc.name },
+                        freeze: true,
+                        freeze_message: __('Sending...'),
+                        callback: function(r) {
+                            if (r.message === 'sent') {
+                                frappe.show_alert({message: __('Sent to Operations'), indicator: 'green'});
+                                frm.reload_doc();
+                            }
+                        }
+                    });
+                });
+            }, __('Actions'));
+        }
+
+        
+
         // Show button only when status is Approved
         // if (frm.doc.status === "Approved" && !frm.is_new()) {
 
@@ -157,3 +180,5 @@ frappe.ui.form.on("Visa Processing", {
     }
 
 });
+
+
