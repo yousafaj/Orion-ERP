@@ -182,21 +182,59 @@ def get_hr_emails():
 	return list(set(emails))
 
 
+# def get_icp_due_date(cancelled_date, skill_type):
+#     cancelled = getdate(cancelled_date)
+
+#     if skill_type == "Skilled":
+#         return add_months(cancelled, 3)   # 3 months after cancellation
+#     if skill_type == "Unskilled":
+#         return add_days(cancelled, 28)    # 28 days after cancellation
+#     return None
+
+
+# def send_alert(docname, title, body):
+
+#     recipients = get_hr_emails()
+# 	if not recipients:
+# 		frappe.throw("No enabled users found with the HR role.")
+
+#     # System notification (bell icon)
+#     frappe.get_doc({
+#         "doctype": "Notification Log",
+#         "subject": title,
+#         "for_user": recipients,
+#         "type": "Alert",
+#         "document_type": "Visa Processing",
+#         "document_name": docname,
+#         "email_content": body,
+#     }).insert(ignore_permissions=True)
+
+#     # Email (delete this block if you only want the bell notification)
+#     frappe.sendmail(
+#         recipients=recipients,
+#         subject=title,
+#         message=body,
+#         now = True
+#     )
+
 def get_icp_due_date(cancelled_date, skill_type):
     cancelled = getdate(cancelled_date)
 
     if skill_type == "Skilled":
-        return add_months(cancelled, 3)   # 3 months after cancellation
+        return add_months(cancelled, 3)  # 3 months after cancellation
+
     if skill_type == "Unskilled":
-        return add_days(cancelled, 28)    # 28 days after cancellation
+        return add_days(cancelled, 28)  # 28 days after cancellation
+
     return None
 
 
 def send_alert(docname, title, body):
 
     recipients = get_hr_emails()
-	if not recipients:
-		frappe.throw("No enabled users found with the HR role.")
+
+    if not recipients:
+        frappe.throw("No enabled users found with the HR role.")
 
     # System notification (bell icon)
     frappe.get_doc({
@@ -209,12 +247,12 @@ def send_alert(docname, title, body):
         "email_content": body,
     }).insert(ignore_permissions=True)
 
-    # Email (delete this block if you only want the bell notification)
+    # Email
     frappe.sendmail(
         recipients=recipients,
         subject=title,
         message=body,
-        now = True
+        now=True
     )
 
 
