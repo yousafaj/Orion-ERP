@@ -97,6 +97,7 @@ class VisaProcessing(Document):
         contract_signature: DF.Literal["", "Yes", "No"]
         current_passport_location: DF.Literal["", "In", "Out", "With Previous Employer", "Employee"]
         date_of_selection: DF.Date | None
+        department: DF.Literal["", "Rental Department", "Tankering Department", "Solid Waste", "Pest Control", "Rental Offshore"]
         documents: DF.Literal["", "Yes", "No"]
         job_applicant: DF.Link
         job_offer_terms: DF.Table[JobOfferTerm]
@@ -115,6 +116,7 @@ class VisaProcessing(Document):
         remarks: DF.SmallText | None
         salary: DF.Data | None
         salary_start_date: DF.Date | None
+        sent_to_operations: DF.Check
         site_mobilization: DF.Date | None
         skill_type: DF.Literal["Skilled", "Unskilled"]
         staff_category: DF.Data | None
@@ -156,7 +158,28 @@ class VisaProcessing(Document):
 
     ############################### ICP fine notification (outside the class) ###############################
 
-NOTIFY_USER = "faisal@oriongroup.ae"
+NOTIFY_USER = ["HR Manager", "HR User"]
+
+def get_hr_emails():
+	users = frappe.get_all(
+		"Has Role",
+		filters={"role": ["in", NOTIFY_USER], "parenttype": "User"},
+		pluck="parent",
+	)
+	if not users:
+		return []
+
+	emails = frappe.get_all(
+		"User",
+		filters={
+			"name": ["in", list(set(users))],
+			"enabled": 1,
+			"user_type": "System User",
+			"email": ["is", "set"],
+		},
+		pluck="email",
+	)
+	return list(set(emails))
 
 
 def get_icp_due_date(cancelled_date, skill_type):
@@ -170,11 +193,16 @@ def get_icp_due_date(cancelled_date, skill_type):
 
 
 def send_alert(docname, title, body):
+
+    recipients = get_hr_emails()
+	if not recipients:
+		frappe.throw("No enabled users found with the HR role.")
+
     # System notification (bell icon)
     frappe.get_doc({
         "doctype": "Notification Log",
         "subject": title,
-        "for_user": NOTIFY_USER,
+        "for_user": recipients,
         "type": "Alert",
         "document_type": "Visa Processing",
         "document_name": docname,
@@ -183,9 +211,10 @@ def send_alert(docname, title, body):
 
     # Email (delete this block if you only want the bell notification)
     frappe.sendmail(
-        recipients=[NOTIFY_USER],
+        recipients=recipients,
         subject=title,
         message=body,
+        now = True
     )
 
 
@@ -275,93 +304,234 @@ def send_medical_insurance_fine_notifications():
     frappe.db.commit()
 
 
-# ################### EMail for the Rental department #################3 
+# ################### Email for the Rental department #################3 
 
-ROLE_TO_NOTIFY = "Rental Management"
-LICENSE_CERT_NAME = "Driving License"
+# ROLE_TO_NOTIFY = "Rental Management"
+# LICENSE_CERT_NAME = "Driving License"
 
 
+# def get_role_emails(role):
+#     users = frappe.get_all(
+#         "Has Role",
+#         filters={"role": role, "parenttype": "User"},
+#         pluck="parent",
+#     )
+#     if not users:
+#         return []
+
+#     return frappe.get_all(
+#         "User",
+#         filters={
+#             "name": ["in", users],
+#             "enabled": 1,
+#             "user_type": "System User",
+#             "email": ["is", "set"],
+#         },
+#         pluck="email",
+#     )
+
+
+# @frappe.whitelist()
+# def send_to_operations(docname):
+#     doc = frappe.get_doc("Visa Processing", docname)
+#     frappe.has_permission("Visa Processing", "write", doc, throw=True)
+
+#     if doc.change_status_approval != "Approved":
+#         frappe.throw("Change Status Approval must be Approved before sending.")
+
+#     # Block a second send
+#     if doc.get("sent_to_operations"):
+#         frappe.throw("The details were already sent to Operations.")
+
+
+#     # Recipients: everyone with the Rental Management role
+#     recipients = get_role_emails(ROLE_TO_NOTIFY)
+#     if not recipients:
+#         frappe.throw("No enabled users found with the role {0}.".format(ROLE_TO_NOTIFY))
+
+#     # Contact number from the Job Applicant
+#     contact_no = frappe.db.get_value("Job Applicant", doc.job_applicant, "phone_number") or ""
+
+#     # Driving License from the certificates table
+#     license_row = None
+#     for row in doc.certificates:
+#         cert_name = (row.get("certification_name") or "").strip().lower()
+#         if cert_name == LICENSE_CERT_NAME.lower():
+#             license_row = row
+#             break
+
+#     if not license_row:
+#         frappe.throw("No Driving License found in the Certificates table.")
+
+#     if not license_row.get("attachment"):
+#         frappe.throw("The Driving License row has no attachment.")
+
+#     file_doc = frappe.get_doc("File", {"file_url": license_row.attachment})
+#     attachments = [{
+#         "fname": file_doc.file_name,
+#         "fcontent": file_doc.get_content(),
+#     }]
+
+#     frappe.sendmail(
+#         recipients=recipients,
+#         subject="Visa Approved: {0}".format(doc.candidate_name),
+#         message="""
+#             <p>Dear Rental Management Team,</p>
+#             <p>The status change has been approved for the following candidate:</p>
+#             <ul>
+#                 <li><b>Name:</b> {0}</li>
+#                 <li><b>Contact No:</b> {1}</li>
+#                 <li><b>Driving License Reference No:</b> {2}</li>
+#                 <li><b>Driving License Expiry:</b> {3}</li>
+#             </ul>
+#             <p>The driving license copy is attached.</p>
+#         """.format(
+#             doc.candidate_name,
+#             contact_no,
+#             license_row.get("reference_no") or "",
+#             license_row.get("date_of_expiry") or "",
+#         ),
+#         attachments=attachments,
+#         reference_doctype="Visa Processing",
+#         reference_name=doc.name,
+#         now=True
+#     )
+
+#     doc.db_set("sent_to_operations", 1)
+#     doc.add_comment("Info", "Details sent to {0} role ({1} users)".format(
+#         ROLE_TO_NOTIFY, len(recipients)))
+#     return "sent"
+
+
+
+DEPARTMENT_ROLE_MAP = {
+    "Rental Department": "Rental Management",
+    "Tankering Department": "Tankering Department",
+    "Solid Waste": "Solid Waste",
+    "Pest Control": "Pest Control",
+    "Rental Offshore": "Rental Offshore",
+}
+ 
+# Names used in the Certificates table (Certification Name column)
+PASSPORT_CERT_NAME = "Passport No"
+CHANGE_STATUS_CERT_NAME = "Change Status"
+ 
+ 
 def get_role_emails(role):
+    """Emails of all enabled users who have the given role."""
     users = frappe.get_all(
         "Has Role",
         filters={"role": role, "parenttype": "User"},
         pluck="parent",
     )
+    users = [u for u in set(users) if u not in ("Administrator", "Guest")]
     if not users:
         return []
-
+ 
     return frappe.get_all(
         "User",
-        filters={
-            "name": ["in", users],
-            "enabled": 1,
-            "user_type": "System User",
-            "email": ["is", "set"],
-        },
+        filters={"name": ["in", users], "enabled": 1},
         pluck="email",
     )
-
-
+ 
+ 
+def get_cert_row(doc, cert_name):
+    """Find a row in the Certificates table by Certification Name."""
+    for row in doc.certificates:
+        if (row.get("certification_name") or "").strip().lower() == cert_name.lower():
+            return row
+    frappe.throw("No '{0}' row found in the Certificates table.".format(cert_name))
+ 
+ 
+def get_row_attachment(row, label):
+    """Build a frappe.sendmail attachment dict from a certificates row."""
+    if not row.get("attachment"):
+        frappe.throw("The '{0}' row has no attachment.".format(label))
+ 
+    file_doc = frappe.get_doc("File", {"file_url": row.attachment})
+    return {
+        "fname": file_doc.file_name,
+        "fcontent": file_doc.get_content(),
+    }
+ 
+ 
 @frappe.whitelist()
 def send_to_operations(docname):
     doc = frappe.get_doc("Visa Processing", docname)
     frappe.has_permission("Visa Processing", "write", doc, throw=True)
-
+ 
     if doc.change_status_approval != "Approved":
         frappe.throw("Change Status Approval must be Approved before sending.")
-
-    # Recipients: everyone with the Rental Management role
-    recipients = get_role_emails(ROLE_TO_NOTIFY)
+ 
+    # Block a second send
+    if doc.get("sent_to_operations"):
+        frappe.throw("The details were already sent to Operations.")
+ 
+    # ---- Department -> Role -> Recipients ----
+    department = doc.get("department")
+    if not department:
+        frappe.throw("Department is not set on this Visa Processing record.")
+ 
+    role = DEPARTMENT_ROLE_MAP.get(department)
+    if not role:
+        frappe.throw("No role is mapped for department {0}.".format(department))
+ 
+    recipients = get_role_emails(role)
     if not recipients:
-        frappe.throw("No enabled users found with the role {0}.".format(ROLE_TO_NOTIFY))
-
-    # Contact number from the Job Applicant
-    contact_no = frappe.db.get_value("Job Applicant", doc.job_applicant, "phone_number") or ""
-
-    # Driving License from the certificates table
-    license_row = None
-    for row in doc.certificates:
-        cert_name = (row.get("certification_name") or "").strip().lower()
-        if cert_name == LICENSE_CERT_NAME.lower():
-            license_row = row
-            break
-
-    if not license_row:
-        frappe.throw("No Driving License found in the Certificates table.")
-
-    if not license_row.get("attachment"):
-        frappe.throw("The Driving License row has no attachment.")
-
-    file_doc = frappe.get_doc("File", {"file_url": license_row.attachment})
-    attachments = [{
-        "fname": file_doc.file_name,
-        "fcontent": file_doc.get_content(),
-    }]
-
+        frappe.throw("No enabled users found with the role {0}.".format(role))
+ 
+    # ---- Job Applicant details ----
+    applicant = frappe.db.get_value(
+        "Job Applicant",
+        doc.job_applicant,
+        ["phone_number", "designation"],
+        as_dict=True,
+    ) or {}
+ 
+    contact_no = applicant.get("phone_number") or ""
+    designation = doc.get("designation") or applicant.get("designation") or ""
+ 
+    # ---- Attachments from the Certificates table ----
+    passport_row = get_cert_row(doc, PASSPORT_CERT_NAME)
+    change_status_row = get_cert_row(doc, CHANGE_STATUS_CERT_NAME)
+ 
+    attachments = [
+        get_row_attachment(passport_row, PASSPORT_CERT_NAME),
+        get_row_attachment(change_status_row, CHANGE_STATUS_CERT_NAME),
+    ]
+ 
     frappe.sendmail(
         recipients=recipients,
         subject="Visa Approved: {0}".format(doc.candidate_name),
         message="""
-            <p>Dear Rental Management Team,</p>
+            <p>Dear {0} Team,</p>
             <p>The status change has been approved for the following candidate:</p>
             <ul>
-                <li><b>Name:</b> {0}</li>
-                <li><b>Contact No:</b> {1}</li>
-                <li><b>Driving License Reference No:</b> {2}</li>
-                <li><b>Driving License Expiry:</b> {3}</li>
+                <li><b>Name:</b> {1}</li>
+                <li><b>Designation:</b> {2}</li>
+                <li><b>Department:</b> {3}</li>
+                <li><b>Contact No:</b> {4}</li>
+                <li><b>Passport No:</b> {5}</li>
             </ul>
-            <p>The driving license copy is attached.</p>
+            <p>The passport copy and change status copy are attached.</p>
         """.format(
+            department,
             doc.candidate_name,
+            designation,
+            department,
             contact_no,
-            license_row.get("reference_no") or "",
-            license_row.get("date_of_expiry") or "",
+            passport_row.get("reference_no") or "",
         ),
         attachments=attachments,
         reference_doctype="Visa Processing",
         reference_name=doc.name,
+        now=True,
     )
-
-    doc.add_comment("Info", "Details sent to {0} role ({1} users)".format(
-        ROLE_TO_NOTIFY, len(recipients)))
+ 
+    doc.db_set("sent_to_operations", 1)
+    doc.add_comment(
+        "Info",
+        "Details sent to {0} role ({1} users)".format(role, len(recipients)),
+    )
     return "sent"
+ 

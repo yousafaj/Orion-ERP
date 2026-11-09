@@ -1,0 +1,136 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "PET-.YYYY.-.#####",
+ "creation": "2026-11-05 12:01:07.685352",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "job_applicant",
+  "phone_number",
+  "salary_start_date",
+  "designation",
+  "company",
+  "column_break_xzvd",
+  "job_applicant_name",
+  "country",
+  "status",
+  "sent_to_hr",
+  "contract_type",
+  "section_break_fkcx",
+  "documents"
+ ],
+ "fields": [
+  {
+   "fieldname": "job_applicant",
+   "fieldtype": "Link",
+   "label": "Job Applicant",
+   "options": "Job Applicant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_xzvd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "job_applicant.applicant_name",
+   "fieldname": "job_applicant_name",
+   "fieldtype": "Data",
+   "label": "Job Applicant Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_fkcx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_bulk_edit": 1,
+   "allow_in_quick_entry": 1,
+   "fieldname": "documents",
+   "fieldtype": "Table",
+   "label": "Documents",
+   "options": "Training Datas"
+  },
+  {
+   "fetch_from": "job_applicant.phone_number",
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "job_applicant.country",
+   "fieldname": "country",
+   "fieldtype": "Data",
+   "label": "Country",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nIn progress\nCompleted\nNot Completed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "salary_start_date",
+   "fieldtype": "Date",
+   "label": "Salary Start Date",
+   "mandatory_depends_on": "eval:doc.status == \"Completed\""
+  },
+  {
+   "default": "0",
+   "fieldname": "sent_to_hr",
+   "fieldtype": "Check",
+   "label": "Sent to HR",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "job_applicant.designation",
+   "fieldname": "designation",
+   "fieldtype": "Data",
+   "label": "Designation"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "contract_type",
+   "fieldtype": "Select",
+   "label": "Contract Type",
+   "options": "\nPermanent\nTemporary"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-06 09:36:08.283292",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Pre-Employment Training",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

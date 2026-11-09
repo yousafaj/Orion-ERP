@@ -20,6 +20,8 @@
   "salary",
   "status",
   "rejection_reason",
+  "sent_to_operations",
+  "department",
   "section_break_foyf",
   "temporary_work_permit_applied",
   "temporary_work_permit_expiry",
@@ -332,12 +334,27 @@
    "fieldtype": "Data",
    "label": "Staff Category",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.staff_category == \"Non Office Staff\"",
+   "fieldname": "sent_to_operations",
+   "fieldtype": "Check",
+   "label": "Sent to Operations",
+   "read_only": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Select",
+   "label": "Department",
+   "mandatory_depends_on": "eval:doc.staff_category ==\"Non Office Staff\"",
+   "options": "\nRental Department\nTankering Department\nSolid Waste\nPest Control\nRental Offshore"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-05 10:26:11.633344",
+ "modified": "2026-11-09 08:44:11.268723",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Visa Processing",

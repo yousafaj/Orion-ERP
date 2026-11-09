@@ -55,6 +55,7 @@ doctype_js = {
     "Rejoining Form": "public/js/rejoining_form.js",
     "Web Form": "public/js/web_form/designer_override.js",
     "Bank Statement Import": "public/js/bank_statement_import.js",
+    "Purchase Invoice":"public/js/purchase_invoice.js"
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
