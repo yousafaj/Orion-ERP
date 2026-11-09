@@ -55,7 +55,9 @@ doctype_js = {
     "Rejoining Form": "public/js/rejoining_form.js",
     "Web Form": "public/js/web_form/designer_override.js",
     "Bank Statement Import": "public/js/bank_statement_import.js",
-    "Purchase Invoice":"public/js/purchase_invoice.js"
+    "Purchase Invoice":"public/js/purchase_invoice.js",
+    "Sales Invoice": "public/js/sales_invoice.js",
+
     }
 
 # app_include_css = "/assets/orion_erp/css/listview.css"
@@ -330,9 +332,12 @@ doc_events = {
     },
     "Sales Invoice": {
         "before_cancel": "orion_erp.orion_erp.validations.vat_filed.block_cancel_if_vat_filed",
+        "validate":"orion_erp.orion_erp.validations.vat_filed.set_vat_exclude_flag"
     },
     "Purchase Invoice": {
         "before_cancel": "orion_erp.orion_erp.validations.vat_filed.block_cancel_if_vat_filed",
+        "validate":"orion_erp.orion_erp.validations.vat_filed.set_purchase_exclude_flags"
+
     },
     "Job Offer":{
         "on_update": "orion_erp.orion_erp.validations.job_offer_hooks.job_offer_on_update",
