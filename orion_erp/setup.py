@@ -269,25 +269,59 @@ def fix_orion_fleet_cards():
 
 
 
-def setup_rental_management_workspace():
-    """Keep the staging rental landing page synchronized with the app source."""
-    import json
+# def setup_rental_management_workspace():
+#     """Keep the staging rental landing page synchronized with the app source."""
+#     import json
 
-    path = os.path.join(
-        os.path.dirname(__file__), "orion_erp", "workspace", "rental_management", "rental_management.json"
-    )
-    with open(path) as source:
-        values = json.load(source)
-    name = "Rental Management"
-    if frappe.db.exists("Workspace", name):
-        ws = frappe.get_doc("Workspace", name)
-        ws.content = values["content"]
-        for field in ("links", "number_cards", "custom_blocks"):
-            ws.set(field, values[field])
-        ws.save(ignore_permissions=True)
-    else:
-        ws = frappe.get_doc(values)
-        ws.insert(ignore_permissions=True)
+#     path = os.path.join(
+#         os.path.dirname(__file__), "orion_erp", "workspace", "rental_management", "rental_management.json"
+#     )
+#     with open(path) as source:
+#         values = json.load(source)
+#     name = "Rental Management"
+#     if frappe.db.exists("Workspace", name):
+#         ws = frappe.get_doc("Workspace", name)
+#         ws.content = values["content"]
+#         for field in ("links", "number_cards", "custom_blocks"):
+#             ws.set(field, values[field])
+#         ws.save(ignore_permissions=True)
+#     else:
+#         ws = frappe.get_doc(values)
+#         ws.insert(ignore_permissions=True)
+
+
+
+   def setup_rental_management_workspace():
+       """Keep the staging rental landing page synchronized with the app source."""
+       import json
+
+       path = os.path.join(
+           os.path.dirname(__file__), "orion_erp", "workspace", "rental_management", "rental_management.json"
+       )
+       with open(path) as source:
+           values = json.load(source)
+
+       # Skip links whose target doesn't exist on this site
+       valid_links = []
+       for link in values.get("links", []):
+           link_type = link.get("link_type")
+           link_to = link.get("link_to")
+           if link_type in ("DocType", "Report", "Page") and link_to and not frappe.db.exists(link_type, link_to):
+               frappe.logger().warning(f"Rental Management: skipped missing {link_type} {link_to}")
+               continue
+           valid_links.append(link)
+       values["links"] = valid_links
+
+       name = "Rental Management"
+       if frappe.db.exists("Workspace", name):
+           ws = frappe.get_doc("Workspace", name)
+           ws.content = values["content"]
+           for field in ("links", "number_cards", "custom_blocks"):
+               ws.set(field, values[field])
+           ws.save(ignore_permissions=True)
+       else:
+           ws = frappe.get_doc(values)
+           ws.insert(ignore_permissions=True)
 
 
 def sync_rental_number_cards():
