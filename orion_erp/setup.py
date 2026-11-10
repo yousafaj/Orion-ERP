@@ -51,7 +51,7 @@ DASHBOARDS_DIR = os.path.join(os.path.dirname(__file__), "orion_erp", "dashboard
 def after_migrate():
     sync_role_permissions()
     setup_cicpa_workspace_widgets()
-    fix_orion_fleet_cards()
+    # fix_orion_fleet_cards()
     setup_custom_html_blocks()
     setup_rental_management_workspace()
     sync_rental_number_cards()
