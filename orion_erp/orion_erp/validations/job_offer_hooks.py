@@ -240,7 +240,8 @@ def send_job_offer_notification(doc, user, state):
                 subject=subject,
                 message=email_message,
                 reference_doctype=DOCTYPE,
-                reference_name=doc.name
+                reference_name=doc.name,
+                now = True
             )
 
         except Exception:
