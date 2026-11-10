@@ -291,7 +291,7 @@ def fix_orion_fleet_cards():
 
 
 
-   def setup_rental_management_workspace():
+def setup_rental_management_workspace():
        """Keep the staging rental landing page synchronized with the app source."""
        import json
 
