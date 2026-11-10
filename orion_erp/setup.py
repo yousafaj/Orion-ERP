@@ -199,20 +199,74 @@ def setup_custom_html_blocks():
             doc.db_insert()
 
 
+# def fix_orion_fleet_cards():
+#     """The Orion Fleet workspace is synced *before* its Number Cards during migrate,
+#     so the reqd `number_card_name` Link gets nulled on import (cards don't exist yet).
+#     Re-apply the cards here, after everything is synced. Idempotent."""
+#     if not frappe.db.exists("Workspace", "Orion Fleet"):
+#         return
+#     cards = [c for c in ORION_FLEET_CARDS if frappe.db.exists("Number Card", c)]
+#     ws = frappe.get_doc("Workspace", "Orion Fleet")
+#     if [r.number_card_name for r in ws.number_cards] == cards:
+#         return  # already correct — nothing to do
+#     ws.number_cards = []
+#     for c in cards:
+#         ws.append("number_cards", {"number_card_name": c})
+#     ws.save(ignore_permissions=True)
+
+
 def fix_orion_fleet_cards():
-    """The Orion Fleet workspace is synced *before* its Number Cards during migrate,
-    so the reqd `number_card_name` Link gets nulled on import (cards don't exist yet).
-    Re-apply the cards here, after everything is synced. Idempotent."""
+    """Re-apply Orion Fleet number cards after sync and remove invalid
+    DocType shortcuts that would otherwise break Workspace validation.
+    """
     if not frappe.db.exists("Workspace", "Orion Fleet"):
         return
-    cards = [c for c in ORION_FLEET_CARDS if frappe.db.exists("Number Card", c)]
+
     ws = frappe.get_doc("Workspace", "Orion Fleet")
-    if [r.number_card_name for r in ws.number_cards] == cards:
-        return  # already correct — nothing to do
-    ws.number_cards = []
-    for c in cards:
-        ws.append("number_cards", {"number_card_name": c})
-    ws.save(ignore_permissions=True)
+    changed = False
+
+    # Remove only Workspace links pointing to non-existing DocTypes.
+    valid_links = []
+
+    for link in ws.links:
+        if (
+            link.link_type == "DocType"
+            and link.link_to
+            and not frappe.db.exists("DocType", link.link_to)
+        ):
+            frappe.logger().warning(
+                f"Orion Fleet: Removing invalid Workspace link: {link.link_to}"
+            )
+            changed = True
+            continue
+
+        valid_links.append(link)
+
+    if changed:
+        ws.set("links", valid_links)
+
+    # Re-apply existing Orion Fleet Number Cards.
+    cards = [
+        c for c in ORION_FLEET_CARDS
+        if frappe.db.exists("Number Card", c)
+    ]
+
+    current_cards = [r.number_card_name for r in ws.number_cards]
+
+    if current_cards != cards:
+        ws.number_cards = []
+
+        for card in cards:
+            ws.append("number_cards", {
+                "number_card_name": card
+            })
+
+        changed = True
+
+    if changed:
+        ws.flags.ignore_permissions = True
+        ws.save(ignore_permissions=True)
+
 
 
 def setup_rental_management_workspace():
