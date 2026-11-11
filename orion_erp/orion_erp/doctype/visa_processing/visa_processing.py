@@ -111,6 +111,7 @@ class VisaProcessing(Document):
         notes: DF.SmallText | None
         offer_letter: DF.Literal["", "pending", "Accepted", "Not Issued", "Issued but not Accepted Yet"]
         processing_requirement: DF.Literal["", "Work Permit Only", "Work Permit + Visa Processing"]
+        re_medical: DF.SmallText | None
         reason_for_unfit: DF.Data | None
         rejection_reason: DF.SmallText | None
         remarks: DF.SmallText | None
@@ -453,6 +454,7 @@ DEPARTMENT_ROLE_MAP = {
 # Names used in the Certificates table (Certification Name column)
 PASSPORT_CERT_NAME = "Passport No"
 CHANGE_STATUS_CERT_NAME = "Change Status"
+DRIVING_LICENSE = "Driving License"
  
  
 def get_role_emails(role):
@@ -532,10 +534,12 @@ def send_to_operations(docname):
     # ---- Attachments from the Certificates table ----
     passport_row = get_cert_row(doc, PASSPORT_CERT_NAME)
     change_status_row = get_cert_row(doc, CHANGE_STATUS_CERT_NAME)
+    driving_license_row = get_cert_row(doc, DRIVING_LICENSE)
  
     attachments = [
         get_row_attachment(passport_row, PASSPORT_CERT_NAME),
         get_row_attachment(change_status_row, CHANGE_STATUS_CERT_NAME),
+        get_row_attachment(driving_license_row,DRIVING_LICENSE )
     ]
  
     frappe.sendmail(

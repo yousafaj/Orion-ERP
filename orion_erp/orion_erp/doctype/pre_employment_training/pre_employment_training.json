@@ -17,6 +17,7 @@
   "status",
   "sent_to_hr",
   "contract_type",
+  "mobilization_date",
   "section_break_fkcx",
   "documents"
  ],
@@ -103,12 +104,17 @@
    "fieldtype": "Select",
    "label": "Contract Type",
    "options": "\nPermanent\nTemporary"
+  },
+  {
+   "fieldname": "mobilization_date",
+   "fieldtype": "Date",
+   "label": "Mobilization Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-06 09:36:08.283292",
+ "modified": "2026-11-11 12:56:52.658025",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Pre-Employment Training",

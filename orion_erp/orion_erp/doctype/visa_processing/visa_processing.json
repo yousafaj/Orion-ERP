@@ -53,6 +53,7 @@
   "training_card",
   "remarks",
   "salary_start_date",
+  "re_medical",
   "section_break_jpwg",
   "certificates",
   "section_break_swcb",
@@ -349,12 +350,18 @@
    "label": "Department",
    "mandatory_depends_on": "eval:doc.staff_category ==\"Non Office Staff\"",
    "options": "\nRental Department\nTankering Department\nSolid Waste\nPest Control\nRental Offshore"
+  },
+  {
+   "fieldname": "re_medical",
+   "fieldtype": "Small Text",
+   "label": "Re medical",
+   "options": "\nYes\nNo"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-09 08:44:11.268723",
+ "modified": "2026-11-11 12:59:11.593874",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Visa Processing",
