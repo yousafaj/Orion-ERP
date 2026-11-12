@@ -28,7 +28,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Trail Workshop Interview",
+   "options": "Trial Workshop Interview",
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
