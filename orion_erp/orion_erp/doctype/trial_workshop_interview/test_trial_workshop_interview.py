@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestTrailWorkshopInterview(FrappeTestCase):
+class TestTrialWorkshopInterview(FrappeTestCase):
 	pass

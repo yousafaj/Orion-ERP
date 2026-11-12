@@ -294,14 +294,14 @@
    "fieldname": "visa_cancelled_date",
    "fieldtype": "Date",
    "label": "Visa Cancelled Date",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.processing_requirement == \"Work Permit + Visa Processing\""
   },
   {
    "fieldname": "skill_type",
    "fieldtype": "Select",
    "label": "Skill Type",
-   "options": "Skilled\nUnskilled",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.processing_requirement == \"Work Permit + Visa Processing\"",
+   "options": "Skilled\nUnskilled"
   },
   {
    "fieldname": "change_status_approval_date",
@@ -361,7 +361,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-11 12:59:11.593874",
+ "modified": "2026-11-12 11:02:42.121002",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Visa Processing",
