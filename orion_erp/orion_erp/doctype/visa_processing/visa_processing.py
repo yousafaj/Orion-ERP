@@ -387,11 +387,11 @@ PRO_ROLE = "PRO"
 # Certification Name values in the Certificates table to attach.
 # Matching ignores case and extra spaces. Change to your exact names.
 COMPLETION_MAIL_CERTS = [
-    "Passport Copy",
-    "Residency Page",
-    "EID Copy",
+    "Passport No",
+    "Residence Permit",
+    "EID copy",
     "Medical Insurance",
-    "Labor Card",
+    "Labour Card",
     "Picture",
 ]
 
