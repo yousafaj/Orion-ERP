@@ -382,6 +382,8 @@ scheduler_events = {
         "orion_erp.orion_erp.scripts.annual_leave_accrual.execute_carry_forward",
         "orion_erp.orion_erp.doctype.visa_processing.visa_processing.send_icp_fine_notifications",
         "orion_erp.orion_erp.doctype.visa_processing.visa_processing.send_medical_insurance_fine_notifications",
+        "orion_erp.orion_erp.doctype.visa_processing.visa_processing.send_visa_one_month_notifications",
+
 
 
 	],

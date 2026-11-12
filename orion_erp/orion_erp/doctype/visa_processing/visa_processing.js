@@ -2,6 +2,19 @@ frappe.ui.form.on("Visa Processing", {
 	refresh: function(frm) {
 
 
+        const hide_for = [
+            "elizabeth@oriongroup.ae",
+            "jayshree@oriongroup.ae"
+        ];
+
+        // Hide only for these two users, and only after the record is saved
+        const hide = !frm.is_new() && hide_for.includes(frappe.session.user);
+
+        frm.set_df_property("job_offer_terms", "hidden", hide ? 1 : 0);
+        frm.set_df_property("custom_additional_allowance", "hidden", hide ? 1 : 0);
+
+
+
         if (frm.doc.change_status_approval === "Approved" && frm.doc.staff_category === "Non Office Staff" && !frm.is_new()) {
 
             frm.add_custom_button(__('Send to Operations'), function() {

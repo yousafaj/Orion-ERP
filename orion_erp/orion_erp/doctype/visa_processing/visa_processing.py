@@ -485,3 +485,58 @@ def send_visa_completed_mail(doc):
         doc.add_comment("Info", "Visa completion mail sent to PRO and {0}".format(department or "-"))
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Visa completion mail failed")
+
+
+
+
+# Statuses that stop the daily one-month alert
+ONE_MONTH_ALERT_STOP_STATUSES = ["Approved", "Rejected"]
+
+
+def send_visa_one_month_notifications():
+    """Daily system notification to HR for every Visa Processing that is
+    more than one month old and not yet Approved/Rejected."""
+    recipients = get_hr_emails()
+    if not recipients:
+        return  # nothing to do; don't throw inside a scheduled job
+
+    # Created on or before the same date one month ago
+    cutoff = add_days(add_months(getdate(today()), -1), 1)
+
+    rows = frappe.get_all(
+        "Visa Processing",
+        filters={
+            "creation": ["<", cutoff],
+            "status": ["not in", ONE_MONTH_ALERT_STOP_STATUSES],
+        },
+        fields=["name", "candidate_name", "creation", "status"],
+    )
+
+    for r in rows:
+        days_open = (getdate(today()) - getdate(r.creation)).days
+
+        title = "Visa Over One Month: {0}".format(r.candidate_name or r.name)
+        body = """
+            <p>This visa processing has been open for more than one month and is not completed yet:</p>
+            <ul>
+                <li><b>Visa Processing:</b> {0}</li>
+                <li><b>Candidate:</b> {1}</li>
+                <li><b>Created On:</b> {2}</li>
+                <li><b>Days Open:</b> {3}</li>
+                <li><b>Status:</b> {4}</li>
+            </ul>
+        """.format(r.name, r.candidate_name or "", getdate(r.creation),
+                   days_open, r.status or "Not set")
+
+        for user in recipients:
+            frappe.get_doc({
+                "doctype": "Notification Log",
+                "subject": title,
+                "for_user": user,
+                "type": "Alert",
+                "document_type": "Visa Processing",
+                "document_name": r.name,
+                "email_content": body,
+            }).insert(ignore_permissions=True)
+
+    frappe.db.commit()
