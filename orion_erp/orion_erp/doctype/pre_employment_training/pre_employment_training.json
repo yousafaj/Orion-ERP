@@ -6,11 +6,13 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "employee_id",
   "job_applicant",
   "phone_number",
   "salary_start_date",
   "designation",
   "company",
+  "resume_attachment",
   "column_break_xzvd",
   "job_applicant_name",
   "country",
@@ -23,10 +25,13 @@
  ],
  "fields": [
   {
+   "fetch_from": "employee_id.custom_source_of_the_hiring",
    "fieldname": "job_applicant",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Job Applicant",
    "options": "Job Applicant",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -109,12 +114,26 @@
    "fieldname": "mobilization_date",
    "fieldtype": "Date",
    "label": "Mobilization Date"
+  },
+  {
+   "fetch_from": "job_applicant.resume_attachment",
+   "fieldname": "resume_attachment",
+   "fieldtype": "Attach",
+   "label": "Resume Attachment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_id",
+   "fieldtype": "Link",
+   "label": "Employee ID",
+   "options": "Employee",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-11 12:56:52.658025",
+ "modified": "2026-11-16 11:08:00.919874",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Pre-Employment Training",

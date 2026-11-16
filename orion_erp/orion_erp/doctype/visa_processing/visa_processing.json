@@ -201,6 +201,7 @@
    "label": "Remarks"
   },
   {
+   "fetch_from": "job_applicant.applicant_name",
    "fieldname": "candidate_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -361,7 +362,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-12 11:02:42.121002",
+ "modified": "2026-11-16 10:53:05.521892",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Visa Processing",

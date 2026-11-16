@@ -4,10 +4,37 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import formatdate
+from frappe import _
+from frappe.utils import get_link_to_form
 
 
 class PreEmploymentTraining(Document):
-	pass
+
+    def validate(self):
+        self.validate_duplicate_job_applicant()
+	
+    def validate_duplicate_job_applicant(self):
+        if not self.job_applicant:
+            return
+
+        existing = frappe.db.get_value(
+            "Pre-Employment Training",
+            {
+                "job_applicant": self.job_applicant,
+                "name": ["!=", self.name],
+                "docstatus": ["!=", 2],
+            },
+            "name",
+        )
+        if existing:
+            frappe.throw(
+                _("Pre-Employment Training {0} already exists for Job Applicant {1}. Only one is allowed per applicant.").format(
+                    get_link_to_form("Pre-Employment Training", existing),
+                    frappe.bold(self.job_applicant),
+                ),
+                title=_("Duplicate Pre-Employment Training"),
+            )
+	
 
 HR_ROLES = ["HR Manager", "HR User"]
 
@@ -71,3 +98,9 @@ def send_to_hr(docname):
 	doc.db_set("sent_to_hr", 1)
 	doc.add_comment("Info", "Training completed mail sent to HR ({0} users)".format(len(recipients)))
 	return "sent"
+
+
+
+    
+
+    

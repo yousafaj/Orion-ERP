@@ -56,6 +56,7 @@ frappe.ui.form.on("Visa Processing", {
 
                     // Fetch candidate name
                     employee.first_name = frm.doc.candidate_name;
+                    employee.custom_source_of_the_hiring = frm.doc.job_applicant
 
                     // Fields that must not be copied from a child row
                     const skip_fields = [
