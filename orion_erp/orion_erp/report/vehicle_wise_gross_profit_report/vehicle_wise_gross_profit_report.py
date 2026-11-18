@@ -1,6 +1,3 @@
-# # Copyright (c) 2026, osama.ahmed@deliverydevs.com and contributors
-# # For license information, please see license.txt
-
 # import frappe
 # from frappe.utils import flt, cint
 
@@ -36,15 +33,7 @@
 # 	consolidated = cint(filters.get("consolidated")) if filters else 0
 # 	cols = []
 
-# 	if consolidated:
-# 		cols.append({
-# 			"label": "Company",
-# 			"fieldname": "company",
-# 			"fieldtype": "Link",
-# 			"options": "Company",
-# 			"width": 150
-# 		})
-
+# 	# Consolidated mode: one row per vehicle (all companies together), so no Company column
 # 	cols.extend([
 # 		{
 # 			"label": "Vehicle No",
@@ -144,6 +133,8 @@
 # 		INNER JOIN `tabPurchase Invoice` pi
 # 			ON pi.name = pii.parent
 # 		WHERE pi.docstatus = 1
+#   AND pii.enable_deferred_expense = 0
+
 # 		  AND pi.posting_date BETWEEN %s AND %s
 # 		  AND pi.company = %s
 # 		  {purchase_cc}
@@ -236,7 +227,6 @@
 
 # 	sales = frappe.db.sql(f"""
 # 		SELECT
-# 			si.company,
 # 			sii.vehicle_details AS vehicle,
 # 			SUM(sii.amount) AS sales_amount
 # 		FROM `tabSales Invoice Item` sii
@@ -246,7 +236,7 @@
 # 		  AND si.posting_date BETWEEN %s AND %s
 # 		  {sales_cc}
 # 		  {sales_v}
-# 		GROUP BY si.company, sii.vehicle_details
+# 		GROUP BY sii.vehicle_details
 # 	""", tuple(base_params + sales_cc_params + sales_v_params), as_dict=True)
 
 # 	# --- Purchase ---
@@ -264,17 +254,18 @@
 
 # 	purchases = frappe.db.sql(f"""
 # 		SELECT
-# 			pi.company,
 # 			pii.vehicle_details AS vehicle,
 # 			SUM(pii.amount) AS purchase_amount
 # 		FROM `tabPurchase Invoice Item` pii
 # 		INNER JOIN `tabPurchase Invoice` pi
 # 			ON pi.name = pii.parent
 # 		WHERE pi.docstatus = 1
+# 		  AND pii.enable_deferred_expense = 0
+
 # 		  AND pi.posting_date BETWEEN %s AND %s
 # 		  {purchase_cc}
 # 		  {purchase_v}
-# 		GROUP BY pi.company, pii.vehicle_details
+# 		GROUP BY pii.vehicle_details
 # 	""", tuple(base_params + purchase_cc_params + purchase_v_params), as_dict=True)
 
 # 	# --- Journal Entries ---
@@ -292,7 +283,6 @@
 
 # 	jvs = frappe.db.sql(f"""
 # 		SELECT
-# 			je.company,
 # 			jea.vehicle_details AS vehicle,
 # 			SUM(CASE WHEN jea.debit > 0 THEN jea.debit ELSE 0 END) AS jv_debit_amount,
 # 			SUM(CASE WHEN jea.credit > 0 THEN jea.credit ELSE 0 END) AS jv_credit_amount
@@ -303,10 +293,10 @@
 # 		  AND je.posting_date BETWEEN %s AND %s
 # 		  {jv_cc}
 # 		  {jv_v}
-# 		GROUP BY je.company, jea.vehicle_details
+# 		GROUP BY jea.vehicle_details
 # 	""", tuple(base_params + jv_cc_params + jv_v_params), as_dict=True)
 
-# 	# --- Merge by (vehicle, company) ---
+# 	# --- Merge by vehicle (all companies together) ---
 # 	_empty = {
 # 		"sales_amount": 0, "purchase_amount": 0,
 # 		"jv_debit_amount": 0, "jv_credit_amount": 0
@@ -316,22 +306,22 @@
 # 	for row in sales:
 # 		if not row.vehicle:
 # 			continue
-# 		key = (row.vehicle, row.company)
-# 		merged.setdefault(key, {"vehicle": row.vehicle, "company": row.company, **_empty})
+# 		key = row.vehicle
+# 		merged.setdefault(key, {"vehicle": row.vehicle, **_empty})
 # 		merged[key]["sales_amount"] = flt(row.sales_amount)
 
 # 	for row in purchases:
 # 		if not row.vehicle:
 # 			continue
-# 		key = (row.vehicle, row.company)
-# 		merged.setdefault(key, {"vehicle": row.vehicle, "company": row.company, **_empty})
+# 		key = row.vehicle
+# 		merged.setdefault(key, {"vehicle": row.vehicle, **_empty})
 # 		merged[key]["purchase_amount"] = flt(row.purchase_amount)
 
 # 	for row in jvs:
 # 		if not row.vehicle:
 # 			continue
-# 		key = (row.vehicle, row.company)
-# 		merged.setdefault(key, {"vehicle": row.vehicle, "company": row.company, **_empty})
+# 		key = row.vehicle
+# 		merged.setdefault(key, {"vehicle": row.vehicle, **_empty})
 # 		merged[key]["jv_debit_amount"] = flt(row.jv_debit_amount)
 # 		merged[key]["jv_credit_amount"] = flt(row.jv_credit_amount)
 
@@ -341,7 +331,7 @@
 # 	)
 
 # 	data = []
-# 	for key in sorted(merged, key=lambda x: (str(x[0] or ""), str(x[1] or ""))):
+# 	for key in sorted(merged, key=lambda x: str(x or "")):
 # 		row = merged[key]
 # 		row["gross_profit"] = (
 # 			row["sales_amount"]
@@ -478,6 +468,8 @@
 # 		INNER JOIN `tabPurchase Invoice` pi
 # 			ON pi.name = pii.parent
 # 		WHERE pi.docstatus = 1
+# 		  AND pii.enable_deferred_expense = 0
+
 # 		  {cond}
 # 		ORDER BY pi.posting_date
 # 	""", tuple(params), as_dict=True)
@@ -543,6 +535,8 @@
 
 # # ------------------------------------------------------------------
 # # Gross Profit drill-down (all transactions for the vehicle)
+# # (kept for backward compatibility; the Gross Profit column now opens
+# #  the popup statement via get_vehicle_statement below)
 # # ------------------------------------------------------------------
 
 # def _get_gp_drilldown(vehicle, from_date, to_date, company, cost_center):
@@ -596,8 +590,7 @@
 # 		       pii.item_name AS details, pii.amount, pi.is_return
 # 		FROM `tabPurchase Invoice Item` pii
 # 		INNER JOIN `tabPurchase Invoice` pi ON pi.name = pii.parent
-# 		WHERE pi.docstatus = 1 {purchase_cond}
-# 		ORDER BY pi.posting_date
+# 		WHERE pi.docstatus = 1 AND pii.enable_deferred_expense = 0 {purchase_cond}
 # 	""", tuple(purchase_params), as_dict=True)
 
 # 	for p in purchases:
@@ -700,6 +693,232 @@
 # 	})
 
 # 	return columns, detail_rows
+
+
+# # ==================================================================
+# # Popup statement (Gross Profit click) – layout like the Excel sheet
+# # ==================================================================
+
+# @frappe.whitelist()
+# def get_vehicle_statement(vehicle, from_date, to_date, company=None, cost_center=None):
+# 	"""Return the data for the Gross Profit popup (statement layout)."""
+
+# 	def _where(doc, item):
+# 		return _drilldown_conditions(
+# 			vehicle, from_date, to_date, company, cost_center,
+# 			doc_alias=doc, item_alias=item
+# 		)
+
+# 	# --- Sales ---
+# 	cond, params = _where("si", "sii")
+# 	sales = frappe.db.sql(f"""
+# 		SELECT si.company, si.name AS ref, si.posting_date AS date,
+# 		       si.customer_name AS party, sii.item_name AS details, sii.amount
+# 		FROM `tabSales Invoice Item` sii
+# 		INNER JOIN `tabSales Invoice` si ON si.name = sii.parent
+# 		WHERE si.docstatus = 1 {cond}
+# 		ORDER BY si.posting_date
+# 	""", tuple(params), as_dict=True)
+
+# 	# --- Purchase ---
+# 	cond, params = _where("pi", "pii")
+# 	purchases = frappe.db.sql(f"""
+# 		SELECT pi.company, pi.name AS ref, pi.posting_date AS date,
+# 		       pi.supplier_name AS party, pii.item_name AS details, pii.amount
+# 		FROM `tabPurchase Invoice Item` pii
+# 		INNER JOIN `tabPurchase Invoice` pi ON pi.name = pii.parent
+# 		WHERE pi.docstatus = 1 AND pii.enable_deferred_expense = 0 {cond}
+# 	""", tuple(params), as_dict=True)
+
+# 	# --- Journal Entries ---
+# 	jv_cond = "AND jea.vehicle_details = %s AND je.posting_date BETWEEN %s AND %s"
+# 	jv_params = [vehicle, from_date, to_date]
+# 	if company:
+# 		jv_cond += " AND je.company = %s"
+# 		jv_params.append(company)
+# 	if cost_center:
+# 		jv_cond += " AND jea.cost_center = %s"
+# 		jv_params.append(cost_center)
+
+# 	jvs = frappe.db.sql(f"""
+# 		SELECT je.company, je.name AS ref, je.posting_date AS date,
+# 		       jea.account AS party, je.remark AS details,
+# 		       jea.debit, jea.credit
+# 		FROM `tabJournal Entry Account` jea
+# 		INNER JOIN `tabJournal Entry` je ON je.name = jea.parent
+# 		WHERE je.docstatus = 1 {jv_cond}
+# 		ORDER BY je.posting_date
+# 	""", tuple(jv_params), as_dict=True)
+
+# 	jv_debits = [{**r, "amount": flt(r.debit)} for r in jvs if flt(r.debit) > 0]
+# 	jv_credits = [{**r, "amount": flt(r.credit)} for r in jvs if flt(r.credit) > 0]
+
+# 	total_sales = sum(flt(r.amount) for r in sales)
+# 	total_purchase = sum(flt(r.amount) for r in purchases)
+# 	total_jv_debit = sum(r["amount"] for r in jv_debits)
+# 	total_jv_credit = sum(r["amount"] for r in jv_credits)
+
+# 	return {
+# 		"vehicle": vehicle,
+# 		"sales": sales,
+# 		"purchases": purchases,
+# 		"jv_debits": jv_debits,
+# 		"jv_credits": jv_credits,
+# 		"total_sales": total_sales,
+# 		"total_purchase": total_purchase,
+# 		"total_jv_debit": total_jv_debit,
+# 		"total_jv_credit": total_jv_credit,
+# 		# same formula as the report: Sales - Purchase - JV Debits + JV Credits
+# 		"gross_profit": total_sales - total_purchase - total_jv_debit + total_jv_credit,
+# 	}
+
+
+# # ==================================================================
+# # Excel export of the popup (Vehicle Wise Consolidated Profit Report)
+# # ==================================================================
+
+# @frappe.whitelist()
+# def export_vehicle_statement(vehicle, from_date, to_date, company=None, cost_center=None):
+# 	"""Download an Excel file with everything shown in the popup.
+# 	All companies are included unless a company is passed."""
+# 	import re
+# 	from io import BytesIO
+
+# 	from openpyxl import Workbook
+# 	from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+# 	from frappe.utils import getdate
+
+# 	if not frappe.get_doc("Report", "Vehicle-wise Gross Profit Report").is_permitted():
+# 		frappe.throw(frappe._("You are not permitted to export this report."), frappe.PermissionError)
+
+# 	d = get_vehicle_statement(vehicle, from_date, to_date, company, cost_center)
+
+# 	wb = Workbook()
+# 	ws = wb.active
+# 	ws.title = "Statement"
+
+# 	bold = Font(bold=True)
+# 	title_font = Font(bold=True, size=14)
+# 	head_fill = PatternFill("solid", fgColor="D9D9D9")
+# 	sec_fill = PatternFill("solid", fgColor="F3F3F3")
+# 	gp_fill = PatternFill("solid", fgColor="E8F5E9")
+# 	money = "#,##0.00"
+# 	date_fmt = "DD-MM-YYYY"
+# 	thin = Side(style="thin", color="BFBFBF")
+# 	border = Border(left=thin, right=thin, top=thin, bottom=thin)
+# 	right = Alignment(horizontal="right")
+
+# 	def put(sheet, row, col, value, number_format=None, font=None, fill=None, align=None, box=False):
+# 		c = sheet.cell(row=row, column=col, value=value)
+# 		if c.data_type == "f":  # text typed in ERPNext must never become a formula
+# 			c.data_type = "s"
+# 		if number_format:
+# 			c.number_format = number_format
+# 		if font:
+# 			c.font = font
+# 		if fill:
+# 			c.fill = fill
+# 		if align:
+# 			c.alignment = align
+# 		if box:
+# 			c.border = border
+# 		return c
+
+# 	r = 1
+# 	put(ws, r, 1, "Vehicle Wise Consolidated Profit Report", font=title_font)
+# 	r += 2
+# 	for label, value in (
+# 		("Vehicle No", vehicle),
+# 		("Company", company or "All companies"),
+# 		("Cost Center", cost_center or "All"),
+# 		("From Date", getdate(from_date)),
+# 		("To Date", getdate(to_date)),
+# 	):
+# 		put(ws, r, 1, label, font=bold)
+# 		put(ws, r, 2, value, number_format=date_fmt if label.endswith("Date") else None,
+# 			align=Alignment(horizontal="left"))
+# 		r += 1
+# 	r += 1
+
+# 	for col, head in enumerate(["Company", "Reference", "Date", "Details", "Amount"], 1):
+# 		put(ws, r, col, head, font=bold, fill=head_fill, box=True,
+# 			align=right if col == 5 else None)
+# 	r += 1
+
+# 	def section(title, rows, total_label, total):
+# 		nonlocal r
+# 		for col in range(1, 6):
+# 			put(ws, r, col, title if col == 1 else None, font=bold, fill=sec_fill, box=True)
+# 		r += 1
+# 		for x in rows:
+# 			details = (x.get("party") or "") + (" - " + x["details"] if x.get("details") else "")
+# 			details = " ".join(details.split())  # remarks can contain line breaks
+# 			put(ws, r, 1, x.get("company"), box=True)
+# 			put(ws, r, 2, x.get("ref"), box=True)
+# 			put(ws, r, 3, x.get("date"), number_format=date_fmt, box=True,
+# 				align=Alignment(horizontal="left"))
+# 			put(ws, r, 4, details, box=True)
+# 			put(ws, r, 5, flt(x.get("amount")), number_format=money, box=True)
+# 			r += 1
+# 		put(ws, r, 4, total_label, font=bold, align=right)
+# 		put(ws, r, 5, flt(total), number_format=money, font=bold)
+# 		r += 2
+
+# 	section("Sales", d["sales"], "Total Sales", d["total_sales"])
+# 	section("Purchase", d["purchases"], "Total Purchase", d["total_purchase"])
+# 	section("JV Debits", d["jv_debits"], "Total JV Debits", d["total_jv_debit"])
+# 	section("JV Credits", d["jv_credits"], "Total JV Credits", d["total_jv_credit"])
+
+# 	for col in range(1, 6):
+# 		put(ws, r, col, None, fill=gp_fill)
+# 	put(ws, r, 4, "Gross Profit", font=bold, fill=gp_fill, align=right)
+# 	put(ws, r, 5, flt(d["gross_profit"]), number_format=money, font=bold, fill=gp_fill)
+
+# 	for col, width in zip("ABCDE", (46, 24, 14, 70, 18)):
+# 		ws.column_dimensions[col].width = width
+
+# 	# ---- second sheet: totals per company ----
+# 	by = {}
+# 	for key, rows in (
+# 		("sales", d["sales"]), ("purchase", d["purchases"]),
+# 		("jv_debit", d["jv_debits"]), ("jv_credit", d["jv_credits"]),
+# 	):
+# 		for x in rows:
+# 			t = by.setdefault(x.get("company") or "", dict(sales=0, purchase=0, jv_debit=0, jv_credit=0))
+# 			t[key] += flt(x.get("amount"))
+
+# 	ws2 = wb.create_sheet("Company Summary")
+# 	heads = ["Company", "Sales", "Purchase", "JV Debit", "JV Credit", "Gross Profit"]
+# 	for col, head in enumerate(heads, 1):
+# 		put(ws2, 1, col, head, font=bold, fill=head_fill, box=True, align=right if col > 1 else None)
+
+# 	row = 2
+# 	tot = dict(sales=0, purchase=0, jv_debit=0, jv_credit=0, gp=0)
+# 	for c in sorted(by):
+# 		t = by[c]
+# 		gp = t["sales"] - t["purchase"] - t["jv_debit"] + t["jv_credit"]
+# 		vals = [c, t["sales"], t["purchase"], t["jv_debit"], t["jv_credit"], gp]
+# 		for col, val in enumerate(vals, 1):
+# 			put(ws2, row, col, val, number_format=money if col > 1 else None, box=True)
+# 		for k, val in zip(("sales", "purchase", "jv_debit", "jv_credit", "gp"), vals[1:]):
+# 			tot[k] += val
+# 		row += 1
+# 	if by:
+# 		vals = ["Total", tot["sales"], tot["purchase"], tot["jv_debit"], tot["jv_credit"], tot["gp"]]
+# 		for col, val in enumerate(vals, 1):
+# 			put(ws2, row, col, val, number_format=money if col > 1 else None, font=bold, fill=gp_fill, box=True)
+# 	for col, width in zip("ABCDEF", (46, 16, 16, 16, 16, 16)):
+# 		ws2.column_dimensions[col].width = width
+
+# 	out = BytesIO()
+# 	wb.save(out)
+# 	safe = re.sub(r"[^A-Za-z0-9_-]+", "_", str(vehicle)) or "vehicle"
+# 	frappe.response["filename"] = f"Vehicle_{safe}_Consolidated_Profit.xlsx"
+# 	frappe.response["filecontent"] = out.getvalue()
+# 	frappe.response["type"] = "binary"
+
+
 
 
 
@@ -838,6 +1057,8 @@ def _get_single_company_data(filters):
 		INNER JOIN `tabPurchase Invoice` pi
 			ON pi.name = pii.parent
 		WHERE pi.docstatus = 1
+  AND pii.enable_deferred_expense = 0
+
 		  AND pi.posting_date BETWEEN %s AND %s
 		  AND pi.company = %s
 		  {purchase_cc}
@@ -963,6 +1184,8 @@ def _get_consolidated_data(filters):
 		INNER JOIN `tabPurchase Invoice` pi
 			ON pi.name = pii.parent
 		WHERE pi.docstatus = 1
+		  AND pii.enable_deferred_expense = 0
+
 		  AND pi.posting_date BETWEEN %s AND %s
 		  {purchase_cc}
 		  {purchase_v}
@@ -1169,6 +1392,8 @@ def _get_purchase_drilldown(vehicle, from_date, to_date, company, cost_center):
 		INNER JOIN `tabPurchase Invoice` pi
 			ON pi.name = pii.parent
 		WHERE pi.docstatus = 1
+		  AND pii.enable_deferred_expense = 0
+
 		  {cond}
 		ORDER BY pi.posting_date
 	""", tuple(params), as_dict=True)
@@ -1289,8 +1514,7 @@ def _get_gp_drilldown(vehicle, from_date, to_date, company, cost_center):
 		       pii.item_name AS details, pii.amount, pi.is_return
 		FROM `tabPurchase Invoice Item` pii
 		INNER JOIN `tabPurchase Invoice` pi ON pi.name = pii.parent
-		WHERE pi.docstatus = 1 {purchase_cond}
-		ORDER BY pi.posting_date
+		WHERE pi.docstatus = 1 AND pii.enable_deferred_expense = 0 {purchase_cond}
 	""", tuple(purchase_params), as_dict=True)
 
 	for p in purchases:
@@ -1427,8 +1651,7 @@ def get_vehicle_statement(vehicle, from_date, to_date, company=None, cost_center
 		       pi.supplier_name AS party, pii.item_name AS details, pii.amount
 		FROM `tabPurchase Invoice Item` pii
 		INNER JOIN `tabPurchase Invoice` pi ON pi.name = pii.parent
-		WHERE pi.docstatus = 1 {cond}
-		ORDER BY pi.posting_date
+		WHERE pi.docstatus = 1 AND pii.enable_deferred_expense = 0 {cond}
 	""", tuple(params), as_dict=True)
 
 	# --- Journal Entries ---
@@ -1618,3 +1841,116 @@ def export_vehicle_statement(vehicle, from_date, to_date, company=None, cost_cen
 	frappe.response["filename"] = f"Vehicle_{safe}_Consolidated_Profit.xlsx"
 	frappe.response["filecontent"] = out.getvalue()
 	frappe.response["type"] = "binary"
+
+
+# ==================================================================
+# PDF export of the popup (same data as the Excel export)
+# ==================================================================
+
+@frappe.whitelist()
+def export_vehicle_statement_pdf(vehicle, from_date, to_date, company=None, cost_center=None):
+	"""Download a PDF with everything shown in the popup.
+	All companies are included unless a company is passed."""
+	import re
+
+	from frappe.utils import escape_html, formatdate
+	from frappe.utils.pdf import get_pdf
+
+	if not frappe.get_doc("Report", "Vehicle-wise Gross Profit Report").is_permitted():
+		frappe.throw(frappe._("You are not permitted to export this report."), frappe.PermissionError)
+
+	d = get_vehicle_statement(vehicle, from_date, to_date, company, cost_center)
+
+	def esc(v):
+		return escape_html("" if v is None else str(v))
+
+	def money(v):
+		return f"{flt(v):,.2f}"
+
+	def section(title, rows, total_label, total):
+		html = f'<tr class="sec"><td colspan="5">{esc(title)}</td></tr>'
+		if not rows:
+			html += '<tr><td colspan="5" class="muted">No transactions</td></tr>'
+		for x in rows:
+			details = (x.get("party") or "") + (" - " + x["details"] if x.get("details") else "")
+			details = " ".join(details.split())  # remarks can contain line breaks
+			html += (
+				f"<tr><td>{esc(x.get('company'))}</td><td>{esc(x.get('ref'))}</td>"
+				f"<td>{formatdate(x['date']) if x.get('date') else ''}</td>"
+				f"<td>{esc(details)}</td><td class='r'>{money(x.get('amount'))}</td></tr>"
+			)
+		html += f"<tr class='tot'><td colspan='4' class='r'>{esc(total_label)}</td><td class='r'>{money(total)}</td></tr>"
+		return html
+
+	# totals per company (shown only when more than one company has entries)
+	by = {}
+	for key, rows in (
+		("sales", d["sales"]), ("purchase", d["purchases"]),
+		("jv_debit", d["jv_debits"]), ("jv_credit", d["jv_credits"]),
+	):
+		for x in rows:
+			t = by.setdefault(x.get("company") or "", dict(sales=0, purchase=0, jv_debit=0, jv_credit=0))
+			t[key] += flt(x.get("amount"))
+
+	company_html = ""
+	if len(by) > 1:
+		body = ""
+		for c in sorted(by):
+			t = by[c]
+			gp = t["sales"] - t["purchase"] - t["jv_debit"] + t["jv_credit"]
+			body += (
+				f"<tr><td>{esc(c)}</td><td class='r'>{money(t['sales'])}</td>"
+				f"<td class='r'>{money(t['purchase'])}</td><td class='r'>{money(t['jv_debit'])}</td>"
+				f"<td class='r'>{money(t['jv_credit'])}</td><td class='r'>{money(gp)}</td></tr>"
+			)
+		company_html = (
+			"<h4>Company-wise summary</h4><table><thead><tr><th>Company</th>"
+			"<th class='r'>Sales</th><th class='r'>Purchase</th><th class='r'>JV Debit</th>"
+			"<th class='r'>JV Credit</th><th class='r'>Gross Profit</th></tr></thead>"
+			f"<tbody>{body}</tbody></table>"
+		)
+
+	html = f"""
+	<html><head><meta charset="utf-8"><style>
+		body {{ font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #222; }}
+		h3 {{ margin: 0 0 8px 0; }}
+		h4 {{ margin: 16px 0 6px 0; }}
+		table {{ width: 100%; border-collapse: collapse; }}
+		th, td {{ border: 1px solid #bfbfbf; padding: 3px 5px; vertical-align: top; }}
+		th {{ background: #d9d9d9; text-align: left; }}
+		.r {{ text-align: right; }}
+		.sec td {{ background: #f3f3f3; font-weight: bold; }}
+		.tot td {{ font-weight: bold; }}
+		.gp td {{ background: #e8f5e9; font-weight: bold; }}
+		.muted {{ color: #777; }}
+		.meta td {{ border: none; padding: 1px 8px 1px 0; }}
+		tr {{ page-break-inside: avoid; }}
+	</style></head><body>
+		<h3>Vehicle Wise Consolidated Profit Report</h3>
+		<table class="meta" style="width:auto;">
+			<tr><td><b>Vehicle No</b></td><td>{esc(vehicle)}</td></tr>
+			<tr><td><b>Company</b></td><td>{esc(company or "All companies")}</td></tr>
+			<tr><td><b>Cost Center</b></td><td>{esc(cost_center or "All")}</td></tr>
+			<tr><td><b>From Date</b></td><td>{formatdate(from_date)}</td></tr>
+			<tr><td><b>To Date</b></td><td>{formatdate(to_date)}</td></tr>
+		</table>
+		<br>
+		<table>
+			<thead><tr><th>Company</th><th>Reference</th><th>Date</th><th>Details</th><th class="r">Amount</th></tr></thead>
+			<tbody>
+				{section("Sales", d["sales"], "Total Sales", d["total_sales"])}
+				{section("Purchase", d["purchases"], "Total Purchase", d["total_purchase"])}
+				{section("JV Debits", d["jv_debits"], "Total JV Debits", d["total_jv_debit"])}
+				{section("JV Credits", d["jv_credits"], "Total JV Credits", d["total_jv_credit"])}
+				<tr class="gp"><td colspan="4" class="r">Gross Profit</td><td class="r">{money(d["gross_profit"])}</td></tr>
+			</tbody>
+		</table>
+		{company_html}
+	</body></html>
+	"""
+
+	pdf = get_pdf(html, {"orientation": "Landscape", "page-size": "A4"})
+	safe = re.sub(r"[^A-Za-z0-9_-]+", "_", str(vehicle)) or "vehicle"
+	frappe.response["filename"] = f"Vehicle_{safe}_Consolidated_Profit.pdf"
+	frappe.response["filecontent"] = pdf
+	frappe.response["type"] = "pdf"
