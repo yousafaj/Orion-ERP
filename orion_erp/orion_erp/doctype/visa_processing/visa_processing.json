@@ -56,6 +56,8 @@
   "re_medical",
   "section_break_jpwg",
   "certificates",
+  "confidential_certificates_section",
+  "table_euhb",
   "section_break_swcb",
   "job_offer_terms"
  ],
@@ -357,12 +359,22 @@
    "fieldtype": "Small Text",
    "label": "Re medical",
    "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "confidential_certificates_section",
+   "fieldtype": "Section Break",
+   "label": "Confidential Certificates"
+  },
+  {
+   "fieldname": "table_euhb",
+   "fieldtype": "Table",
+   "options": "Confidental Certificates"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-16 10:53:05.521892",
+ "modified": "2026-11-17 09:21:01.998128",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Visa Processing",

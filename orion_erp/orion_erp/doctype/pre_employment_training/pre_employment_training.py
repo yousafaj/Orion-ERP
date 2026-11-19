@@ -7,11 +7,24 @@ from frappe.utils import formatdate
 from frappe import _
 from frappe.utils import get_link_to_form
 
+MANDATORY_TRAININGS = [
+    "Basic First Aid",
+    "Basic Fire Fighting",
+    "Fire Safety",
+    "H2S Awareness and Escape Level II",
+    "Onshore HSE Induction + ADNOC Life Saving Rules",
+    "Defensive/Desert Driving (DDC)",
+    "ADNOC Document For Safe Driving (ADSD)",
+]
 
 class PreEmploymentTraining(Document):
 
     def validate(self):
         self.validate_duplicate_job_applicant()
+        self.validate_mandatory_trainings()
+
+	
+
 	
     def validate_duplicate_job_applicant(self):
         if not self.job_applicant:
@@ -33,6 +46,25 @@ class PreEmploymentTraining(Document):
                     frappe.bold(self.job_applicant),
                 ),
                 title=_("Duplicate Pre-Employment Training"),
+            )
+    def validate_mandatory_trainings(self):
+        rows = {(d.name1 or "").strip().lower(): d for d in self.documents}
+
+        missing_rows = [t for t in MANDATORY_TRAININGS if t.lower() not in rows]
+        missing_files = [
+            t for t in MANDATORY_TRAININGS
+            if t.lower() in rows and not rows[t.lower()].attachment
+        ]
+
+        if missing_rows:
+            frappe.throw(
+                _("Missing mandatory trainings:<br>") + "<br>".join(missing_rows),
+                title=_("Mandatory Trainings"),
+            )
+        if missing_files:
+            frappe.throw(
+                _("Attachment is required for:<br>") + "<br>".join(missing_files),
+                title=_("Mandatory Trainings"),
             )
 	
 
@@ -100,7 +132,3 @@ def send_to_hr(docname):
 	return "sent"
 
 
-
-    
-
-    

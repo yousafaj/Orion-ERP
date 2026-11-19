@@ -16,6 +16,7 @@ class VisaProcessing(Document):
     if TYPE_CHECKING:
         from frappe.types import DF
         from hrms.hr.doctype.job_offer_term.job_offer_term import JobOfferTerm
+        from orion_erp.orion_erp.doctype.confidental_certificates.confidental_certificates import ConfidentalCertificates
         from orion_erp.orion_erp.doctype.employee_cdt.employee_cdt import Employeecdt
 
         adnoc_medical: DF.Literal["", "Fit to Work", "Remedical - Fit to work", "NA", "Pending", "Unfit", "Remedical"]
@@ -53,6 +54,7 @@ class VisaProcessing(Document):
         staff_category: DF.Data | None
         status: DF.Literal["", "Approved", "Rejected", "In Progress"]
         status_change: DF.Literal["", "Yes", "No"]
+        table_euhb: DF.Table[ConfidentalCertificates]
         temporary_work_permit_applied: DF.Literal["", "Yes", "No"]
         temporary_work_permit_expiry: DF.Literal["6 months", "1 year", "2 year"]
         training_card: DF.Literal["", "Yes", "No", "Pending"]
@@ -85,10 +87,15 @@ class VisaProcessing(Document):
             )
 
     def on_update(self):
+        sync_from_visa_processing(self)
         # Send once, on the save where status becomes Approved
         if self.status == "Approved" and self.has_value_changed("status"):
             send_visa_completed_mail(self)
 
+        
+
+    def on_update_after_submit(self):
+        sync_from_visa_processing(self)
 
 ############################### Fine notification ###########################################
 
@@ -540,3 +547,79 @@ def send_visa_one_month_notifications():
             }).insert(ignore_permissions=True)
 
     frappe.db.commit()
+
+
+
+def sync_from_visa_processing(doc, method=None):
+    """Runs on every save of a Visa Processing record. Pushes its certificates
+    into the Pre-Employment Training of the same Job Applicant, even if that
+    training is already saved/approved."""
+    if not doc.get("job_applicant"):
+        return
+
+    pet_name = frappe.db.get_value(
+        "Pre-Employment Training",
+        {"job_applicant": doc.job_applicant, "docstatus": ["!=", 2]},
+        "name",
+    )
+    if not pet_name:
+        return
+
+    child_dt = frappe.get_meta("Pre-Employment Training").get_field("documents").options
+
+    existing = {}
+    for r in frappe.get_all(
+        child_dt,
+        filters={
+            "parent": pet_name,
+            "parenttype": "Pre-Employment Training",
+            "parentfield": "documents",
+        },
+        fields=["name", "name1", "idx", "issued_date", "expiry_date", "attachment"],
+    ):
+        existing[(r.name1 or "").strip().lower()] = r
+
+    next_idx = max([r.idx for r in existing.values()] or [0]) + 1
+
+    # Visa Processing field -> Pre-Employment Training field
+    field_map = {
+        "date_of_issue": "issued_date",
+        "date_of_expiry": "expiry_date",
+        "attachment": "attachment",
+    }
+
+    changed = []
+    for cert in doc.certificates:
+        key = (cert.certification_name or "").strip().lower()
+        if not key:
+            continue
+
+        values = {tgt: cert.get(src) for src, tgt in field_map.items() if cert.get(src)}
+        row = existing.get(key)
+
+        if row:
+            # update only what is new or different, never overwrite with blanks
+            updates = {k: v for k, v in values.items() if row.get(k) != v}
+            if updates:
+                frappe.db.set_value(child_dt, row.name, updates, update_modified=False)
+                changed.append(cert.certification_name)
+        else:
+            frappe.get_doc({
+                "doctype": child_dt,
+                "parent": pet_name,
+                "parenttype": "Pre-Employment Training",
+                "parentfield": "documents",
+                "idx": next_idx,
+                "name1": cert.certification_name,
+                **values,
+            }).insert(ignore_permissions=True)
+            next_idx += 1
+            changed.append(cert.certification_name)
+
+    if changed:
+        pet = frappe.get_doc("Pre-Employment Training", pet_name)
+        pet.add_comment(
+            "Info",
+            "Synced from Visa Processing {0}: {1}".format(doc.name, ", ".join(changed)),
+        )
+        pet.notify_update()  # refreshes the form if someone has it open

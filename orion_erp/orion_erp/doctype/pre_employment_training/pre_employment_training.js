@@ -1,85 +1,223 @@
+// // Copyright (c) 2026, osama.ahmed@deliverydevs.com and contributors
+// // For license information, please see license.txt
+
+// frappe.ui.form.on("Pre-Employment Training", {
+// 	refresh(frm) {
+
+//     if (frm.doc.status === "Completed" && !frm.doc.sent_to_hr && !frm.is_new()) {
+
+//     frm.add_custom_button(__('Send to HR'), function() {
+//         frappe.confirm(__('Send the training completion details to all HR users?'), function() {
+//             frappe.call({
+//                 method: 'orion_erp.orion_erp.doctype.pre_employment_training.pre_employment_training.send_to_hr',
+//                 args: { docname: frm.doc.name },
+//                 freeze: true,
+//                 freeze_message: __('Sending...'),
+//                 callback: function(r) {
+//                     if (r.message === 'sent') {
+//                         frappe.show_alert({message: __('Sent to HR'), indicator: 'green'});
+//                         frm.reload_doc();
+//                     }
+//                 }
+//             });
+//         });
+//     }, __('Actions'));
+// }
+
+// 	},
+
+
+// job_applicant(frm) {
+//         // ---- change these names if yours are different (see note below) ----
+//         const VISA_DOCTYPE      = 'Visa Processing';
+//         const VISA_LINK_FIELD   = 'job_applicant';   // field in Visa Processing that links to Job Applicant
+//         const VISA_CHILD_TABLE  = 'certificates';    // Certificates table in Visa Processing
+//         const TARGET_TABLE      = 'documents';       // Documents table in Pre-Employment Training
+
+//         // Visa Processing certificate field  ->  Pre-Employment Training document field
+//         const MAP = {
+//             certification_name: 'name1',   // Certification Name -> Name
+//             date_of_issue:      'issued_date',     // Date of Issue      -> Issued Date
+//             date_of_expiry:     'expiry_date' ,     // Date of Expiry  
+//             attachment :         'attachment'
+//         };
+//         // ---------------------------------------------------------------------
+
+//         frm.clear_table(TARGET_TABLE);
+//         frm.refresh_field(TARGET_TABLE);
+//         if (!frm.doc.job_applicant) return;
+
+//         frappe.call({
+//             method: 'frappe.client.get_list',
+//             args: {
+//                 doctype: VISA_DOCTYPE,
+//                 filters: { [VISA_LINK_FIELD]: frm.doc.job_applicant },
+//                 fields: ['name'],
+//                 order_by: 'modified desc',
+//                 limit_page_length: 1
+//             },
+//             callback(r) {
+//                 if (!r.message || !r.message.length) {
+//                     frappe.show_alert({ message: __('No Visa Processing record found for this applicant'), indicator: 'orange' });
+//                     return;
+//                 }
+//                 frappe.call({
+//                     method: 'frappe.client.get',
+//                     args: { doctype: VISA_DOCTYPE, name: r.message[0].name },
+//                     callback(res) {
+//                         const rows = (res.message && res.message[VISA_CHILD_TABLE]) || [];
+//                         rows.forEach(src => {
+//                             const row = frm.add_child(TARGET_TABLE);
+//                             Object.keys(MAP).forEach(k => { row[MAP[k]] = src[k]; });
+//                         });
+//                         frm.refresh_field(TARGET_TABLE);
+//                         frappe.show_alert({ message: __('{0} certificate(s) fetched', [rows.length]), indicator: 'green' });
+//                     }
+//                 });
+//             }
+//         });
+//     }
+
+// });
+
+
+// // frappe.ui.form.on('Pre-Employment Training', {
+    
+
+
+
 // Copyright (c) 2026, osama.ahmed@deliverydevs.com and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Pre-Employment Training", {
-	refresh(frm) {
+const MANDATORY_TRAININGS = [
+	"Basic First Aid",
+	"Basic Fire Fighting",
+	"Fire Safety",
+	"H2S Awareness and Escape Level II",
+	"Onshore HSE Induction + ADNOC Life Saving Rules",
+	"Defensive/Desert Driving (DDC)",
+	"ADNOC Document For Safe Driving (ADSD)",
+];
 
-    if (frm.doc.status === "Completed" && !frm.doc.sent_to_hr && !frm.is_new()) {
+const TARGET_TABLE = "documents";
 
-    frm.add_custom_button(__('Send to HR'), function() {
-        frappe.confirm(__('Send the training completion details to all HR users?'), function() {
-            frappe.call({
-                method: 'orion_erp.orion_erp.doctype.pre_employment_training.pre_employment_training.send_to_hr',
-                args: { docname: frm.doc.name },
-                freeze: true,
-                freeze_message: __('Sending...'),
-                callback: function(r) {
-                    if (r.message === 'sent') {
-                        frappe.show_alert({message: __('Sent to HR'), indicator: 'green'});
-                        frm.reload_doc();
-                    }
-                }
-            });
-        });
-    }, __('Actions'));
+// Adds any missing mandatory trainings, keeps rows that already exist
+function ensure_mandatory_rows(frm) {
+	// drop empty rows (no name)
+	frm.doc[TARGET_TABLE] = (frm.doc[TARGET_TABLE] || []).filter((r) => r.name1);
+
+	const existing = frm.doc[TARGET_TABLE].map((r) => (r.name1 || "").trim().toLowerCase());
+
+	MANDATORY_TRAININGS.forEach((t) => {
+		if (!existing.includes(t.toLowerCase())) {
+			frm.add_child(TARGET_TABLE, { name1: t });
+		}
+	});
+
+	// renumber rows
+	frm.doc[TARGET_TABLE].forEach((r, i) => (r.idx = i + 1));
+	frm.refresh_field(TARGET_TABLE);
 }
 
+frappe.ui.form.on("Pre-Employment Training", {
+	refresh(frm) {
+		// show Attachment as a required column in the grid
+		frm.fields_dict[TARGET_TABLE].grid.toggle_reqd("attachment", true);
+
+		// fill the 7 mandatory trainings on a new form
+		if (frm.is_new()) {
+			ensure_mandatory_rows(frm);
+		}
+
+		if (frm.doc.status === "Completed" && !frm.doc.sent_to_hr && !frm.is_new()) {
+			frm.add_custom_button(
+				__("Send to HR"),
+				function () {
+					frappe.confirm(__("Send the training completion details to all HR users?"), function () {
+						frappe.call({
+							method: "orion_erp.orion_erp.doctype.pre_employment_training.pre_employment_training.send_to_hr",
+							args: { docname: frm.doc.name },
+							freeze: true,
+							freeze_message: __("Sending..."),
+							callback: function (r) {
+								if (r.message === "sent") {
+									frappe.show_alert({ message: __("Sent to HR"), indicator: "green" });
+									frm.reload_doc();
+								}
+							},
+						});
+					});
+				},
+				__("Actions")
+			);
+		}
 	},
 
+	// stop users deleting the mandatory rows
+	documents_before_remove(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (MANDATORY_TRAININGS.includes(row.name1)) {
+			frappe.throw(__("{0} is a mandatory training and cannot be removed.", [row.name1]));
+		}
+	},
 
-job_applicant(frm) {
-        // ---- change these names if yours are different (see note below) ----
-        const VISA_DOCTYPE      = 'Visa Processing';
-        const VISA_LINK_FIELD   = 'job_applicant';   // field in Visa Processing that links to Job Applicant
-        const VISA_CHILD_TABLE  = 'certificates';    // Certificates table in Visa Processing
-        const TARGET_TABLE      = 'documents';       // Documents table in Pre-Employment Training
+	job_applicant(frm) {
+		const VISA_DOCTYPE = "Visa Processing";
+		const VISA_LINK_FIELD = "job_applicant";
+		const VISA_CHILD_TABLE = "certificates";
 
-        // Visa Processing certificate field  ->  Pre-Employment Training document field
-        const MAP = {
-            certification_name: 'name1',   // Certification Name -> Name
-            date_of_issue:      'issued_date',     // Date of Issue      -> Issued Date
-            date_of_expiry:     'expiry_date' ,     // Date of Expiry  
-            attachment :         'attachment'
-        };
-        // ---------------------------------------------------------------------
+		const MAP = {
+			certification_name: "name1",
+			date_of_issue: "issued_date",
+			date_of_expiry: "expiry_date",
+			attachment: "attachment",
+		};
 
-        frm.clear_table(TARGET_TABLE);
-        frm.refresh_field(TARGET_TABLE);
-        if (!frm.doc.job_applicant) return;
+		frm.clear_table(TARGET_TABLE);
 
-        frappe.call({
-            method: 'frappe.client.get_list',
-            args: {
-                doctype: VISA_DOCTYPE,
-                filters: { [VISA_LINK_FIELD]: frm.doc.job_applicant },
-                fields: ['name'],
-                order_by: 'modified desc',
-                limit_page_length: 1
-            },
-            callback(r) {
-                if (!r.message || !r.message.length) {
-                    frappe.show_alert({ message: __('No Visa Processing record found for this applicant'), indicator: 'orange' });
-                    return;
-                }
-                frappe.call({
-                    method: 'frappe.client.get',
-                    args: { doctype: VISA_DOCTYPE, name: r.message[0].name },
-                    callback(res) {
-                        const rows = (res.message && res.message[VISA_CHILD_TABLE]) || [];
-                        rows.forEach(src => {
-                            const row = frm.add_child(TARGET_TABLE);
-                            Object.keys(MAP).forEach(k => { row[MAP[k]] = src[k]; });
-                        });
-                        frm.refresh_field(TARGET_TABLE);
-                        frappe.show_alert({ message: __('{0} certificate(s) fetched', [rows.length]), indicator: 'green' });
-                    }
-                });
-            }
-        });
-    }
+		if (!frm.doc.job_applicant) {
+			ensure_mandatory_rows(frm);
+			return;
+		}
 
+		frappe.call({
+			method: "frappe.client.get_list",
+			args: {
+				doctype: VISA_DOCTYPE,
+				filters: { [VISA_LINK_FIELD]: frm.doc.job_applicant },
+				fields: ["name"],
+				order_by: "modified desc",
+				limit_page_length: 1,
+			},
+			callback(r) {
+				if (!r.message || !r.message.length) {
+					ensure_mandatory_rows(frm);
+					frappe.show_alert({
+						message: __("No Visa Processing record found for this applicant"),
+						indicator: "orange",
+					});
+					return;
+				}
+				frappe.call({
+					method: "frappe.client.get",
+					args: { doctype: VISA_DOCTYPE, name: r.message[0].name },
+					callback(res) {
+						const rows = (res.message && res.message[VISA_CHILD_TABLE]) || [];
+						rows.forEach((src) => {
+							const row = frm.add_child(TARGET_TABLE);
+							Object.keys(MAP).forEach((k) => {
+								row[MAP[k]] = src[k];
+							});
+						});
+						// add whichever of the 7 trainings weren't in the visa certificates
+						ensure_mandatory_rows(frm);
+						frappe.show_alert({
+							message: __("{0} certificate(s) fetched", [rows.length]),
+							indicator: "green",
+						});
+					},
+				});
+			},
+		});
+	},
 });
-
-
-// frappe.ui.form.on('Pre-Employment Training', {
-    
