@@ -1,0 +1,188 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:DEP-{vehicle}-{####}",
+ "creation": "2026-11-20 09:16:35.251040",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "mobilization_order",
+  "vehicle",
+  "vehicle_type",
+  "driver",
+  "driver_name",
+  "status",
+  "replaced_by",
+  "replacement_reason",
+  "checklist",
+  "ended_because",
+  "column_break_vqdo",
+  "customer",
+  "site",
+  "site_location",
+  "sub_location",
+  "mobilization_date",
+  "actual_end_date",
+  "expected_end_date",
+  "condition_notes",
+  "replacement_of",
+  "start_odometer",
+  "fuel_level"
+ ],
+ "fields": [
+  {
+   "fieldname": "mobilization_order",
+   "fieldtype": "Link",
+   "label": "Mobilization Order",
+   "options": "Mobilization Order"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "site",
+   "fieldtype": "Data",
+   "label": "Site"
+  },
+  {
+   "fieldname": "site_location",
+   "fieldtype": "Data",
+   "label": "Site Location"
+  },
+  {
+   "fieldname": "sub_location",
+   "fieldtype": "Data",
+   "label": "Sub Location"
+  },
+  {
+   "fieldname": "vehicle",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Vehicle",
+   "options": "Vehicle"
+  },
+  {
+   "fetch_from": "vehicle.custom_vehicle_type",
+   "fieldname": "vehicle_type",
+   "fieldtype": "Data",
+   "label": "Vehicle Type"
+  },
+  {
+   "fieldname": "driver",
+   "fieldtype": "Link",
+   "label": "Driver",
+   "options": "Pre-Employment Training"
+  },
+  {
+   "fetch_from": "driver.job_applicant_name",
+   "fieldname": "driver_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Driver Name"
+  },
+  {
+   "fieldname": "mobilization_date",
+   "fieldtype": "Date",
+   "label": "Mobilization Date"
+  },
+  {
+   "fieldname": "expected_end_date",
+   "fieldtype": "Date",
+   "label": "Expected End Date"
+  },
+  {
+   "fieldname": "actual_end_date",
+   "fieldtype": "Date",
+   "label": "Actual End Date"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nMobilized\nDemobilized"
+  },
+  {
+   "fieldname": "replacement_of",
+   "fieldtype": "Link",
+   "label": "Replacement Of",
+   "options": "Vehicle Deployment"
+  },
+  {
+   "fieldname": "replaced_by",
+   "fieldtype": "Link",
+   "label": "Replaced By",
+   "options": "Vehicle Deployment"
+  },
+  {
+   "fieldname": "replacement_reason",
+   "fieldtype": "Small Text",
+   "label": "Replacement Reason"
+  },
+  {
+   "fieldname": "start_odometer",
+   "fieldtype": "Int",
+   "label": "Start Odometer"
+  },
+  {
+   "fieldname": "fuel_level",
+   "fieldtype": "Select",
+   "label": "Fuel Level",
+   "options": "Full\n3/4\n1/2\n1/4\nEmpty"
+  },
+  {
+   "fieldname": "condition_notes",
+   "fieldtype": "Small Text",
+   "label": "Condition Notes"
+  },
+  {
+   "fieldname": "checklist",
+   "fieldtype": "Table",
+   "label": "Checklist",
+   "options": "Deployment Checklist Item"
+  },
+  {
+   "fieldname": "column_break_vqdo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ended_because",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Ended Because",
+   "options": "\nDriver Replaced\nVehicle Replaced\nJob Completed"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-20 15:15:01.302974",
+ "modified_by": "Administrator",
+ "module": "Orion ERP",
+ "name": "Vehicle Deployment",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

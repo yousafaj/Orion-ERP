@@ -121,6 +121,11 @@ function ensure_mandatory_rows(frm) {
 
 frappe.ui.form.on("Pre-Employment Training", {
 	refresh(frm) {
+
+
+		
+
+
 		// show Attachment as a required column in the grid
 		frm.fields_dict[TARGET_TABLE].grid.toggle_reqd("attachment", true);
 
@@ -151,6 +156,41 @@ frappe.ui.form.on("Pre-Employment Training", {
 				__("Actions")
 			);
 		}
+
+
+
+		if (frm.is_new()) return;
+
+		frm.add_custom_button(__("Driver Movement"), () => {
+			frappe.set_route("query-report", "Driver Movement Report", { driver: frm.doc.name });
+		});
+
+		frappe.db
+			.get_list("Vehicle Deployment", {
+				filters: { driver: frm.doc.name, status: "Mobilized", docstatus: ["<", 2] },
+				fields: ["vehicle", "vehicle_type", "customer", "site", "mobilization_date"],
+				limit: 1,
+			})
+			.then((r) => {
+				if (!r.length) {
+					frm.dashboard.set_headline(__("Free: no active deployment"), "green");
+					return;
+				}
+				const d = r[0];
+				frm.dashboard.set_headline(
+					`<b>Vehicle:</b> ${d.vehicle} (${d.vehicle_type || "-"}) &nbsp; <b>Client:</b> ${d.customer || "-"} &nbsp; ` +
+						`<b>Site:</b> ${d.site || ""} &nbsp; <b>Since:</b> ${frappe.datetime.str_to_user(d.mobilization_date)}`,
+					"blue"
+				);
+			});
+
+
+
+
+
+
+
+
 	},
 
 	// stop users deleting the mandatory rows

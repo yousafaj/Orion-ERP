@@ -12,6 +12,7 @@
   "employee_name",
   "position",
   "department",
+  "leave_advance_recovery",
   "column_break_orai",
   "posting_date",
   "date_of_settlement",
@@ -267,13 +268,19 @@
    "fieldtype": "Table",
    "label": "Leave Settlement Deductions",
    "options": "Leave Settlement Deductions"
+  },
+  {
+   "fieldname": "leave_advance_recovery",
+   "fieldtype": "Currency",
+   "label": "Leave Advance Recovery",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-13 10:09:00.301461",
+ "modified": "2026-11-24 12:40:22.696108",
  "modified_by": "Administrator",
  "module": "Orion ERP",
  "name": "Leave Settlement",

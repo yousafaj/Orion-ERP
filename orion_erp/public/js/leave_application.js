@@ -228,6 +228,11 @@ frappe.ui.form.on("Leave Application", {
         set_leave_balance_after(frm);
     },
     refresh(frm) {
+
+
+
+        add_recall_button(frm);
+
         handle_cancel_button(frm);
 
         let status_to_show =
@@ -421,6 +426,10 @@ frappe.ui.form.on("Leave Application", {
 
         set_leave_balance_after(frm);
         frm.refresh_fields();
+
+
+
+
     }
 });
 
@@ -465,6 +474,33 @@ function handle_eligibility_warnings_badge(frm) {
         tryInsertBadge();
     }
 }
+
+
+
+function add_recall_button(frm) {
+    // if (frm.doc.docstatus !== 1 || frm.doc.status !== "Approved") return;
+    if (!frappe.user.has_role(["HR Manager", "HR User"])) return;
+
+    frm.add_custom_button(__("Recall From Leave"), () => {
+        frappe.prompt([
+            { fieldname: "rejoin_date", fieldtype: "Date", label: "Rejoining Date",
+              reqd: 1, description: "First day back at work" },
+            { fieldname: "monthly_salary", fieldtype: "Currency", label: "Monthly Salary",
+              description: "Leave empty to use the Vacation Settlement salary" },
+        ], v => frappe.call({
+            method: "orion_erp.orion_erp.validations.leave_application.advance_paid.recall_leave",
+            args: { docname: frm.doc.name, rejoin_date: v.rejoin_date, monthly_salary: v.monthly_salary },
+            callback(r) {
+                if (r.exc) return;
+                frappe.show_alert({ message: __("{0} days returned to balance", [r.message.returned]),
+                                    indicator: "green" });
+                frm.reload_doc();
+            },
+        }), __("Recall From Leave"), __("Recall"));
+    });
+}
+
+
 
 
 function handle_medical_certificate_flag(frm) {

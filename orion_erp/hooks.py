@@ -46,7 +46,7 @@ webform_include_js = {"Lead": ["public/js/web_form/table_multiselect.js", "publi
 doctype_js = {
     "Employee" : "public/js/employee.js",
     "Additional Salary": "public/js/additional_salary.js",
-    "Leave Application": "public/js/leave_application.js",
+    # "Leave Application": "public/js/leave_application.js",
     "Salary Slip": "public/js/salary_slip.js",
     "Job Offer":"public/js/job_offer.js",
     "Driver": "public/js/driver.js",
@@ -57,6 +57,8 @@ doctype_js = {
     "Bank Statement Import": "public/js/bank_statement_import.js",
     "Purchase Invoice":"public/js/purchase_invoice.js",
     "Sales Invoice": "public/js/sales_invoice.js",
+    "Payroll Entry": "public/js/payroll_entry.js",
+    "Leave Application": "public/js/leave_accrual.js",
 
     }
 
@@ -196,10 +198,8 @@ before_tests = "hrms.tests.test_utils.before_tests"
 permission_query_conditions = {
     "Additional Salary": "orion_erp.orion_erp.permission_query.additonal_salary.get_additional_salary_permission_query",
 	"Salary Structure Assignment": "orion_erp.orion_erp.permission_query.salary_structure_assignment.get_ssa_permission_query",
-    "Leave Application":
-    "orion_erp.orion_erp.permission_query.leave_application.leave_application_query",
-    "Rejoining Form":
-    "orion_erp.orion_erp.permission_query.rejoining_form.rejoining_form_query"
+    # "Leave Application": "orion_erp.orion_erp.permission_query.leave_application.leave_application_query",
+    "Rejoining Form": "orion_erp.orion_erp.permission_query.rejoining_form.rejoining_form_query"
 }
 #
 # has_permission = {
@@ -211,8 +211,8 @@ permission_query_conditions = {
 # Override standard doctype classes
 
 override_doctype_class = {
-    "Leave Allocation": "orion_erp.orion_erp.overrides.leave_allocation.OrionLeaveAllocation",
-    "Leave Application": "orion_erp.orion_erp.overrides.leave_application.OrionLeaveApplication",
+    # "Leave Allocation": "orion_erp.orion_erp.overrides.leave_allocation.OrionLeaveAllocation",
+    # "Leave Application": "orion_erp.orion_erp.overrides.leave_application.OrionLeaveApplication",
 	"Web Form": "orion_erp.orion_erp.overrides.web_form.CustomWebForm",
 	"Bank Statement Import": "orion_erp.orion_erp.overrides.bank_statement_import.CustomBankStatementImport",
 }
@@ -228,34 +228,45 @@ override_doctype_class = {
 # 	}
 # }
 
+
+    
+
 doc_events = {
     "Attendance": {
         "on_submit": "orion_erp.orion_erp.scripts.annual_leave_accrual.attendance_accrual_updated",
         "on_update_after_submit": "orion_erp.orion_erp.scripts.annual_leave_accrual.attendance_accrual_updated",
     },
+    "Leave Type": {
+        "validate": "orion_erp.leave_management.rules.block_casual_leave",
+    },
     "Leave Application":{
         "before_update_after_submit": "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
          "validate":[
-              "orion_erp.orion_erp.validations.leave_application.validate_leave_initiator",
-              "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
-              "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
-              "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
-               "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
-               "orion_erp.orion_erp.validations.leave_application.validate_paternity_leave",
-               "orion_erp.orion_erp.validations.leave_application.reset_status_on_amend",
-               "orion_erp.orion_erp.services.leave_delegation.auto_delegate_leave_application"
+            #   "orion_erp.orion_erp.validations.leave_application.validate_leave_initiator",
+            #   "orion_erp.orion_erp.validations.leave_application.validate_leave_approval",
+            #   "orion_erp.orion_erp.validations.leave_application.validate_annual_leave_avail",
+            #   "orion_erp.orion_erp.validations.leave_application.validate_hajj_umrah_leave",
+            #    "orion_erp.orion_erp.validations.leave_application.validate_medical_certificate",
+            #    "orion_erp.orion_erp.validations.leave_application.validate_paternity_leave",
+            #    "orion_erp.orion_erp.validations.leave_application.reset_status_on_amend",
+               "orion_erp.orion_erp.services.leave_delegation.auto_delegate_leave_application",
+               "orion_erp.leave_management.rules.validate_leave_application",
+               "orion_erp.orion_erp.validations.leave_application.eligibility.validate_hajj_umrah_leave",
          ],
 
-        "on_update":[
-            "orion_erp.orion_erp.validations.leave_application.handle_leave_approval",
-            "orion_erp.orion_erp.services.leave_delegation.handle_auto_delegation_on_update"
-        ],
-        "on_submit":[
-            "orion_erp.orion_erp.validations.leave_application.on_submit_leave_application"
-        ],
-        "on_cancel":[
-            "orion_erp.orion_erp.validations.leave_application.on_cancel_leave_application"
-        ]
+        "on_submit": ["orion_erp.orion_erp.validations.leave_application.advance_paid.consume_on_submit"],
+        "on_cancel": ["orion_erp.orion_erp.validations.leave_application.advance_paid.restore_on_cancel"],
+
+        # "on_update":[
+        #     # "orion_erp.orion_erp.validations.leave_application.handle_leave_approval",
+        #     "orion_erp.orion_erp.services.leave_delegation.handle_auto_delegation_on_update"
+        # ],
+        # "on_submit":[
+        #     "orion_erp.orion_erp.validations.leave_application.on_submit_leave_application"
+        # ],
+        # "on_cancel":[
+        #     "orion_erp.orion_erp.validations.leave_application.on_cancel_leave_application"
+        # ]
     },
     "Rejoining Form":{
         "validate":[
@@ -272,6 +283,8 @@ doc_events = {
             "orion_erp.orion_erp.validations.rejoining_form.on_cancel_rejoining_form"
         ]
     },
+
+    
     "Salary Structure Assignment":{
         "validate":"orion_erp.orion_erp.validations.salary_structure_assignment.validate_ssa_employee_category"
     },
@@ -324,7 +337,11 @@ doc_events = {
         "validate": "orion_erp.orion_erp.validations.payroll_medical_certificate.validate_medical_certificate_for_payroll_entry"
     },
     "Salary Slip": {
-        "validate": "orion_erp.orion_erp.validations.payroll_medical_certificate.validate_medical_certificate_for_salary_slip"
+        "before_validate": "orion_erp.leave_management.payroll.auto_mark_holiday_absences",
+        "validate": ["orion_erp.orion_erp.validations.payroll_medical_certificate.validate_medical_certificate_for_salary_slip",
+                "orion_erp.orion_erp.validations.leave_application.advance_paid.add_paid_leave_deduction",
+
+        ],
     },
     "File": {
         "on_update": "orion_erp.orion_erp.validations.leave_application.update_medical_certificate_status_on_file_attach",
@@ -343,7 +360,8 @@ doc_events = {
         "on_update": "orion_erp.orion_erp.validations.job_offer_hooks.job_offer_on_update",
         "validate": "orion_erp.orion_erp.validations.job_offer_hooks.validate_job_offer_workflow",
 
-    }
+    },
+
 }
 
 # Scheduled Tasks
@@ -383,6 +401,7 @@ scheduler_events = {
         "orion_erp.orion_erp.doctype.visa_processing.visa_processing.send_icp_fine_notifications",
         "orion_erp.orion_erp.doctype.visa_processing.visa_processing.send_medical_insurance_fine_notifications",
         "orion_erp.orion_erp.doctype.visa_processing.visa_processing.send_visa_one_month_notifications",
+        "orion_erp.orion_erp.validations.fleet_oprations.send_expiry_alerts"
 
 
 

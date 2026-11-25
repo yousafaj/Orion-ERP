@@ -1,47 +1,83 @@
 // Copyright (c) 2026, osama.ahmed@deliverydevs.com and contributors
 // For license information, please see license.txt
 
+// function populate_leave_pay(frm) {
+//     if (!frm.doc.employee || !frm.doc.date_of_settlement) {
+//         frm.clear_table("leave_pay");
+//         frm.refresh_field("leave_pay");
+//         return;
+//     }
+
+//     if (frm.doc.type_of_settlement !== "Final Settlement") {
+//         frm.clear_table("leave_pay");
+//         frm.refresh_field("leave_pay");
+//         return;
+//     }
+
+//     frappe.call({
+//         method: "orion_erp.orion_erp.doctype.leave_settlement.leave_settlement.get_leave_pay_data",
+//         args: {
+//             employee: frm.doc.employee,
+//             date_of_settlement: frm.doc.date_of_settlement,
+//             doj: frm.doc.doj__re_joining_date
+//         },
+//         callback: function(r) {
+
+//             frm.clear_table("leave_pay");
+
+//             if (!r.message || !r.message.length) {
+//                 frm.refresh_field("leave_pay");
+//                 return;
+//             }
+
+//             r.message.forEach(row => {
+
+//                 let d = frm.add_child("leave_pay");
+
+//                 d.leave_type = row.leave_type;
+//                 d.from = row.from;
+//                 d.to = row.to;
+//                 d.tenure = row.tenure;
+//                 d.amount = row.amount;
+
+//             });
+
+//             frm.refresh_field("leave_pay");
+//         }
+//     });
+// }
+
+
 function populate_leave_pay(frm) {
-    if (!frm.doc.employee || !frm.doc.date_of_settlement) {
+    const type = frm.doc.type_of_settlement;
+    if (!frm.doc.employee || !frm.doc.date_of_settlement ||
+        !["Final Settlement", "Vacation Settlement"].includes(type)) {
         frm.clear_table("leave_pay");
         frm.refresh_field("leave_pay");
         return;
     }
 
-    if (frm.doc.type_of_settlement !== "Final Settlement") {
-        frm.clear_table("leave_pay");
-        frm.refresh_field("leave_pay");
-        return;
-    }
-
+    const is_vacation = type === "Vacation Settlement";
     frappe.call({
-        method: "orion_erp.orion_erp.doctype.leave_settlement.leave_settlement.get_leave_pay_data",
-        args: {
-            employee: frm.doc.employee,
-            date_of_settlement: frm.doc.date_of_settlement,
-            doj: frm.doc.doj__re_joining_date
-        },
-        callback: function(r) {
-
+        method: is_vacation
+            ? "orion_erp.orion_erp.validations.leave_application.advance_paid.get_vacation_leave_pay"
+            : "orion_erp.orion_erp.doctype.leave_settlement.leave_settlement.get_leave_pay_data",
+        args: is_vacation
+            ? { employee: frm.doc.employee, date_of_settlement: frm.doc.date_of_settlement,
+                monthly_salary: frm.doc.monthly_salary }
+            : { employee: frm.doc.employee, date_of_settlement: frm.doc.date_of_settlement,
+                doj: frm.doc.doj__re_joining_date },
+        callback(r) {
             frm.clear_table("leave_pay");
-
-            if (!r.message || !r.message.length) {
-                frm.refresh_field("leave_pay");
-                return;
-            }
-
-            r.message.forEach(row => {
-
+            (r.message || []).forEach(row => {
                 let d = frm.add_child("leave_pay");
-
                 d.leave_type = row.leave_type;
                 d.from = row.from;
                 d.to = row.to;
                 d.tenure = row.tenure;
                 d.amount = row.amount;
-
+                if (row.leave_application) d.leave_application = row.leave_application;
             });
-
             frm.refresh_field("leave_pay");
         }
     });
@@ -168,6 +204,10 @@ frappe.ui.form.on('Leave Settlement', {
     },
     last_working_day: function(frm) {
         calculate_total_service(frm);
+    },
+
+    monthly_salary: function(frm) {
+        if (frm.doc.type_of_settlement === "Vacation Settlement") populate_leave_pay(frm);
     },
 
     doj__re_joining_date: function(frm) {

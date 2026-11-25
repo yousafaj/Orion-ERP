@@ -225,6 +225,12 @@ def patched_get_number_of_leave_days(
             )
             return max(flt(result) + additional + configured_holidays - non_configured_working_weekends, 0)
 
+    # weekdays = _count_weekdays_in_range(from_date, to_date)
+    # return min(flt(result), weekdays)
+
+    if frappe.db.get_value("Leave Type", leave_type, "include_holiday"):
+        return flt(result)
+
     weekdays = _count_weekdays_in_range(from_date, to_date)
     return min(flt(result), weekdays)
 

@@ -120,54 +120,34 @@ def validate_paternity_leave(doc, method=None):
 
 
 def validate_hajj_umrah_leave(doc, method=None):
-    settings = frappe.get_single("Orion Settings")
-    configured_type = getattr(settings, "hajj_umrah_leave_type", None)
-
-    if not configured_type or doc.leave_type != configured_type:
+    if not doc.employee or not doc.leave_type:
         return
 
-    eligible_religions_str = getattr(settings, "hajj_umrah_eligible_religions", None) or "Muslim"
-    eligible_religions = [r.strip() for r in eligible_religions_str.split(",") if r.strip()]
-    allow_once_only = getattr(settings, "hajj_umrah_allow_once_only", 1)
-
-    religion = frappe.db.get_value("Employee", doc.employee, "custom_religion")
-    if religion not in eligible_religions:
-        add_eligibility_warning(
-            doc,
-            "Ineligible",
-            "{0} is only applicable to {1} employees.".format(
-                doc.leave_type,
-                "/".join(eligible_religions)
-            )
-        )
+    one_time = frappe.db.get_value("Leave Type", doc.leave_type, "custom_onetime_only")
+    if not one_time:
         return
 
-    max_days = frappe.db.get_value("Leave Type", doc.leave_type, "max_leaves_allowed") or 0
-    if max_days and doc.total_leave_days > max_days:
+    existing = frappe.db.sql("""
+        SELECT name FROM `tabLeave Application`
+        WHERE employee = %(employee)s
+          AND leave_type = %(leave_type)s
+          AND name != %(name)s
+          AND docstatus < 2
+          AND status NOT IN ('Rejected', 'Cancelled')
+          AND IFNULL(custom_approval_status, '') NOT IN ('Rejected', 'Cancelled')
+        LIMIT 1
+    """, {
+        "employee": doc.employee,
+        "leave_type": doc.leave_type,
+        "name": doc.name or "",
+    })
+
+    if existing:
         add_eligibility_warning(
             doc,
-            "Exceeds Maximum Leave Days",
-            "{0} cannot exceed {1} days as per the Leave Type configuration. You have requested {2} days.".format(
-                doc.leave_type,
-                str(max_days),
-                str(doc.total_leave_days)
-            )
+            "Already Availed",
+            "{0} can only be availed once. Leave Application {1} already exists for this employee.".format(
+                doc.leave_type, existing[0][0]
+            ),
         )
 
-    if allow_once_only:
-        existing = frappe.db.exists("Leave Application", {
-            "employee": doc.employee,
-            "leave_type": doc.leave_type,
-            "docstatus": 1,
-            "status": "Approved",
-            "name": ["!=", doc.name]
-        })
-
-        if existing:
-            add_eligibility_warning(
-                doc,
-                "Already Availed",
-                "Employee has already availed {0}. This leave type can only be availed once during the entire employment period.".format(
-                    doc.leave_type
-                )
-            )

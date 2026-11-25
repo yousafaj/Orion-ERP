@@ -3,7 +3,6 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import getdate, add_days, add_months, today
 from datetime import timedelta
 
-
 class TestLeaveSettlementTicketAllowance(FrappeTestCase):
     def setUp(self):
         self.employee = self._create_fresh_employee()

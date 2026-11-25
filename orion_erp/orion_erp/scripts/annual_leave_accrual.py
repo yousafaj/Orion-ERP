@@ -597,3 +597,18 @@ def expire_previous_allocation(employee, new_year_start, leave_type):
 
         if remaining and remaining > 0:
             expire_allocation(doc)
+
+
+
+@frappe.whitelist()
+def get_accrual_for_employee(employee, from_date=None):
+    """Accrual figures for every leave type listed in Orion Settings."""
+    validate_leave_access(employee)
+    settings = frappe.get_single("Orion Settings")
+    types = [r.leave_type for r in (settings.get("leave_types_for_accrual") or []) if r.leave_type]
+    out = {}
+    for lt in types:
+        d = get_annual_leave_accrual(employee, lt, from_date)
+        if d:
+            out[lt] = d
+    return out

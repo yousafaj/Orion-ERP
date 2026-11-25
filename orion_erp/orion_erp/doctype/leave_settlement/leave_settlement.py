@@ -5,6 +5,11 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from orion_erp.orion_erp.validations.leave_application.advance_paid import (
+    apply_leave_advance_recovery, mark_recovered, reopen,
+    link_vacation_leave, unlink_vacation_leave,
+)
+
 from orion_erp.orion_erp.services.leave_settlement import (
     get_leave_pay_data,
     get_ticket_allowance,
@@ -46,6 +51,7 @@ class LeaveSettlement(Document):
         employee_name: DF.Data | None
         gratuity_pay: DF.Table[GratuityPay]
         last_working_day: DF.Date | None
+        leave_advance_recovery: DF.Currency
         leave_pay: DF.Table[LeavePay]
         leave_settlement_deductions: DF.Table[LeaveSettlementDeductions]
         monthly_salary: DF.Currency
@@ -107,9 +113,15 @@ class LeaveSettlement(Document):
         create_leave_settlement_deduction(self)
         create_ticket_allowance_additional_salary(self)
         create_leave_encashment_for_settlement(self)
+        mark_recovered(self)
+        link_vacation_leave(self)
+
+
 
     def validate(self):
         validate_ticket_allowance(self)
+        apply_leave_advance_recovery(self)
+
 
     def on_cancel(self):
         validate_salary_slip_before_cancel(self)
@@ -117,3 +129,5 @@ class LeaveSettlement(Document):
         cancel_linked_ticket_allowance_additional_salary(self)
         cancel_linked_leave_encashments(self)
         revert_ticket_paid(self)
+        unlink_vacation_leave(self)
+        reopen(self)
