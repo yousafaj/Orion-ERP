@@ -563,6 +563,15 @@ def receive_push(device=None, token=None):
         )
 
     events = [e for e in (_normalize_push(c) for c in candidates) if e]
+    fresh = []
+    for e in events:
+        try:
+            if getdate(parse_event_time(e["time"])) >= getdate(today()):
+                fresh.append(e)
+        except Exception:
+            pass
+    events = fresh
+
     if not events:
         return {"ok": True, "ignored": True}
 
