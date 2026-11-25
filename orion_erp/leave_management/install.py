@@ -26,9 +26,12 @@ def custom_fields():
         dict(fieldname="one_time_only", fieldtype="Check", label="One-Time Only (once per employment)"),
         dict(fieldname="min_days_per_application", fieldtype="Float", label="Minimum Days Per Application"),
         dict(fieldname="uae_rules_col", fieldtype="Column Break"),
-        dict(fieldname="custom_requires_event_dateel="Requires Event Date"),
-        dict(fieldname="event_allow_before_days", fieldtype="Int", label="Leave May Start This Many Days Before Event", depends_on="custom_requires_event_date
-        dict(fieldname="event_window_months", fieldtype="Int", label="Leave Must Start Within (Months) of Event", depends_on="custom_requires_event_date
+        dict(fieldname="custom_requires_event_date", fieldtype="Check", label="Requires Event Date"),
+        dict(fieldname="event_allow_before_days", fieldtype="Int", label="Leave May Start This Many Days Before Event", depends_on="custom_requires_event_date"),
+        dict(fieldname="event_window_months", fieldtype="Int", label="Leave Must Start Within (Months) of Event", depends_on="custom_requires_event_date"),
+        # dict(fieldname="custom_requires_event_dateel="Requires Event Date"),
+        # dict(fieldname="event_allow_before_days", fieldtype="Int", label="Leave May Start This Many Days Before Event", depends_on="custom_requires_event_date
+        # dict(fieldname="event_window_months", fieldtype="Int", label="Leave Must Start Within (Months) of Event", depends_on="custom_requires_event_date
         dict(fieldname="document_mode", fieldtype="Select", label="Supporting Document", options="None\nUpload later\nMandatory", default="None"),
         dict(fieldname="document_deadline_days", fieldtype="Int", label="Document Deadline (Days From Leave Start)", depends_on="eval:doc.document_mode=='Upload later'"),
         dict(fieldname="pay_tiers_section", fieldtype="Section Break", label="Pay Tiers (cumulative days per leave year)"),
@@ -36,9 +39,12 @@ def custom_fields():
     ]
     leave_application = [
         dict(fieldname="uae_section", fieldtype="Section Break", label="UAE Leave Details"),
-        dict(fieldname="custom_requires_event_dateel="Requires Event Date", fetch_from="leave_type.custom_requires_event_date,
+        dict(fieldname="custom_requires_event_date", fieldtype="Check", label="Requires Event Date", fetch_from="leave_type.custom_requires_event_date", hidden=1, read_only=1),
+
+        # dict(fieldname="custom_requires_event_dateel="Requires Event Date", fetch_from="leave_type.custom_requires_event_date,
         dict(fieldname="document_mode", fieldtype="Data", label="Document Mode", fetch_from="leave_type.document_mode", hidden=1, read_only=1),
-        dict(fieldname="event_date", fieldtype="Date", label="Event Date (birth / death / expected delivery)", depends_on="custom_requires_event_date
+        dict(fieldname="event_date", fieldtype="Date", label="Event Date (birth / death / expected delivery)", depends_on="custom_requires_event_date"),
+        # dict(fieldname="event_date", fieldtype="Date", label="Event Date (birth / death / expected delivery)", depends_on="custom_requires_event_date
         dict(fieldname="supporting_document", fieldtype="Attach", label="Supporting Document", depends_on="eval:doc.document_mode!='None'"),
         dict(fieldname="uae_col", fieldtype="Column Break"),
         dict(fieldname="full_pay_days", fieldtype="Float", label="Full Pay Days", read_only=1),
@@ -82,14 +88,25 @@ LEAVE_TYPES = [
     dict(leave_type_name="Sick Leave", max_leaves_allowed=90, applicable_after=180,
          document_mode="Upload later", document_deadline_days=3, tiers=SICK_TIERS),
     dict(leave_type_name="Maternity Leave", max_leaves_allowed=105, gender_restriction="Female",
-         document_mode="Mandatory", custom_requires_event_dateys=30, tiers=MATERNITY_TIERS),
+         document_mode="Mandatory", custom_requires_event_date=1, event_allow_before_days=30, tiers=MATERNITY_TIERS),
     dict(leave_type_name="Paternity Leave", max_leaves_allowed=5, max_continuous_days_allowed=5,
          gender_restriction="Male",  # UAE page says parental leave for both parents: confirm with HR
-         document_mode="Upload later", document_deadline_days=30, custom_requires_event_date),
+         document_mode="Upload later", document_deadline_days=30, custom_requires_event_date=1),
+
+    # dict(leave_type_name="Maternity Leave", max_leaves_allowed=105, gender_restriction="Female",
+    #      document_mode="Mandatory", custom_requires_event_dateys=30, tiers=MATERNITY_TIERS),
+    # dict(leave_type_name="Paternity Leave", max_leaves_allowed=5, max_continuous_days_allowed=5,
+    #      gender_restriction="Male",  # UAE page says parental leave for both parents: confirm with HR
+    #      document_mode="Upload later", document_deadline_days=30, custom_requires_event_date),
+
     dict(leave_type_name="Bereavement Leave - Spouse", max_leaves_allowed=5, max_continuous_days_allowed=5,
-         document_mode="Upload later", document_deadline_days=5, custom_requires_event_date
+         document_mode="Upload later", document_deadline_days=5, custom_requires_event_date=1),
     dict(leave_type_name="Bereavement Leave - Close Family", max_leaves_allowed=3, max_continuous_days_allowed=3,
-         document_mode="Upload later", document_deadline_days=5, custom_requires_event_date
+         document_mode="Upload later", document_deadline_days=5, custom_requires_event_date=1),
+    # dict(leave_type_name="Bereavement Leave - Spouse", max_leaves_allowed=5, max_continuous_days_allowed=5,
+    #      document_mode="Upload later", document_deadline_days=5, custom_requires_event_date
+    # dict(leave_type_name="Bereavement Leave - Close Family", max_leaves_allowed=3, max_continuous_days_allowed=3,
+    #      document_mode="Upload later", document_deadline_days=5, custom_requires_event_date
     dict(leave_type_name="Hajj and Umrah Leave", is_lwp=1, max_continuous_days_allowed=30,
          min_days_per_application=15,  # 15-day minimum is company policy, not law
          one_time_only=1, religion_restriction="Muslim", document_mode="Mandatory"),
