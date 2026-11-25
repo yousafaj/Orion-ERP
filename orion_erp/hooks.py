@@ -383,7 +383,13 @@ scheduler_events = {
         # Run every minute to check leave application escalation status
         "* * * * *": [
             "orion_erp.orion_erp.scripts.leave_escalation.process_leave_escalations"
-        ]
+        ],
+         "*/1 * * * *": [
+            "orion_erp.hikvision_attendance.sync_hikvision_attendance"
+        ],
+        "*/15 * * * *": [
+            "orion_erp.hikvision_attendance.update_last_sync_of_checkin"
+        ],
     },
 	"daily": [
         # "orion_erp.orion_erp.services.employee_deduction.run_deduction_cron"
