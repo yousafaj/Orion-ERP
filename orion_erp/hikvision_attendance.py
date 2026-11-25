@@ -15,6 +15,7 @@ import frappe
 import requests
 from frappe.utils import get_system_timezone
 from requests.auth import HTTPDigestAuth
+from frappe.utils import get_system_timezone, getdate, today
 
 LOGGER_NAME = "hikvision_attendance"
 
