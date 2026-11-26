@@ -15,7 +15,6 @@ import frappe
 import requests
 from frappe.utils import get_system_timezone
 from requests.auth import HTTPDigestAuth
-from frappe.utils import get_system_timezone, getdate, today
 
 LOGGER_NAME = "hikvision_attendance"
 
@@ -564,7 +563,6 @@ def receive_push(device=None, token=None):
         )
 
     events = [e for e in (_normalize_push(c) for c in candidates) if e]
-
     if not events:
         return {"ok": True, "ignored": True}
 
